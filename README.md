@@ -15,7 +15,7 @@
 
 ### 🔧 工具
 - **结构求解器** - 静定/超静定结构分析
-- **AI 助手** - 基于 Gemini 的智能问答
+- **AI 助手** - 基于 DeepSeek 的智能问答
 
 ## 🛠️ 技术栈
 
@@ -23,7 +23,7 @@
 - **构建工具**: Vite
 - **UI 组件**: Lucide React Icons
 - **公式渲染**: KaTeX
-- **AI 集成**: Google Gemini API
+- **AI 集成**: DeepSeek API
 
 ## 🚀 本地运行
 
@@ -33,8 +33,7 @@
 # 安装依赖
 npm install
 
-# 配置环境变量（可选，用于 AI 功能）
-# 在 .env.local 中设置 GEMINI_API_KEY
+# AI 功能需要 DeepSeek API Key（在应用内输入）
 
 # 启动开发服务器
 npm run dev
