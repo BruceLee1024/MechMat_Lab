@@ -43,16 +43,31 @@ export const StressModule = ({ state, onChange }: { state: SimulationState; onCh
   const lenTau = calcArrowLen(tauXY_prime);
   
   // Mohr's Circle Scaling
-  // Determine max value to fit in circle view
-  const maxValAbs = Math.max(Math.abs(sig1), Math.abs(sig2), Math.abs(maxShear)) || 10;
-  const mohrScale = 110 / (maxValAbs * 1.2); // Scale to fit radius ~110px
-  const mohrCx = 150; // Center of SVG (300x300)
-  const mohrCy = 150;
+  // 需要确保整个圆（包括圆心偏移）都在视图内
+  // 圆的最左边是 avg - R，最右边是 avg + R = sig1
+  // 圆的最上/下是 ±R
+  const maxSigma = Math.max(Math.abs(sig1), Math.abs(sig2)) || 10;
+  const maxTau = Math.abs(R) || 10;
+  const maxVal = Math.max(maxSigma, maxTau);
+  
+  // 计算缩放比例，确保圆完全在视图内
+  // 视图宽度约240px（20到260），高度约240px
+  const mohrScale = 100 / (maxVal * 1.3);
+  const mohrCx = 150; // SVG中心作为σ=0的位置
+  const mohrCy = 150; // SVG中心作为τ=0的位置
+  
+  // 圆心在σ轴上的位置
+  const circleCenterX = mohrCx + avg * mohrScale;
 
-  // Dynamic Formulas
-  const formulaSigXPrime = `\\sigma_{x'} = ${avg.toFixed(1)} + (${diff.toFixed(1)}) \\cos(${2*stressAngle}^\\circ) + (${stressTauXY}) \\sin(${2*stressAngle}^\\circ) = ${sigX_prime.toFixed(1)} \\text{ MPa}`;
-  const formulaTauPrime = `\\tau_{x'y'} = -(${diff.toFixed(1)}) \\sin(${2*stressAngle}^\\circ) + (${stressTauXY}) \\cos(${2*stressAngle}^\\circ) = ${tauXY_prime.toFixed(1)} \\text{ MPa}`;
-  const formulaPrincipal = `\\sigma_{1,2} = ${avg.toFixed(1)} \\pm \\sqrt{(${diff.toFixed(1)})^2 + (${stressTauXY})^2} = ${sig1.toFixed(1)}, ${sig2.toFixed(1)} \\text{ MPa}`;
+  // Dynamic Formulas with full substitution
+  const formulaAvg = `\\sigma_{avg} = \\frac{\\sigma_x + \\sigma_y}{2} = \\frac{${stressSigX} + ${stressSigY}}{2} = ${avg.toFixed(1)} \\text{ MPa}`;
+  const formulaDiff = `\\frac{\\sigma_x - \\sigma_y}{2} = \\frac{${stressSigX} - ${stressSigY}}{2} = ${diff.toFixed(1)} \\text{ MPa}`;
+  const formulaSigXPrime = `\\sigma_{x'} = \\sigma_{avg} + \\frac{\\sigma_x - \\sigma_y}{2}\\cos 2\\theta + \\tau_{xy}\\sin 2\\theta = ${avg.toFixed(1)} + ${diff.toFixed(1)} \\times \\cos(${2*stressAngle}^\\circ) + ${stressTauXY} \\times \\sin(${2*stressAngle}^\\circ) = ${sigX_prime.toFixed(1)} \\text{ MPa}`;
+  const formulaSigYPrime = `\\sigma_{y'} = \\sigma_{avg} - \\frac{\\sigma_x - \\sigma_y}{2}\\cos 2\\theta - \\tau_{xy}\\sin 2\\theta = ${avg.toFixed(1)} - ${diff.toFixed(1)} \\times \\cos(${2*stressAngle}^\\circ) - ${stressTauXY} \\times \\sin(${2*stressAngle}^\\circ) = ${sigY_prime.toFixed(1)} \\text{ MPa}`;
+  const formulaTauPrime = `\\tau_{x'y'} = -\\frac{\\sigma_x - \\sigma_y}{2}\\sin 2\\theta + \\tau_{xy}\\cos 2\\theta = -${diff.toFixed(1)} \\times \\sin(${2*stressAngle}^\\circ) + ${stressTauXY} \\times \\cos(${2*stressAngle}^\\circ) = ${tauXY_prime.toFixed(1)} \\text{ MPa}`;
+  const formulaRadius = `R = \\sqrt{\\left(\\frac{\\sigma_x - \\sigma_y}{2}\\right)^2 + \\tau_{xy}^2} = \\sqrt{${diff.toFixed(1)}^2 + ${stressTauXY}^2} = ${R.toFixed(1)} \\text{ MPa}`;
+  const formulaPrincipal = `\\sigma_{1,2} = \\sigma_{avg} \\pm R = ${avg.toFixed(1)} \\pm ${R.toFixed(1)} = ${sig1.toFixed(1)}, ${sig2.toFixed(1)} \\text{ MPa}`;
+  const formulaMaxShear = `\\tau_{max} = R = ${R.toFixed(1)} \\text{ MPa}`;
 
   return (
     <div className="flex flex-col h-full space-y-6">
@@ -60,7 +75,7 @@ export const StressModule = ({ state, onChange }: { state: SimulationState; onCh
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         
         {/* 1. Rotated Stress Element Visualization */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 relative h-[400px] flex flex-col">
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 relative h-[320px] flex flex-col">
             <div className="absolute top-4 left-4 text-xs font-bold text-slate-400 uppercase flex items-center gap-2">
                 <Rotate3d className="w-4 h-4"/> 微元体应力状态
             </div>
@@ -224,21 +239,35 @@ export const StressModule = ({ state, onChange }: { state: SimulationState; onCh
         </div>
 
         {/* 2. Mohr's Circle Visualization */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 relative h-[400px] flex flex-col">
-             <div className="absolute top-4 left-4 text-xs font-bold text-slate-400 uppercase flex items-center gap-2">
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 relative h-[320px] flex flex-col overflow-hidden">
+             <div className="absolute top-4 left-4 text-xs font-bold text-slate-400 uppercase flex items-center gap-2 z-10">
                 <Circle className="w-4 h-4"/> 莫尔圆
             </div>
-            <div className="flex-grow flex items-center justify-center">
-                 <svg width="100%" height="100%" viewBox="0 0 300 300">
-                    {/* Grid / Axes */}
+            <div className="flex-grow flex items-center justify-center overflow-hidden">
+                 <svg width="100%" height="100%" viewBox="0 0 300 300" style={{ overflow: 'hidden' }}>
+                    {/* Grid / Axes - σ轴水平，τ轴垂直 */}
                     <line x1="20" y1={mohrCy} x2="280" y2={mohrCy} stroke="#cbd5e1" strokeWidth="2" />
                     <line x1={mohrCx} y1="280" x2={mohrCx} y2="20" stroke="#cbd5e1" strokeWidth="2" />
                     <text x="285" y={mohrCy + 4} fontSize="10" fill="#94a3b8">σ</text>
-                    <text x={mohrCx + 5} y="15" fontSize="10" fill="#94a3b8">τ (CW)</text>
+                    <text x={mohrCx + 5} y="15" fontSize="10" fill="#94a3b8">τ</text>
+                    
+                    {/* 刻度线 */}
+                    {[-100, -50, 50, 100].map(v => {
+                      const x = mohrCx + v * mohrScale;
+                      if (x > 25 && x < 275) {
+                        return (
+                          <g key={`tick-${v}`}>
+                            <line x1={x} y1={mohrCy - 3} x2={x} y2={mohrCy + 3} stroke="#94a3b8" strokeWidth="1" />
+                            <text x={x} y={mohrCy + 12} fontSize="8" fill="#94a3b8" textAnchor="middle">{v}</text>
+                          </g>
+                        );
+                      }
+                      return null;
+                    })}
 
-                    {/* The Circle - Transparent Fill, Solid Indigo Stroke */}
+                    {/* The Circle - 圆心在 (avg, 0) */}
                     <circle 
-                        cx={mohrCx + avg * mohrScale} 
+                        cx={circleCenterX} 
                         cy={mohrCy} 
                         r={R * mohrScale} 
                         fill="rgba(79, 70, 229, 0.05)" 
@@ -246,50 +275,57 @@ export const StressModule = ({ state, onChange }: { state: SimulationState; onCh
                         strokeWidth="2" 
                     />
                     
-                    {/* State Line (Diameter) - Rose Dashed */}
+                    {/* 主应力点 σ1 和 σ2 */}
+                    <circle cx={mohrCx + sig1 * mohrScale} cy={mohrCy} r="4" fill="#10b981" stroke="white" strokeWidth="1" />
+                    <text x={mohrCx + sig1 * mohrScale} y={mohrCy + 15} fontSize="9" fill="#10b981" textAnchor="middle">σ₁</text>
+                    
+                    <circle cx={mohrCx + sig2 * mohrScale} cy={mohrCy} r="4" fill="#10b981" stroke="white" strokeWidth="1" />
+                    <text x={mohrCx + sig2 * mohrScale} y={mohrCy + 15} fontSize="9" fill="#10b981" textAnchor="middle">σ₂</text>
+                    
+                    {/* State Line (Diameter) - 连接X面和Y面的状态点 */}
+                    {/* 莫尔圆约定：X面状态点 (σx, τxy)，Y面状态点 (σy, -τxy) */}
+                    {/* SVG中Y轴向下，所以τ正值在下方 */}
                     <line 
-                        x1={mohrCx + sigX_prime * mohrScale} 
-                        y1={mohrCy + tauXY_prime * mohrScale} 
-                        x2={mohrCx + sigY_prime * mohrScale} 
-                        y2={mohrCy - tauXY_prime * mohrScale} 
+                        x1={mohrCx + stressSigX * mohrScale} 
+                        y1={mohrCy + stressTauXY * mohrScale} 
+                        x2={mohrCx + stressSigY * mohrScale} 
+                        y2={mohrCy - stressTauXY * mohrScale} 
                         stroke="#e11d48" 
                         strokeWidth="2"
                         strokeDasharray="4 3"
                         opacity="0.7"
                     />
 
-                    {/* X' State Point */}
+                    {/* X State Point - X面的应力状态 (σx, τxy) */}
                     <circle 
-                        cx={mohrCx + sigX_prime * mohrScale} 
-                        cy={mohrCy + tauXY_prime * mohrScale} 
-                        r="5" 
+                        cx={mohrCx + stressSigX * mohrScale} 
+                        cy={mohrCy + stressTauXY * mohrScale} 
+                        r="6" 
                         fill="#e11d48" 
                         stroke="white"
                         strokeWidth="2"
-                    >
-                        <title>State on X' Face</title>
-                    </circle>
-                     <text x={mohrCx + sigX_prime * mohrScale + 8} y={mohrCy + tauXY_prime * mohrScale} fontSize="10" fill="#e11d48" fontWeight="bold">X'</text>
+                    />
+                    <text x={mohrCx + stressSigX * mohrScale + 10} y={mohrCy + stressTauXY * mohrScale + 5} fontSize="10" fill="#e11d48" fontWeight="bold">X</text>
 
-                    {/* Y' State Point */}
-                     <circle 
-                        cx={mohrCx + sigY_prime * mohrScale} 
-                        cy={mohrCy - tauXY_prime * mohrScale} 
-                        r="4" 
+                    {/* Y State Point - Y面的应力状态 (σy, -τxy) */}
+                    <circle 
+                        cx={mohrCx + stressSigY * mohrScale} 
+                        cy={mohrCy - stressTauXY * mohrScale} 
+                        r="5" 
                         fill="white" 
                         stroke="#e11d48"
                         strokeWidth="2"
                     />
-                    <text x={mohrCx + sigY_prime * mohrScale - 15} y={mohrCy - tauXY_prime * mohrScale} fontSize="10" fill="#e11d48">Y'</text>
+                    <text x={mohrCx + stressSigY * mohrScale - 12} y={mohrCy - stressTauXY * mohrScale - 5} fontSize="10" fill="#e11d48">Y</text>
 
-                    {/* Center Point */}
-                    <circle cx={mohrCx + avg * mohrScale} cy={mohrCy} r="3" fill="#4f46e5" />
-                    <text x={mohrCx + avg * mohrScale} y={mohrCy + 15} fontSize="9" fill="#4f46e5" textAnchor="middle">C</text>
+                    {/* Center Point C */}
+                    <circle cx={circleCenterX} cy={mohrCy} r="3" fill="#4f46e5" />
+                    <text x={circleCenterX} y={mohrCy - 8} fontSize="9" fill="#4f46e5" textAnchor="middle">C({avg.toFixed(0)})</text>
 
                  </svg>
             </div>
             <div className="bg-slate-50 p-2 rounded text-center text-xs text-slate-500 border border-slate-200 mx-4 mb-2">
-                圆心 (Center): {avg.toFixed(1)} MPa, 半径 (Radius): {R.toFixed(1)} MPa
+                圆心 C = ({avg.toFixed(1)}, 0) MPa, 半径 R = {R.toFixed(1)} MPa, 主应力 σ₁={sig1.toFixed(1)}, σ₂={sig2.toFixed(1)} MPa
             </div>
         </div>
       </div>
@@ -373,11 +409,38 @@ export const StressModule = ({ state, onChange }: { state: SimulationState; onCh
          <h4 className="font-semibold text-indigo-900 mb-4 flex items-center gap-2">
             <Sigma className="w-3 h-3 text-indigo-500" /> 计算过程演示
          </h4>
-         <div className="bg-slate-50 rounded-lg border border-slate-200 p-4 space-y-4 overflow-x-auto">
-             <div className="flex flex-col gap-6">
-                 <div className="mb-2 w-full overflow-x-auto" key="sigX"><LatexRenderer formula={formulaSigXPrime} /></div>
-                 <div className="mb-2 w-full overflow-x-auto" key="tau"><LatexRenderer formula={formulaTauPrime} /></div>
-                 <div className="w-full overflow-x-auto" key="princ"><LatexRenderer formula={formulaPrincipal} /></div>
+         <div className="bg-slate-50 rounded-lg border border-slate-200 p-4 space-y-3 overflow-x-auto">
+             <div className="p-3 bg-white rounded border border-slate-200">
+               <div className="text-xs text-slate-500 mb-1">① 平均正应力 (Average Normal Stress)</div>
+               <LatexRenderer formula={formulaAvg} />
+             </div>
+             <div className="p-3 bg-white rounded border border-slate-200">
+               <div className="text-xs text-slate-500 mb-1">② 正应力差的一半</div>
+               <LatexRenderer formula={formulaDiff} />
+             </div>
+             <div className="p-3 bg-white rounded border border-slate-200">
+               <div className="text-xs text-slate-500 mb-1">③ 变换后正应力 σ_x' (θ = {stressAngle}°)</div>
+               <LatexRenderer formula={formulaSigXPrime} />
+             </div>
+             <div className="p-3 bg-white rounded border border-slate-200">
+               <div className="text-xs text-slate-500 mb-1">④ 变换后正应力 σ_y' (θ = {stressAngle}°)</div>
+               <LatexRenderer formula={formulaSigYPrime} />
+             </div>
+             <div className="p-3 bg-white rounded border border-slate-200">
+               <div className="text-xs text-slate-500 mb-1">⑤ 变换后切应力 τ_x'y' (θ = {stressAngle}°)</div>
+               <LatexRenderer formula={formulaTauPrime} />
+             </div>
+             <div className="p-3 bg-white rounded border border-slate-200">
+               <div className="text-xs text-slate-500 mb-1">⑥ 莫尔圆半径 (Mohr's Circle Radius)</div>
+               <LatexRenderer formula={formulaRadius} />
+             </div>
+             <div className="p-3 bg-white rounded border border-slate-200">
+               <div className="text-xs text-slate-500 mb-1">⑦ 主应力 (Principal Stresses)</div>
+               <LatexRenderer formula={formulaPrincipal} />
+             </div>
+             <div className="p-3 bg-white rounded border border-slate-200">
+               <div className="text-xs text-slate-500 mb-1">⑧ 最大切应力 (Maximum Shear Stress)</div>
+               <LatexRenderer formula={formulaMaxShear} />
              </div>
          </div>
       </div>

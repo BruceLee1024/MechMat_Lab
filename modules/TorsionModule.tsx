@@ -41,9 +41,11 @@ export const TorsionModule = ({ state, onChange }: { state: SimulationState; onC
   const phi_total_rad = phi_AB_rad + phi_BC_rad;
   const phi_total_deg = phi_total_rad * (180 / Math.PI);
 
-  const formulaIp = `I_p = \\frac{\\pi r^4}{2} = ${(Ip/10000).toFixed(2)} \\times 10^4 \\text{ mm}^4`;
-  const formulaShear = `\\tau_{max} = \\frac{T_{AB} \\cdot r}{I_p} = ${maxShear.toFixed(2)} \\text{ MPa}`;
-  const formulaAngle = `\\varphi_{total} = \\varphi_{AB} + \\varphi_{BC} = ${phi_total_deg.toFixed(2)}^\\circ`;
+  const formulaIp = `I_p = \\frac{\\pi r^4}{2} = \\frac{\\pi \\times ${state.torqRadius}^4}{2} = ${(Ip/10000).toFixed(2)} \\times 10^4 \\text{ mm}^4`;
+  const formulaShear = `\\tau_{max} = \\frac{T_{AB} \\cdot r}{I_p} = \\frac{${T_AB_Nm} \\times 10^3 \\times ${state.torqRadius}}{${Ip.toFixed(0)}} = ${maxShear.toFixed(2)} \\text{ MPa}`;
+  const formulaAngleAB = `\\varphi_{AB} = \\frac{T_{AB} \\cdot L_{AB}}{G \\cdot I_p} = \\frac{${T_AB_Nm} \\times 10^3 \\times ${L_AB_mm.toFixed(0)}}{${G_MPa} \\times ${Ip.toFixed(0)}} = ${(phi_AB_rad * 180 / Math.PI).toFixed(3)}^\\circ`;
+  const formulaAngleBC = `\\varphi_{BC} = \\frac{T_{BC} \\cdot L_{BC}}{G \\cdot I_p} = \\frac{${T_BC_Nm.toFixed(0)} \\times 10^3 \\times ${L_BC_mm.toFixed(0)}}{${G_MPa} \\times ${Ip.toFixed(0)}} = ${(phi_BC_rad * 180 / Math.PI).toFixed(3)}^\\circ`;
+  const formulaAngle = `\\varphi_{total} = \\varphi_{AB} + \\varphi_{BC} = ${(phi_AB_rad * 180 / Math.PI).toFixed(3)}^\\circ + ${(phi_BC_rad * 180 / Math.PI).toFixed(3)}^\\circ = ${phi_total_deg.toFixed(2)}^\\circ`;
 
   // --- Strain Energy Calculations ---
   // Stiffness GIp in Nm^2
@@ -62,7 +64,7 @@ export const TorsionModule = ({ state, onChange }: { state: SimulationState; onC
   // Result in MJ/m^3 = 1000 kJ/m^3
   const u_max_density = (Math.pow(maxShear, 2) / (2 * state.torqModulus * 1000)) * 1000; // kJ/m^3
 
-  const formulaEnergy = `U = \\sum \\frac{T_i^2 L_i}{2 G I_p} = ${U_AB_J.toFixed(2)} + ${U_BC_J.toFixed(2)} = ${U_total_J.toFixed(2)} \\text{ J}`;
+  const formulaEnergy = `U = \\sum \\frac{T_i^2 L_i}{2 G I_p} = \\frac{${T_AB_Nm}^2 \\times ${(L_AB_mm/1000).toFixed(2)}}{2 \\times ${stiffnessGIp.toFixed(1)}} + \\frac{${T_BC_Nm.toFixed(0)}^2 \\times ${(L_BC_mm/1000).toFixed(2)}}{2 \\times ${stiffnessGIp.toFixed(1)}} = ${U_total_J.toFixed(2)} \\text{ J}`;
 
   // Visualization Constants
   const shaftY = 100;
@@ -74,7 +76,7 @@ export const TorsionModule = ({ state, onChange }: { state: SimulationState; onC
   return (
     <div className="flex flex-col h-full space-y-6">
       {/* TOP: Visualization */}
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex-grow flex items-center justify-center relative min-h-[400px]">
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex items-center justify-center relative h-[320px]">
         <div className="absolute top-4 left-4 text-xs font-bold text-slate-400 uppercase flex items-center gap-2">
              <Activity className="w-4 h-4"/> 传动轴扭矩图演示 (Transmission Shaft)
         </div>
@@ -246,12 +248,30 @@ export const TorsionModule = ({ state, onChange }: { state: SimulationState; onC
           <h4 className="font-semibold text-indigo-900 mb-4 flex items-center gap-2">
             <Sigma className="w-3 h-3 text-indigo-500" /> 计算过程演示
           </h4>
-          <div className="bg-slate-50 rounded-lg border border-slate-200 p-4 space-y-4 overflow-x-auto">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div key="Ip"><LatexRenderer formula={formulaIp} /></div>
-                <div key="tau"><LatexRenderer formula={formulaShear} /></div>
-                <div key="phi"><LatexRenderer formula={formulaAngle} /></div>
-                <div key="energy"><LatexRenderer formula={formulaEnergy} /></div>
+          <div className="bg-slate-50 rounded-lg border border-slate-200 p-4 space-y-3 overflow-x-auto">
+            <div className="p-3 bg-white rounded border border-slate-200">
+              <div className="text-xs text-slate-500 mb-1">① 极惯性矩 (Polar Moment of Inertia)</div>
+              <LatexRenderer formula={formulaIp} />
+            </div>
+            <div className="p-3 bg-white rounded border border-slate-200">
+              <div className="text-xs text-slate-500 mb-1">② 最大切应力 (Maximum Shear Stress)</div>
+              <LatexRenderer formula={formulaShear} />
+            </div>
+            <div className="p-3 bg-white rounded border border-slate-200">
+              <div className="text-xs text-slate-500 mb-1">③ AB段扭转角</div>
+              <LatexRenderer formula={formulaAngleAB} />
+            </div>
+            <div className="p-3 bg-white rounded border border-slate-200">
+              <div className="text-xs text-slate-500 mb-1">④ BC段扭转角</div>
+              <LatexRenderer formula={formulaAngleBC} />
+            </div>
+            <div className="p-3 bg-white rounded border border-slate-200">
+              <div className="text-xs text-slate-500 mb-1">⑤ 总扭转角 (Total Angle of Twist)</div>
+              <LatexRenderer formula={formulaAngle} />
+            </div>
+            <div className="p-3 bg-white rounded border border-slate-200">
+              <div className="text-xs text-slate-500 mb-1">⑥ 应变能 (Strain Energy)</div>
+              <LatexRenderer formula={formulaEnergy} />
             </div>
           </div>
       </div>

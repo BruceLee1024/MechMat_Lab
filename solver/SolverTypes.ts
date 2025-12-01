@@ -80,6 +80,25 @@ export interface NodeResult {
   };
 }
 
+// 应力分布点
+export interface StressPoint {
+  position: number;     // 0-1 沿单元长度
+  // 正应力 (MPa)
+  sigmaN: number;       // 轴向正应力 σ = N/A
+  sigmaMTop: number;    // 弯曲正应力（上表面）σ = -My/I
+  sigmaMBottom: number; // 弯曲正应力（下表面）σ = My/I
+  sigmaTop: number;     // 总正应力（上表面）= sigmaN + sigmaMTop
+  sigmaBottom: number;  // 总正应力（下表面）= sigmaN + sigmaMBottom
+  // 剪应力 (MPa)
+  tauMax: number;       // 最大剪应力（中性轴处）τ = VQ/(Ib)
+  // 主应力 (MPa) - 在最大剪应力点
+  sigma1: number;       // 第一主应力
+  sigma2: number;       // 第二主应力
+  tauAbsMax: number;    // 绝对最大剪应力
+  // von Mises 等效应力
+  sigmaVonMises: number;
+}
+
 // 求解结果 - 单元
 export interface ElementResult {
   elementId: string;
@@ -90,9 +109,15 @@ export interface ElementResult {
     V: number;         // 剪力 (N)
     M: number;         // 弯矩 (Nm)
   }[];
-  // 应力
-  maxStress: number;   // MPa
-  minStress: number;   // MPa
+  // 应力分布
+  stressDistribution: StressPoint[];
+  // 应力极值
+  maxStress: number;   // 最大拉应力 (MPa)
+  minStress: number;   // 最大压应力 (MPa，负值)
+  maxShearStress: number; // 最大剪应力 (MPa)
+  maxVonMises: number; // 最大von Mises应力 (MPa)
+  // 安全系数
+  safetyFactor: number; // 基于屈服强度
   // 应变能
   strainEnergy: number; // mJ
 }
@@ -409,9 +434,68 @@ export const DISTRIBUTED_LOAD_BEAM: SolverTemplate = {
   ],
 };
 
+// 斜杆桁架模板（如图所示的结构）
+export const INCLINED_TRUSS: SolverTemplate = {
+  name: '斜杆桁架',
+  description: '斜杆AB + 水平杆CB，节点B受力',
+  nodes: [
+    {
+      id: 'A',
+      x: 100,
+      y: 100,
+      support: 'pinned',
+      fixedDOF: { dx: true, dy: true, rz: false },
+    },
+    {
+      id: 'B',
+      x: 400,
+      y: 300,
+      support: 'none',
+      fixedDOF: { dx: false, dy: false, rz: false },
+    },
+    {
+      id: 'C',
+      x: 100,
+      y: 300,
+      support: 'pinned',
+      fixedDOF: { dx: true, dy: true, rz: false },
+    },
+  ],
+  elements: [
+    {
+      id: 'AB',
+      type: 'truss',
+      nodeStart: 'A',
+      nodeEnd: 'B',
+      section: { A: 500, I: 0, width: 25, height: 20 },
+      material: { E: 200000, G: 77000, yield: 250 },
+    },
+    {
+      id: 'CB',
+      type: 'truss',
+      nodeStart: 'C',
+      nodeEnd: 'B',
+      section: { A: 500, I: 0, width: 25, height: 20 },
+      material: { E: 200000, G: 77000, yield: 250 },
+    },
+  ],
+  loads: [
+    {
+      id: 'F',
+      type: 'point',
+      targetType: 'node',
+      targetId: 'B',
+      value: 10000,
+      angle: 90, // 向下
+    },
+  ],
+};
+
 export const SOLVER_TEMPLATES = [
   SIMPLY_SUPPORTED_BEAM,
   CANTILEVER_BEAM,
   DISTRIBUTED_LOAD_BEAM,
   CONTINUOUS_BEAM,
+  SIMPLE_TRUSS,
+  INCLINED_TRUSS,
 ];

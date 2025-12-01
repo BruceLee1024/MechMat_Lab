@@ -49,17 +49,18 @@ export const BendingModule = ({ state, onChange }: { state: SimulationState; onC
   // Visual Approximation: curve from start to load point (sagY), then to end.
   // Using simplified path for visual feedback.
 
-  const formulaInertia = `I_z = \\frac{b h^3}{12} = ${(inertia/10000).toFixed(2)} \\times 10^4 \\text{ mm}^4`;
-  const formulaDeflection = `w_{load} = \\frac{P a^2 b^2}{3 E I L} = ${deflectionAtLoad.toFixed(2)} \\text{ mm}`;
-  const formulaStress = `\\sigma_{max} = \\frac{M_{max} \\cdot y}{I_z} = ${maxStress.toFixed(2)} \\text{ MPa}`;
-  const formulaStrainEnergy = `U = \\int_0^L \\frac{M^2}{2EI} dx = \\frac{P^2 a^2 b^2}{6 E I L} = ${strainEnergy.toFixed(2)} \\text{ mJ}`;
+  const formulaInertia = `I_z = \\frac{b h^3}{12} = \\frac{${state.bendWidth} \\times ${state.bendHeight}^3}{12} = ${(inertia/10000).toFixed(2)} \\times 10^4 \\text{ mm}^4`;
+  const formulaMoment = `M_{max} = \\frac{P \\cdot a \\cdot b}{L} = \\frac{${state.bendLoad} \\times ${(a_mm/1000).toFixed(1)} \\times ${(b_mm/1000).toFixed(1)}}{${state.bendLength}} = ${maxMoment.toFixed(1)} \\text{ Nm}`;
+  const formulaDeflection = `w_{load} = \\frac{P a^2 b^2}{3 E I L} = \\frac{${state.bendLoad} \\times ${a_mm.toFixed(0)}^2 \\times ${b_mm.toFixed(0)}^2}{3 \\times ${E_MPa} \\times ${inertia.toFixed(0)} \\times ${L_mm.toFixed(0)}} = ${deflectionAtLoad.toFixed(2)} \\text{ mm}`;
+  const formulaStress = `\\sigma_{max} = \\frac{M_{max} \\cdot y_{max}}{I_z} = \\frac{${(maxMoment*1000).toFixed(0)} \\times ${(state.bendHeight/2).toFixed(0)}}{${inertia.toFixed(0)}} = ${maxStress.toFixed(2)} \\text{ MPa}`;
+  const formulaStrainEnergy = `U = \\frac{P^2 a^2 b^2}{6 E I L} = \\frac{${state.bendLoad}^2 \\times ${a_mm.toFixed(0)}^2 \\times ${b_mm.toFixed(0)}^2}{6 \\times ${E_MPa} \\times ${inertia.toFixed(0)} \\times ${L_mm.toFixed(0)}} = ${strainEnergy.toFixed(2)} \\text{ mJ}`;
 
   const beamThick = Math.max(10, state.bendHeight / 5);
 
   return (
     <div className="flex flex-col h-full space-y-6">
       {/* TOP: Visualization */}
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex-grow flex items-center justify-center relative min-h-[550px]">
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex items-center justify-center relative h-[320px]">
          <div className="absolute top-4 left-4 text-xs font-bold text-slate-400 uppercase flex items-center gap-2">
              <Activity className="w-4 h-4"/> 梁变形与内力图 (Deformation & Internal Forces)
          </div>
@@ -246,12 +247,26 @@ export const BendingModule = ({ state, onChange }: { state: SimulationState; onC
         <h4 className="font-semibold text-indigo-900 mb-4 flex items-center gap-2">
           <Sigma className="w-3 h-3 text-indigo-500" /> 计算过程演示
         </h4>
-        <div className="bg-slate-50 rounded-lg border border-slate-200 p-4 space-y-4 overflow-x-auto">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div key="Iz"><LatexRenderer formula={formulaInertia} /></div>
-            <div key="wmax"><LatexRenderer formula={formulaDeflection} /></div>
-            <div key="sigmax"><LatexRenderer formula={formulaStress} /></div>
-            <div key="U"><LatexRenderer formula={formulaStrainEnergy} /></div>
+        <div className="bg-slate-50 rounded-lg border border-slate-200 p-4 space-y-3 overflow-x-auto">
+          <div className="p-3 bg-white rounded border border-slate-200">
+            <div className="text-xs text-slate-500 mb-1">① 截面惯性矩 (Moment of Inertia)</div>
+            <LatexRenderer formula={formulaInertia} />
+          </div>
+          <div className="p-3 bg-white rounded border border-slate-200">
+            <div className="text-xs text-slate-500 mb-1">② 最大弯矩 (Maximum Moment)</div>
+            <LatexRenderer formula={formulaMoment} />
+          </div>
+          <div className="p-3 bg-white rounded border border-slate-200">
+            <div className="text-xs text-slate-500 mb-1">③ 加载点挠度 (Deflection at Load)</div>
+            <LatexRenderer formula={formulaDeflection} />
+          </div>
+          <div className="p-3 bg-white rounded border border-slate-200">
+            <div className="text-xs text-slate-500 mb-1">④ 最大弯曲正应力 (Maximum Bending Stress)</div>
+            <LatexRenderer formula={formulaStress} />
+          </div>
+          <div className="p-3 bg-white rounded border border-slate-200">
+            <div className="text-xs text-slate-500 mb-1">⑤ 弯曲应变能 (Bending Strain Energy)</div>
+            <LatexRenderer formula={formulaStrainEnergy} />
           </div>
         </div>
       </div>

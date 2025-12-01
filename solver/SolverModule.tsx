@@ -27,7 +27,7 @@ import {
   SOLVER_TEMPLATES,
   SolverTemplate,
 } from "./SolverTypes";
-import { solveAdvanced } from "./AdvancedSolver";
+import { solveUnified } from "./UnifiedSolver";
 
 // ==========================================
 // 工具栏按钮组件 - 带悬浮提示
@@ -871,6 +871,7 @@ const CalculationPanel = ({ state }: { state: SolverState }) => {
             <div key={n.nodeId} className="text-[11px] flex justify-between">
               <span className="font-medium">{n.nodeId}:</span>
               <span>
+                {n.reaction!.Fx !== 0 && `Fx = ${n.reaction!.Fx.toFixed(1)} N, `}
                 Fy = {n.reaction!.Fy.toFixed(1)} N
                 {n.reaction!.Mz !== 0 && `, M = ${(n.reaction!.Mz / 1000).toFixed(2)} Nm`}
               </span>
@@ -880,18 +881,45 @@ const CalculationPanel = ({ state }: { state: SolverState }) => {
         </div>
       </div>
 
-      {/* 最大内力 */}
+      {/* 最大内力 - 区分梁和桁架 */}
       <div>
         <h4 className="font-semibold text-slate-700 mb-2">📊 最大内力</h4>
         <div className="bg-amber-50 p-2 rounded border border-amber-100 space-y-1 text-[11px]">
-          <div className="flex justify-between">
-            <span>最大剪力:</span>
-            <span className="font-medium">{maxV.toFixed(1)} N</span>
-          </div>
-          <div className="flex justify-between">
-            <span>最大弯矩:</span>
-            <span className="font-medium">{(maxM / 1000).toFixed(2)} Nm</span>
-          </div>
+          {/* 显示轴力（桁架） */}
+          {result.elements.some(e => {
+            const elem = state.elements.find(el => el.id === e.elementId);
+            return elem?.type === 'truss';
+          }) && (
+            <div className="border-b border-amber-200 pb-1 mb-1">
+              <div className="font-medium text-amber-700 mb-1">桁架杆轴力:</div>
+              {result.elements.map(e => {
+                const elem = state.elements.find(el => el.id === e.elementId);
+                if (elem?.type !== 'truss') return null;
+                const N = e.internalForces[0]?.N ?? 0;
+                return (
+                  <div key={e.elementId} className="flex justify-between">
+                    <span>{e.elementId}:</span>
+                    <span className={N > 0 ? 'text-red-600' : N < 0 ? 'text-blue-600' : ''}>
+                      N = {N.toFixed(1)} N {N > 0 ? '(拉)' : N < 0 ? '(压)' : ''}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {/* 显示剪力和弯矩（梁） */}
+          {(maxV !== 0 || maxM !== 0) && (
+            <>
+              <div className="flex justify-between">
+                <span>最大剪力:</span>
+                <span className="font-medium">{maxV.toFixed(1)} N</span>
+              </div>
+              <div className="flex justify-between">
+                <span>最大弯矩:</span>
+                <span className="font-medium">{(maxM / 1000).toFixed(2)} Nm</span>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -911,14 +939,48 @@ const CalculationPanel = ({ state }: { state: SolverState }) => {
         </div>
       </div>
 
-      {/* 最大应力 */}
+      {/* 应力分析 */}
       <div>
-        <h4 className="font-semibold text-slate-700 mb-2">⚡ 最大应力</h4>
-        <div className="bg-rose-50 p-2 rounded border border-rose-100 text-[11px]">
-          <div className="flex justify-between">
-            <span>σ_max:</span>
-            <span className="font-medium">{maxStress.toFixed(2)} MPa</span>
-          </div>
+        <h4 className="font-semibold text-slate-700 mb-2">⚡ 应力分析</h4>
+        <div className="bg-rose-50 p-2 rounded border border-rose-100 text-[11px] space-y-1">
+          {result.elements.map(elem => {
+            const element = state.elements.find(e => e.id === elem.elementId);
+            const yieldStrength = element?.material.yield ?? 250;
+            return (
+              <div key={elem.elementId} className="space-y-1">
+                {result.elements.length > 1 && (
+                  <div className="font-medium text-rose-700">{elem.elementId}:</div>
+                )}
+                <div className="flex justify-between">
+                  <span>最大拉应力 σ_max:</span>
+                  <span className="font-medium">{elem.maxStress.toFixed(2)} MPa</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>最大压应力 σ_min:</span>
+                  <span className="font-medium">{elem.minStress.toFixed(2)} MPa</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>最大剪应力 τ_max:</span>
+                  <span className="font-medium">{elem.maxShearStress.toFixed(2)} MPa</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>von Mises应力:</span>
+                  <span className="font-medium">{elem.maxVonMises.toFixed(2)} MPa</span>
+                </div>
+                <div className="flex justify-between items-center pt-1 border-t border-rose-200">
+                  <span>安全系数:</span>
+                  <span className={`font-bold ${elem.safetyFactor >= 2 ? 'text-green-600' : elem.safetyFactor >= 1 ? 'text-amber-600' : 'text-red-600'}`}>
+                    {elem.safetyFactor === Infinity ? '∞' : elem.safetyFactor.toFixed(2)}
+                    {elem.safetyFactor < 1 && ' ⚠️ 超过屈服'}
+                    {elem.safetyFactor >= 1 && elem.safetyFactor < 2 && ' ⚠️ 偏低'}
+                  </span>
+                </div>
+                <div className="text-[10px] text-slate-500">
+                  (屈服强度: {yieldStrength} MPa)
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -1412,7 +1474,7 @@ export const SolverModule = () => {
 
   // 求解
   const handleSolve = () => {
-    const result = solveAdvanced(state.nodes, state.elements, state.loads);
+    const result = solveUnified(state.nodes, state.elements, state.loads);
     setState(prev => ({ ...prev, result, showResults: true }));
   };
 

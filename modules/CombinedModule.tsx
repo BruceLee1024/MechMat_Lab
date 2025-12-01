@@ -35,7 +35,7 @@ export const CombinedModule = ({ state, onChange }: { state: SimulationState; on
   return (
     <div className="flex flex-col h-full space-y-6">
       {/* TOP: Visualization */}
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex-grow flex items-center justify-center relative min-h-[350px]">
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex items-center justify-center relative h-[320px]">
         <div className="absolute top-4 left-4 text-xs font-bold text-slate-400 uppercase flex items-center gap-2">
              <Activity className="w-4 h-4"/> 偏心受压演示
         </div>
@@ -148,12 +148,27 @@ export const CombinedModule = ({ state, onChange }: { state: SimulationState; on
           <h4 className="font-semibold text-indigo-900 mb-4 flex items-center gap-2">
             <Sigma className="w-3 h-3 text-indigo-500" /> 计算过程演示
           </h4>
-          <div className="bg-slate-50 rounded-lg border border-slate-200 p-4 space-y-4 overflow-x-auto">
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div key="axial"><LatexRenderer formula={formulaAxial} /></div>
-                <div key="moment"><LatexRenderer formula={formulaMoment} /></div>
-                <div key="bending"><LatexRenderer formula={formulaBending} /></div>
-                <div key="super"><LatexRenderer formula={formulaSuperposition} /></div>
+          <div className="bg-slate-50 rounded-lg border border-slate-200 p-4 space-y-3 overflow-x-auto">
+             <div className="p-3 bg-white rounded border border-slate-200">
+                <div className="text-xs text-slate-500 mb-1">① 截面面积与惯性矩 (Section Properties)</div>
+                <LatexRenderer formula={`A = b \\times h = ${b} \\times ${h} = ${A} \\text{ mm}^2, \\quad I = \\frac{bh^3}{12} = \\frac{${b} \\times ${h}^3}{12} = ${I.toFixed(0)} \\text{ mm}^4`} />
+             </div>
+             <div className="p-3 bg-white rounded border border-slate-200">
+                <div className="text-xs text-slate-500 mb-1">② 轴向应力 (Axial Stress)</div>
+                <LatexRenderer formula={`\\sigma_{axial} = \\frac{P}{A} = \\frac{${P}}{${A}} = ${sigma_axial.toFixed(2)} \\text{ MPa}`} />
+             </div>
+             <div className="p-3 bg-white rounded border border-slate-200">
+                <div className="text-xs text-slate-500 mb-1">③ 偏心弯矩 (Eccentric Moment)</div>
+                <LatexRenderer formula={`M = P \\cdot e = ${P} \\times ${e} = ${M} \\text{ N}\\cdot\\text{mm}`} />
+             </div>
+             <div className="p-3 bg-white rounded border border-slate-200">
+                <div className="text-xs text-slate-500 mb-1">④ 最大弯曲应力 (Maximum Bending Stress)</div>
+                <LatexRenderer formula={`\\sigma_{bend} = \\frac{M \\cdot y_{max}}{I} = \\frac{${M} \\times ${h/2}}{${I.toFixed(0)}} = ${sigma_bending_max.toFixed(2)} \\text{ MPa}`} />
+             </div>
+             <div className="p-3 bg-white rounded border border-slate-200">
+                <div className="text-xs text-slate-500 mb-1">⑤ 应力叠加 (Stress Superposition)</div>
+                <LatexRenderer formula={`\\sigma_{top} = \\sigma_{axial} - \\sigma_{bend} = ${sigma_axial.toFixed(2)} - ${sigma_bending_max.toFixed(2)} = ${sigma_top_val.toFixed(2)} \\text{ MPa}`} />
+                <LatexRenderer formula={`\\sigma_{bot} = \\sigma_{axial} + \\sigma_{bend} = ${sigma_axial.toFixed(2)} + ${sigma_bending_max.toFixed(2)} = ${sigma_bottom.toFixed(2)} \\text{ MPa}`} />
              </div>
           </div>
       </div>

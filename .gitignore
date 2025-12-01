@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# 激活码文件（保密）
+ACTIVATION_CODES.md

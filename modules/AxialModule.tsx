@@ -65,9 +65,10 @@ export const AxialModule = ({ state, onChange }: { state: SimulationState; onCha
   const dotX = gx(strain);
   const dotY = gy(Math.min(stress, utsStrength)); 
 
-  const formulaStress = `\\sigma = \\frac{F}{A} = ${stress.toFixed(1)} \\text{ MPa}`;
-  const formulaHooke = `\\varepsilon = \\sigma / E = ${(strain*100).toFixed(3)} \\%`;
-  const formulaPlastic = `\\sigma > \\sigma_{yield} (${yieldStrength} \\text{ MPa}) \\rightarrow \\text{Plastic!}`;
+  const formulaStress = `\\sigma = \\frac{F}{A} = \\frac{${state.axialForce}}{${state.axialArea}} = ${stress.toFixed(1)} \\text{ MPa}`;
+  const formulaHooke = `\\varepsilon = \\frac{\\sigma}{E} = \\frac{${stress.toFixed(1)}}{${E_MPa}} = ${(strain*100).toFixed(4)} \\% `;
+  const formulaDeformation = `\\Delta L = \\varepsilon \\cdot L = ${(strain*100).toFixed(4)}\\% \\times ${(state.axialLength*1000).toFixed(0)} = ${deformation.toFixed(3)} \\text{ mm}`;
+  const formulaPlastic = `\\sigma = ${stress.toFixed(1)} > \\sigma_{yield} = ${yieldStrength} \\text{ MPa} \\rightarrow \\text{塑性变形!}`;
 
   const barHeight = Math.sqrt(state.axialArea) * 4;
 
@@ -363,16 +364,25 @@ export const AxialModule = ({ state, onChange }: { state: SimulationState; onCha
             <Sigma className="w-4 h-4 text-indigo-500" /> 计算过程演示
          </h4>
          <div className="bg-slate-50 rounded-lg border border-slate-200 p-4 space-y-4 overflow-x-auto">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div key="stress"><LatexRenderer formula={formulaStress} /></div>
-                <div key="constitutive">
+            <div className="space-y-3">
+                <div className="p-3 bg-white rounded border border-slate-200">
+                    <div className="text-xs text-slate-500 mb-1">① 应力计算 (Stress)</div>
+                    <LatexRenderer formula={formulaStress} />
+                </div>
+                <div className="p-3 bg-white rounded border border-slate-200">
+                    <div className="text-xs text-slate-500 mb-1">② 应变计算 (Strain) - 胡克定律</div>
                     {isPlastic ? (
                         <LatexRenderer formula={formulaPlastic} />
                     ) : (
                         <LatexRenderer formula={formulaHooke} />
                     )}
                 </div>
-                <div className="col-span-1 md:col-span-2" key="energy">
+                <div className="p-3 bg-white rounded border border-slate-200">
+                    <div className="text-xs text-slate-500 mb-1">③ 变形量计算 (Deformation)</div>
+                    <LatexRenderer formula={formulaDeformation} />
+                </div>
+                <div className="p-3 bg-white rounded border border-slate-200">
+                    <div className="text-xs text-slate-500 mb-1">④ 应变能计算 (Strain Energy)</div>
                     <LatexRenderer formula={formulaStrainEnergy} />
                 </div>
             </div>

@@ -21,9 +21,11 @@ export const BucklingModule = ({ state, onChange }: { state: SimulationState; on
   const ratio = Math.min(state.buckleLoad / Pcr, 1.5);
   const bowAmount = isBuckled ? (ratio - 1) * 100 : 0; 
 
-  const formulaI = `I_{min} = ${(I_min/10000).toFixed(2)} \\cdot 10^4 \\text{ mm}^4`;
-  const formulaGyration = `i = ${radiusOfGyration.toFixed(1)} \\text{ mm}`;
-  const formulaPcr = `P_{cr} = \\frac{\\pi^2 E I}{(\\mu L)^2} = ${Math.round(Pcr)} \\text{ N}`;
+  const formulaI = `I_{min} = \\frac{b_{max} \\cdot h_{min}^3}{12} = \\frac{${sideMax} \\times ${sideMin}^3}{12} = ${(I_min/10000).toFixed(2)} \\times 10^4 \\text{ mm}^4`;
+  const formulaArea = `A = b \\times h = ${state.buckleWidth} \\times ${state.buckleHeight} = ${Area} \\text{ mm}^2`;
+  const formulaGyration = `i = \\sqrt{\\frac{I_{min}}{A}} = \\sqrt{\\frac{${I_min.toFixed(0)}}{${Area}}} = ${radiusOfGyration.toFixed(2)} \\text{ mm}`;
+  const formulaLambda = `\\lambda = \\frac{\\mu L}{i} = \\frac{1 \\times ${L_mm.toFixed(0)}}{${radiusOfGyration.toFixed(2)}} = ${lambda.toFixed(1)}`;
+  const formulaPcr = `P_{cr} = \\frac{\\pi^2 E I}{(\\mu L)^2} = \\frac{\\pi^2 \\times ${E} \\times ${I_min.toFixed(0)}}{(1 \\times ${L_mm.toFixed(0)})^2} = ${Math.round(Pcr)} \\text{ N}`;
   
   const strokeW = Math.max(12, state.buckleWidth / 3);
   
@@ -34,7 +36,7 @@ export const BucklingModule = ({ state, onChange }: { state: SimulationState; on
   return (
     <div className="flex flex-col h-full space-y-6">
        {/* TOP: Visualization */}
-       <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex-grow flex items-center justify-center relative min-h-[350px]">
+       <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex items-center justify-center relative h-[320px]">
         <div className="absolute top-4 left-4 text-xs font-bold text-slate-400 uppercase flex items-center gap-2">
              <Activity className="w-4 h-4"/> 压杆稳定性演示
         </div>
@@ -137,11 +139,26 @@ export const BucklingModule = ({ state, onChange }: { state: SimulationState; on
           <h4 className="font-semibold text-indigo-900 mb-4 flex items-center gap-2">
             <Sigma className="w-3 h-3 text-indigo-500" /> 计算过程演示
           </h4>
-          <div className="bg-slate-50 rounded-lg border border-slate-200 p-4 space-y-4 overflow-x-auto">
-             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                 <div key="Imin"><LatexRenderer formula={formulaI} /></div>
-                 <div key="i"><LatexRenderer formula={formulaGyration} /></div>
-                 <div key="Pcr"><LatexRenderer formula={formulaPcr} /></div>
+          <div className="bg-slate-50 rounded-lg border border-slate-200 p-4 space-y-3 overflow-x-auto">
+             <div className="p-3 bg-white rounded border border-slate-200">
+               <div className="text-xs text-slate-500 mb-1">① 截面面积 (Cross-sectional Area)</div>
+               <LatexRenderer formula={formulaArea} />
+             </div>
+             <div className="p-3 bg-white rounded border border-slate-200">
+               <div className="text-xs text-slate-500 mb-1">② 最小惯性矩 (Minimum Moment of Inertia)</div>
+               <LatexRenderer formula={formulaI} />
+             </div>
+             <div className="p-3 bg-white rounded border border-slate-200">
+               <div className="text-xs text-slate-500 mb-1">③ 惯性半径 (Radius of Gyration)</div>
+               <LatexRenderer formula={formulaGyration} />
+             </div>
+             <div className="p-3 bg-white rounded border border-slate-200">
+               <div className="text-xs text-slate-500 mb-1">④ 柔度/长细比 (Slenderness Ratio)</div>
+               <LatexRenderer formula={formulaLambda} />
+             </div>
+             <div className="p-3 bg-white rounded border border-slate-200">
+               <div className="text-xs text-slate-500 mb-1">⑤ 欧拉临界力 (Euler Critical Load, μ=1 两端铰支)</div>
+               <LatexRenderer formula={formulaPcr} />
              </div>
           </div>
        </div>

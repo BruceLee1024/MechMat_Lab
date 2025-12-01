@@ -1,5 +1,5 @@
 
-export type ModuleType = "fundamentals" | "axial" | "bending" | "torsion" | "buckling" | "stress" | "combined" | "solver";
+export type ModuleType = "home" | "fundamentals" | "axial" | "bending" | "torsion" | "buckling" | "stress" | "combined" | "solver" | "section" | "resources" | "settings";
 
 export interface SimulationState {
   // Material Props (Shared)
@@ -93,6 +93,12 @@ export const DEFAULT_STATE: SimulationState = {
 };
 
 export const THEORY_INFO = {
+  home: {
+    title: "欢迎使用材料力学可视化实验室",
+    definition: "一个交互式的材料力学学习平台，通过可视化和动态模拟帮助你理解力学概念。",
+    formulas: [],
+    insight: "选择左侧菜单中的模块开始探索材料力学的世界。"
+  },
   fundamentals: {
     title: "应力应变基础理论 (Stress & Strain)",
     definition: "探讨材料在受力变形时的基本行为，重点在于泊松效应（横向变形）以及工程应力与真应力的区别。",
@@ -176,5 +182,27 @@ export const THEORY_INFO = {
       { label: "弯曲应变能", latex: "U = \\frac{P^2a^2b^2}{6EIL}", desc: "简支梁在集中荷载下的弯曲应变能。" }
     ],
     insight: "材料力学中的静定结构可以直接用平衡方程求解，不需要有限元方法。掌握经典公式可以快速估算结构响应。"
+  },
+  section: {
+    title: "截面特性计算器 (Section Properties)",
+    definition: "计算各种截面的面积、惯性矩、惯性半径和抗弯截面模量。",
+    formulas: [
+      { label: "惯性矩 (Moment of Inertia)", latex: "I_x = \\int y^2 dA", desc: "截面对某轴的惯性矩，反映截面抵抗弯曲的能力。" },
+      { label: "惯性半径 (Radius of Gyration)", latex: "i = \\sqrt{\\frac{I}{A}}", desc: "惯性矩与面积的比值开方，用于压杆稳定计算。" },
+      { label: "抗弯截面模量", latex: "W = \\frac{I}{y_{max}}", desc: "惯性矩除以到中性轴最远距离，用于计算最大弯曲应力。" },
+    ],
+    insight: "截面形状对结构性能影响巨大。工字钢的惯性矩远大于同面积的实心矩形，这就是为什么建筑中广泛使用型钢。"
+  },
+  resources: {
+    title: "学习资源库 (Learning Resources)",
+    definition: "精选的材料力学学习资料，包括教材、视频、论文和在线工具。",
+    formulas: [],
+    insight: "系统学习材料力学，从基础到进阶，这里有你需要的所有资源。"
+  },
+  settings: {
+    title: "设置 (Settings)",
+    definition: "配置 AI 助教和其他系统参数。",
+    formulas: [],
+    insight: "在这里配置您的 API Key 和其他偏好设置。"
   }
 };
