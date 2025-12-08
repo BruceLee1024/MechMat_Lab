@@ -1,5 +1,40 @@
+export type ModuleType = "home" | "fundamentals" | "axial" | "bending" | "torsion" | "buckling" | "stress" | "combined" | "solver" | "section" | "formulas" | "resources" | "settings";
 
-export type ModuleType = "home" | "fundamentals" | "axial" | "bending" | "torsion" | "buckling" | "stress" | "combined" | "solver" | "section" | "resources" | "settings";
+// 截面类型
+export type SectionType = 'rectangle' | 'circle' | 'hollow_circle' | 'i_beam' | 't_beam' | 'channel' | 'composite' | 'custom';
+
+export interface SectionProperties {
+  type: SectionType;
+  width?: number;
+  height?: number;
+  radius?: number;
+  outerRadius?: number;
+  innerRadius?: number;
+  flangeWidth?: number;
+  flangeThickness?: number;
+  webHeight?: number;
+  webThickness?: number;
+  // T型截面
+  tFlangeWidth?: number;
+  tFlangeThickness?: number;
+  tWebHeight?: number;
+  tWebThickness?: number;
+  // U型截面
+  channelWidth?: number;
+  channelHeight?: number;
+  channelFlange?: number;
+  channelWeb?: number;
+  // 组合截面
+  comp1Width?: number;
+  comp1Height?: number;
+  comp2Width?: number;
+  comp2Height?: number;
+  compSpacing?: number;
+  // 自定义截面
+  customArea?: number;
+  customIz?: number;
+  customIy?: number;
+}
 
 export interface SimulationState {
   // Material Props (Shared)
@@ -19,6 +54,7 @@ export interface SimulationState {
   bendModulus: number; // GPa
   bendWidth: number; // mm
   bendHeight: number; // mm
+  bendSection: SectionProperties; // 截面属性
   
   // Torsion (扭转)
   torqTorque: number; // Nm
@@ -32,6 +68,7 @@ export interface SimulationState {
   buckleModulus: number; // GPa
   buckleWidth: number; // mm
   buckleHeight: number; // mm
+  buckleSection: SectionProperties; // 截面属性
 
   // Stress Transformation (应力状态 - 3D Tensor)
   stressSigX: number; // MPa
@@ -48,6 +85,7 @@ export interface SimulationState {
   combinedWidth: number; // mm
   combinedHeight: number; // mm
   combinedLength: number; // m
+  combinedSection: SectionProperties; // 截面属性
 }
 
 export const DEFAULT_STATE: SimulationState = {
@@ -65,6 +103,7 @@ export const DEFAULT_STATE: SimulationState = {
   bendModulus: 200,
   bendWidth: 100,
   bendHeight: 150,
+  bendSection: { type: 'rectangle', width: 100, height: 150 },
   // Torsion
   torqTorque: 500,
   torqRadius: 20,
@@ -76,6 +115,7 @@ export const DEFAULT_STATE: SimulationState = {
   buckleModulus: 200,
   buckleWidth: 40,
   buckleHeight: 40,
+  buckleSection: { type: 'rectangle', width: 40, height: 40 },
   // Stress
   stressSigX: 50,
   stressSigY: 20,
@@ -90,6 +130,7 @@ export const DEFAULT_STATE: SimulationState = {
   combinedWidth: 50,
   combinedHeight: 100,
   combinedLength: 1.0,
+  combinedSection: { type: 'rectangle', width: 50, height: 100 },
 };
 
 export const THEORY_INFO = {
@@ -192,6 +233,16 @@ export const THEORY_INFO = {
       { label: "抗弯截面模量", latex: "W = \\frac{I}{y_{max}}", desc: "惯性矩除以到中性轴最远距离，用于计算最大弯曲应力。" },
     ],
     insight: "截面形状对结构性能影响巨大。工字钢的惯性矩远大于同面积的实心矩形，这就是为什么建筑中广泛使用型钢。"
+  },
+  formulas: {
+    title: "常用公式速查 (Formula Reference)",
+    definition: "材料力学常用公式汇总，涵盖梁的弯曲、截面特性、应力应变、压杆稳定和扭转等。",
+    formulas: [
+      { label: "弯曲正应力", latex: "\\sigma = \\frac{My}{I}", desc: "梁弯曲时横截面上的正应力分布。" },
+      { label: "欧拉临界力", latex: "P_{cr} = \\frac{\\pi^2 EI}{(\\mu L)^2}", desc: "细长压杆的临界载荷。" },
+      { label: "扭转剪应力", latex: "\\tau = \\frac{T\\rho}{I_p}", desc: "圆轴扭转时的剪应力分布。" },
+    ],
+    insight: "公式是解决问题的工具，理解公式背后的物理意义比死记硬背更重要。"
   },
   resources: {
     title: "学习资源库 (Learning Resources)",

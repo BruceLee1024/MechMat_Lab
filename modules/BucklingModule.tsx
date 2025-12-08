@@ -1,6 +1,6 @@
 import React from "react";
 import { Calculator, Sigma, Activity } from "lucide-react";
-import { SliderControl, LatexRenderer, MaterialSelector } from "../components";
+import { SliderInputControl, LatexRenderer, MaterialSelector, SectionSelector, calculateSectionProperties } from "../components";
 import { SimulationState } from "../types";
 import { CommonDefs } from "./CommonDefs";
 
@@ -8,10 +8,10 @@ export const BucklingModule = ({ state, onChange }: { state: SimulationState; on
   const E = state.buckleModulus * 1000; 
   const L_mm = state.buckleLength * 1000;
   
-  const sideMin = Math.min(state.buckleWidth, state.buckleHeight);
-  const sideMax = Math.max(state.buckleWidth, state.buckleHeight);
-  const I_min = (sideMax * Math.pow(sideMin, 3)) / 12; 
-  const Area = state.buckleWidth * state.buckleHeight; 
+  // 使用截面选择器计算属性
+  const sectionProps = calculateSectionProperties(state.buckleSection);
+  const I_min = Math.min(sectionProps.Iz, sectionProps.Iy); // 取最小惯性矩
+  const Area = sectionProps.area;
   const radiusOfGyration = Math.sqrt(I_min / Area); 
   
   const lambda = L_mm / radiusOfGyration;
@@ -21,8 +21,23 @@ export const BucklingModule = ({ state, onChange }: { state: SimulationState; on
   const ratio = Math.min(state.buckleLoad / Pcr, 1.5);
   const bowAmount = isBuckled ? (ratio - 1) * 100 : 0; 
 
-  const formulaI = `I_{min} = \\frac{b_{max} \\cdot h_{min}^3}{12} = \\frac{${sideMax} \\times ${sideMin}^3}{12} = ${(I_min/10000).toFixed(2)} \\times 10^4 \\text{ mm}^4`;
-  const formulaArea = `A = b \\times h = ${state.buckleWidth} \\times ${state.buckleHeight} = ${Area} \\text{ mm}^2`;
+  // 根据截面类型生成惯性矩公式
+  const getInertiaFormula = () => {
+    switch (state.buckleSection.type) {
+      case 'rectangle':
+        const b = state.buckleSection.width || 40;
+        const h = state.buckleSection.height || 40;
+        return `I_{min} = \\frac{b \\cdot h_{min}^3}{12} = \\frac{${Math.max(b,h)} \\times ${Math.min(b,h)}^3}{12} = ${(I_min/10000).toFixed(2)} \\times 10^4 \\text{ mm}^4`;
+      case 'circle':
+        return `I = \\frac{\\pi r^4}{4} = ${(I_min/10000).toFixed(2)} \\times 10^4 \\text{ mm}^4`;
+      case 'hollow_circle':
+        return `I = \\frac{\\pi (R^4 - r^4)}{4} = ${(I_min/10000).toFixed(2)} \\times 10^4 \\text{ mm}^4`;
+      default:
+        return `I_{min} = ${(I_min/10000).toFixed(2)} \\times 10^4 \\text{ mm}^4`;
+    }
+  };
+  const formulaI = getInertiaFormula();
+  const formulaArea = `A = ${Area.toFixed(0)} \\text{ mm}^2`;
   const formulaGyration = `i = \\sqrt{\\frac{I_{min}}{A}} = \\sqrt{\\frac{${I_min.toFixed(0)}}{${Area}}} = ${radiusOfGyration.toFixed(2)} \\text{ mm}`;
   const formulaLambda = `\\lambda = \\frac{\\mu L}{i} = \\frac{1 \\times ${L_mm.toFixed(0)}}{${radiusOfGyration.toFixed(2)}} = ${lambda.toFixed(1)}`;
   const formulaPcr = `P_{cr} = \\frac{\\pi^2 E I}{(\\mu L)^2} = \\frac{\\pi^2 \\times ${E} \\times ${I_min.toFixed(0)}}{(1 \\times ${L_mm.toFixed(0)})^2} = ${Math.round(Pcr)} \\text{ N}`;
@@ -95,12 +110,13 @@ export const BucklingModule = ({ state, onChange }: { state: SimulationState; on
                    currentE={state.buckleModulus} 
                    onSelect={(mat) => onChange({ buckleModulus: mat.E })} 
                  />
-                 <div className="grid grid-cols-2 gap-4">
-                    <SliderControl label="截面宽度 (b)" value={state.buckleWidth} min={10} max={100} step={2} unit="mm" onChange={(v) => onChange({ buckleWidth: v })} />
-                    <SliderControl label="截面高度 (h)" value={state.buckleHeight} min={10} max={100} step={2} unit="mm" onChange={(v) => onChange({ buckleHeight: v })} />
-                 </div>
-                 <SliderControl label="压力 (Load)" value={state.buckleLoad} min={100} max={5000} step={100} unit="N" onChange={(v) => onChange({ buckleLoad: v })} />
-                 <SliderControl label="杆长 (Length)" value={state.buckleLength} min={0.5} max={5} step={0.1} unit="m" onChange={(v) => onChange({ buckleLength: v })} />
+                 <SectionSelector
+                   section={state.buckleSection}
+                   onChange={(s) => onChange({ buckleSection: s })}
+                 />
+                 <SliderInputControl label="压力 (Load)" value={state.buckleLoad} min={10} max={100000} step={10} unit="N" onChange={(v) => onChange({ buckleLoad: v })} />
+                 <SliderInputControl label="杆长 (Length)" value={state.buckleLength} min={0.1} max={10} step={0.1} unit="m" onChange={(v) => onChange({ buckleLength: v })} />
+                 <SliderInputControl label="弹性模量 (E)" value={state.buckleModulus} min={1} max={500} step={1} unit="GPa" onChange={(v) => onChange({ buckleModulus: v })} />
            </div>
          </div>
          

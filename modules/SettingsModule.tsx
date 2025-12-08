@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Key, Bot, Check, Eye, EyeOff, Trash2, Info, ExternalLink, Palette, User, MessageCircle, ChevronDown, ChevronUp, X } from "lucide-react";
+import { Key, Bot, Check, Eye, EyeOff, Trash2, Info, ExternalLink, Palette, User, MessageCircle, ChevronDown, ChevronUp, X, History, Sparkles, Wrench, Bug } from "lucide-react";
 import { ThemeName, THEMES, THEME_NAMES, getCurrentTheme, applyTheme } from "../theme";
 
 // API Key 存储的 localStorage key
@@ -307,6 +307,9 @@ export const SettingsModule = ({ currentTheme: propTheme, onThemeChange }: Setti
         </div>
       </div>
 
+      {/* 更新日志卡片 */}
+      <ChangelogCard />
+
       {/* 联系作者卡片 */}
       <ContactAuthorCard />
 
@@ -314,6 +317,149 @@ export const SettingsModule = ({ currentTheme: propTheme, onThemeChange }: Setti
       <div className="text-center text-xs text-slate-400 px-4">
         <p>🔒 所有设置仅存储在本地浏览器中，不会上传到任何服务器</p>
       </div>
+    </div>
+  );
+};
+
+// 更新日志数据
+const CHANGELOG = [
+  {
+    version: "1.2.0",
+    date: "2024-12-08",
+    type: "feature" as const,
+    changes: [
+      "常用公式模块新增在线计算功能，支持25种梁/拱结构的实时计算",
+      "常用公式模块配色更新，全面适配全局主题色",
+      "截面特性卡片预览显示截面形状图示",
+      "基础公式和截面特性模态框UI优化，添加参数说明",
+      "资源库更新：新增学堂在线课程和B站视频教程",
+    ],
+  },
+  {
+    version: "1.1.1",
+    date: "2024-12-08",
+    type: "fix" as const,
+    changes: [
+      "修复压杆稳定和梁的弯曲模块滑块无法滑到最大值的问题",
+    ],
+  },
+  {
+    version: "1.1.0",
+    date: "2024-12-07",
+    type: "feature" as const,
+    changes: [
+      "新增常用公式模块，包含基础公式、梁与拱公式、截面特性三个标签页",
+      "基础公式涵盖材料力学11大类核心公式",
+      "梁与拱公式包含25种常见结构的FBD、SFD、BMD图示",
+      "支持公式LaTeX复制功能",
+    ],
+  },
+  {
+    version: "1.0.0",
+    date: "2024-12-01",
+    type: "feature" as const,
+    changes: [
+      "材料力学可视化实验室正式发布",
+      "包含轴向载荷、扭转、弯曲、应力状态、压杆稳定等核心模块",
+      "支持AI助教功能（需配置DeepSeek API）",
+      "支持4套主题配色方案切换",
+    ],
+  },
+];
+
+// 更新日志组件
+const ChangelogCard = () => {
+  const [expanded, setExpanded] = useState(false);
+
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case "feature":
+        return <Sparkles className="w-4 h-4" />;
+      case "fix":
+        return <Bug className="w-4 h-4" />;
+      case "improve":
+        return <Wrench className="w-4 h-4" />;
+      default:
+        return <History className="w-4 h-4" />;
+    }
+  };
+
+  const getTypeColor = (type: string) => {
+    switch (type) {
+      case "feature":
+        return { bg: "bg-emerald-100", text: "text-emerald-600", label: "新功能" };
+      case "fix":
+        return { bg: "bg-rose-100", text: "text-rose-600", label: "修复" };
+      case "improve":
+        return { bg: "bg-blue-100", text: "text-blue-600", label: "优化" };
+      default:
+        return { bg: "bg-slate-100", text: "text-slate-600", label: "更新" };
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm border p-6" style={{ borderColor: "var(--color-3)" }}>
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center justify-between"
+      >
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg" style={{ backgroundColor: "var(--color-4)" }}>
+            <History className="w-6 h-6" style={{ color: "var(--color-1)" }} />
+          </div>
+          <div className="text-left">
+            <h3 className="font-bold text-lg" style={{ color: "var(--color-1)" }}>更新日志</h3>
+            <p className="text-sm text-slate-500">查看版本更新记录</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs px-2 py-1 rounded-full" style={{ backgroundColor: "var(--color-4)", color: "var(--color-1)" }}>
+            v{CHANGELOG[0].version}
+          </span>
+          {expanded ? (
+            <ChevronUp className="w-5 h-5 text-slate-400" />
+          ) : (
+            <ChevronDown className="w-5 h-5 text-slate-400" />
+          )}
+        </div>
+      </button>
+
+      {expanded && (
+        <div className="mt-6 space-y-4 max-h-96 overflow-y-auto">
+          {CHANGELOG.map((release, idx) => {
+            const typeStyle = getTypeColor(release.type);
+            return (
+              <div key={idx} className="relative pl-6 pb-4 border-l-2" style={{ borderColor: "var(--color-4)" }}>
+                {/* 时间线圆点 */}
+                <div 
+                  className="absolute left-0 top-0 w-3 h-3 rounded-full -translate-x-[7px]"
+                  style={{ backgroundColor: idx === 0 ? "var(--color-1)" : "var(--color-4)" }}
+                />
+                
+                {/* 版本头部 */}
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="font-bold" style={{ color: "var(--color-1)" }}>v{release.version}</span>
+                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs ${typeStyle.bg} ${typeStyle.text}`}>
+                    {getTypeIcon(release.type)}
+                    {typeStyle.label}
+                  </span>
+                  <span className="text-xs text-slate-400">{release.date}</span>
+                </div>
+                
+                {/* 更新内容 */}
+                <ul className="space-y-1">
+                  {release.changes.map((change, cIdx) => (
+                    <li key={cIdx} className="text-sm text-slate-600 flex items-start gap-2">
+                      <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: "var(--color-2)" }} />
+                      {change}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };

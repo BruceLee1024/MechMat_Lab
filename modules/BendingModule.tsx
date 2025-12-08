@@ -1,6 +1,6 @@
 import React from "react";
 import { Calculator, Sigma, Activity } from "lucide-react";
-import { SliderControl, LatexRenderer, MaterialSelector } from "../components";
+import { SliderInputControl, LatexRenderer, MaterialSelector, SectionSelector, calculateSectionProperties } from "../components";
 import { SimulationState } from "../types";
 import { CommonDefs } from "./CommonDefs";
 
@@ -9,7 +9,11 @@ export const BendingModule = ({ state, onChange }: { state: SimulationState; onC
   const a_mm = state.bendLoadPos * 1000;
   const b_mm = L_mm - a_mm;
   const E_MPa = state.bendModulus * 1000;
-  const inertia = (state.bendWidth * Math.pow(state.bendHeight, 3)) / 12; 
+  
+  // 使用截面选择器计算惯性矩
+  const sectionProps = calculateSectionProperties(state.bendSection);
+  const inertia = sectionProps.Iz;
+  const yMax = sectionProps.yMax; 
   
   // Reactions
   const R1 = (state.bendLoad * b_mm) / L_mm;
@@ -21,7 +25,7 @@ export const BendingModule = ({ state, onChange }: { state: SimulationState; onC
   // Deflection at load point (for display)
   const deflectionAtLoad = (state.bendLoad * Math.pow(a_mm, 2) * Math.pow(b_mm, 2)) / (3 * E_MPa * inertia * L_mm);
   
-  const maxStress = ((maxMoment * 1000) * (state.bendHeight / 2)) / inertia;
+  const maxStress = ((maxMoment * 1000) * yMax) / inertia;
 
   // Strain Energy: U = ∫M²/(2EI)dx = P²a²b²/(6EIL)
   // Units: P in N, a,b,L in mm, E in MPa (N/mm²), I in mm⁴ → U in N·mm = mJ
@@ -49,10 +53,25 @@ export const BendingModule = ({ state, onChange }: { state: SimulationState; onC
   // Visual Approximation: curve from start to load point (sagY), then to end.
   // Using simplified path for visual feedback.
 
-  const formulaInertia = `I_z = \\frac{b h^3}{12} = \\frac{${state.bendWidth} \\times ${state.bendHeight}^3}{12} = ${(inertia/10000).toFixed(2)} \\times 10^4 \\text{ mm}^4`;
+  // 根据截面类型生成惯性矩公式
+  const getInertiaFormula = () => {
+    switch (state.bendSection.type) {
+      case 'rectangle':
+        return `I_z = \\frac{b h^3}{12} = \\frac{${state.bendSection.width || 100} \\times ${state.bendSection.height || 150}^3}{12} = ${(inertia/10000).toFixed(2)} \\times 10^4 \\text{ mm}^4`;
+      case 'circle':
+        return `I_z = \\frac{\\pi r^4}{4} = \\frac{\\pi \\times ${state.bendSection.radius || 50}^4}{4} = ${(inertia/10000).toFixed(2)} \\times 10^4 \\text{ mm}^4`;
+      case 'hollow_circle':
+        return `I_z = \\frac{\\pi (R^4 - r^4)}{4} = ${(inertia/10000).toFixed(2)} \\times 10^4 \\text{ mm}^4`;
+      case 'i_beam':
+        return `I_z = \\frac{b_f h^3}{12} - \\frac{(b_f-t_w) h_w^3}{12} = ${(inertia/10000).toFixed(2)} \\times 10^4 \\text{ mm}^4`;
+      default:
+        return `I_z = ${(inertia/10000).toFixed(2)} \\times 10^4 \\text{ mm}^4`;
+    }
+  };
+  const formulaInertia = getInertiaFormula();
   const formulaMoment = `M_{max} = \\frac{P \\cdot a \\cdot b}{L} = \\frac{${state.bendLoad} \\times ${(a_mm/1000).toFixed(1)} \\times ${(b_mm/1000).toFixed(1)}}{${state.bendLength}} = ${maxMoment.toFixed(1)} \\text{ Nm}`;
   const formulaDeflection = `w_{load} = \\frac{P a^2 b^2}{3 E I L} = \\frac{${state.bendLoad} \\times ${a_mm.toFixed(0)}^2 \\times ${b_mm.toFixed(0)}^2}{3 \\times ${E_MPa} \\times ${inertia.toFixed(0)} \\times ${L_mm.toFixed(0)}} = ${deflectionAtLoad.toFixed(2)} \\text{ mm}`;
-  const formulaStress = `\\sigma_{max} = \\frac{M_{max} \\cdot y_{max}}{I_z} = \\frac{${(maxMoment*1000).toFixed(0)} \\times ${(state.bendHeight/2).toFixed(0)}}{${inertia.toFixed(0)}} = ${maxStress.toFixed(2)} \\text{ MPa}`;
+  const formulaStress = `\\sigma_{max} = \\frac{M_{max} \\cdot y_{max}}{I_z} = \\frac{${(maxMoment*1000).toFixed(0)} \\times ${yMax.toFixed(0)}}{${inertia.toFixed(0)}} = ${maxStress.toFixed(2)} \\text{ MPa}`;
   const formulaStrainEnergy = `U = \\frac{P^2 a^2 b^2}{6 E I L} = \\frac{${state.bendLoad}^2 \\times ${a_mm.toFixed(0)}^2 \\times ${b_mm.toFixed(0)}^2}{6 \\times ${E_MPa} \\times ${inertia.toFixed(0)} \\times ${L_mm.toFixed(0)}} = ${strainEnergy.toFixed(2)} \\text{ mJ}`;
 
   const beamThick = Math.max(10, state.bendHeight / 5);
@@ -196,16 +215,16 @@ export const BendingModule = ({ state, onChange }: { state: SimulationState; onC
                   currentPoisson={state.poissonRatio}
                   onSelect={(mat) => onChange({ bendModulus: mat.E, materialYield: mat.yield, poissonRatio: mat.poisson })} 
                 />
+                <SectionSelector
+                  section={state.bendSection}
+                  onChange={(s) => onChange({ bendSection: s })}
+                />
+                <SliderInputControl label="载荷 (Load)" value={state.bendLoad} min={100} max={50000} step={100} unit="N" onChange={(v) => onChange({ bendLoad: v })} />
                 <div className="grid grid-cols-2 gap-4">
-                  <SliderControl label="截面宽度 (b)" value={state.bendWidth} min={20} max={200} step={5} unit="mm" onChange={(v) => onChange({ bendWidth: v })} />
-                  <SliderControl label="截面高度 (h)" value={state.bendHeight} min={20} max={300} step={5} unit="mm" onChange={(v) => onChange({ bendHeight: v })} />
+                    <SliderInputControl label="梁跨度 (Length)" value={state.bendLength} min={0.1} max={20} step={0.1} unit="m" onChange={(v) => onChange({ bendLength: v })} />
+                    <SliderInputControl label="载荷位置 (a)" value={state.bendLoadPos} min={0.01} max={state.bendLength - 0.01} step={0.01} unit="m" onChange={(v) => onChange({ bendLoadPos: Math.min(v, state.bendLength - 0.01) })} />
                 </div>
-                <SliderControl label="载荷 (Load)" value={state.bendLoad} min={500} max={10000} step={500} unit="N" onChange={(v) => onChange({ bendLoad: v })} />
-                <div className="grid grid-cols-2 gap-4">
-                    <SliderControl label="梁跨度 (Length)" value={state.bendLength} min={1} max={10} step={0.5} unit="m" onChange={(v) => onChange({ bendLength: v })} />
-                    <SliderControl label="载荷位置 (a)" value={state.bendLoadPos} min={0.1} max={state.bendLength - 0.1} step={0.1} unit="m" onChange={(v) => onChange({ bendLoadPos: v })} />
-                </div>
-                <SliderControl label="弹性模量 (E)" value={state.bendModulus} min={50} max={400} step={10} unit="GPa" onChange={(v) => onChange({ bendModulus: v })} />
+                <SliderInputControl label="弹性模量 (E)" value={state.bendModulus} min={1} max={500} step={1} unit="GPa" onChange={(v) => onChange({ bendModulus: v })} />
            </div>
         </div>
         

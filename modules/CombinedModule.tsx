@@ -1,16 +1,22 @@
 import React from "react";
 import { Calculator, Sigma, Activity } from "lucide-react";
-import { SliderControl, LatexRenderer } from "../components";
+import { SliderInputControl, LatexRenderer, SectionSelector, calculateSectionProperties } from "../components";
 import { SimulationState } from "../types";
 import { CommonDefs } from "./CommonDefs";
 
 export const CombinedModule = ({ state, onChange }: { state: SimulationState; onChange: (s: Partial<SimulationState>) => void }) => {
-  const { combinedLoad: P, combinedEccentricity: e, combinedWidth: b, combinedHeight: h } = state;
-  const A = b * h; 
-  const I = (b * Math.pow(h, 3)) / 12; 
+  const { combinedLoad: P, combinedEccentricity: e } = state;
+  
+  // 使用截面选择器计算属性
+  const sectionProps = calculateSectionProperties(state.combinedSection);
+  const A = sectionProps.area;
+  const I = sectionProps.Iz;
+  const yMax = sectionProps.yMax;
+  const h = yMax * 2; // 用于可视化
+  
   const M = P * e; 
   const sigma_axial = P / A; 
-  const sigma_bending_max = (M * (h/2)) / I; 
+  const sigma_bending_max = (M * yMax) / I; 
   const sigma_top_val = sigma_axial - sigma_bending_max;
   const sigma_bottom = sigma_axial + sigma_bending_max; 
 
@@ -106,12 +112,12 @@ export const CombinedModule = ({ state, onChange }: { state: SimulationState; on
                <Calculator className="w-4 h-4 text-indigo-500" /> 实验参数
            </h3>
            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <SliderControl label="截面宽度 (b)" value={state.combinedWidth} min={20} max={100} step={5} unit="mm" onChange={(v) => onChange({ combinedWidth: v })} />
-                <SliderControl label="截面高度 (h)" value={state.combinedHeight} min={40} max={150} step={5} unit="mm" onChange={(v) => onChange({ combinedHeight: v })} />
-              </div>
-              <SliderControl label="偏心距 (e)" value={state.combinedEccentricity} min={0} max={100} step={5} unit="mm" onChange={(v) => onChange({ combinedEccentricity: v })} />
-              <SliderControl label="轴向拉力 (F)" value={state.combinedLoad} min={1000} max={20000} step={1000} unit="N" onChange={(v) => onChange({ combinedLoad: v })} />
+              <SectionSelector
+                section={state.combinedSection}
+                onChange={(s) => onChange({ combinedSection: s })}
+              />
+              <SliderInputControl label="偏心距 (e)" value={state.combinedEccentricity} min={0} max={200} step={1} unit="mm" onChange={(v) => onChange({ combinedEccentricity: v })} />
+              <SliderInputControl label="轴向拉力 (F)" value={state.combinedLoad} min={100} max={100000} step={100} unit="N" onChange={(v) => onChange({ combinedLoad: v })} />
            </div>
         </div>
         
@@ -151,7 +157,7 @@ export const CombinedModule = ({ state, onChange }: { state: SimulationState; on
           <div className="bg-slate-50 rounded-lg border border-slate-200 p-4 space-y-3 overflow-x-auto">
              <div className="p-3 bg-white rounded border border-slate-200">
                 <div className="text-xs text-slate-500 mb-1">① 截面面积与惯性矩 (Section Properties)</div>
-                <LatexRenderer formula={`A = b \\times h = ${b} \\times ${h} = ${A} \\text{ mm}^2, \\quad I = \\frac{bh^3}{12} = \\frac{${b} \\times ${h}^3}{12} = ${I.toFixed(0)} \\text{ mm}^4`} />
+                <LatexRenderer formula={`A = ${A.toFixed(0)} \\text{ mm}^2, \\quad I_z = ${(I/10000).toFixed(2)} \\times 10^4 \\text{ mm}^4`} />
              </div>
              <div className="p-3 bg-white rounded border border-slate-200">
                 <div className="text-xs text-slate-500 mb-1">② 轴向应力 (Axial Stress)</div>
@@ -163,7 +169,7 @@ export const CombinedModule = ({ state, onChange }: { state: SimulationState; on
              </div>
              <div className="p-3 bg-white rounded border border-slate-200">
                 <div className="text-xs text-slate-500 mb-1">④ 最大弯曲应力 (Maximum Bending Stress)</div>
-                <LatexRenderer formula={`\\sigma_{bend} = \\frac{M \\cdot y_{max}}{I} = \\frac{${M} \\times ${h/2}}{${I.toFixed(0)}} = ${sigma_bending_max.toFixed(2)} \\text{ MPa}`} />
+                <LatexRenderer formula={`\\sigma_{bend} = \\frac{M \\cdot y_{max}}{I} = \\frac{${M} \\times ${yMax.toFixed(0)}}{${I.toFixed(0)}} = ${sigma_bending_max.toFixed(2)} \\text{ MPa}`} />
              </div>
              <div className="p-3 bg-white rounded border border-slate-200">
                 <div className="text-xs text-slate-500 mb-1">⑤ 应力叠加 (Stress Superposition)</div>

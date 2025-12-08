@@ -121,6 +121,630 @@ export const SliderControl = ({
   </div>
 );
 
+// --- Slider + Input Control (无限制) ---
+export const SliderInputControl = ({
+  label,
+  value,
+  min,
+  max,
+  step,
+  unit,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  unit: string;
+  onChange: (val: number) => void;
+}) => {
+  const [inputValue, setInputValue] = useState(value.toString());
+  
+  useEffect(() => {
+    setInputValue(value.toString());
+  }, [value]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setInputValue(val);
+    const num = parseFloat(val);
+    if (!isNaN(num) && num > 0) {
+      onChange(num);
+    }
+  };
+
+  const handleInputBlur = () => {
+    const num = parseFloat(inputValue);
+    if (isNaN(num) || num <= 0) {
+      setInputValue(value.toString());
+    }
+  };
+
+  // 动态调整滑块范围：当值超出范围时扩展，否则使用原始范围
+  const sliderMax = value > max ? value * 1.2 : max;
+  const sliderMin = value < min ? value * 0.8 : min;
+
+  return (
+    <div className="mb-4">
+      <div className="flex justify-between items-center mb-1">
+        <label className="text-sm font-medium text-slate-700">{label}</label>
+        <div className="flex items-center gap-1">
+          <input
+            type="number"
+            value={inputValue}
+            onChange={handleInputChange}
+            onBlur={handleInputBlur}
+            step={step}
+            className="w-20 px-2 py-0.5 text-sm font-bold text-right border rounded outline-none focus:ring-1"
+            style={{ color: 'var(--color-1)', borderColor: 'var(--color-3)', focusRing: 'var(--color-1)' }}
+          />
+          <span className="text-xs text-slate-500">{unit}</span>
+        </div>
+      </div>
+      <input
+        type="range"
+        min={sliderMin}
+        max={sliderMax}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(parseFloat(e.target.value))}
+        className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+      />
+    </div>
+  );
+};
+
+// --- 截面类型定义 ---
+export type SectionType = 'rectangle' | 'circle' | 'hollow_circle' | 'i_beam' | 't_beam' | 'channel' | 'composite' | 'custom';
+
+export interface SectionProperties {
+  type: SectionType;
+  // 矩形
+  width?: number;  // mm
+  height?: number; // mm
+  // 圆形
+  radius?: number; // mm
+  // 空心圆
+  outerRadius?: number; // mm
+  innerRadius?: number; // mm
+  // 工字钢
+  flangeWidth?: number;  // mm
+  flangeThickness?: number; // mm
+  webHeight?: number; // mm
+  webThickness?: number; // mm
+  // T型截面
+  tFlangeWidth?: number; // mm
+  tFlangeThickness?: number; // mm
+  tWebHeight?: number; // mm
+  tWebThickness?: number; // mm
+  // 槽钢
+  channelWidth?: number; // mm
+  channelHeight?: number; // mm
+  channelFlange?: number; // mm
+  channelWeb?: number; // mm
+  // 组合截面 (矩形+矩形)
+  comp1Width?: number; // mm
+  comp1Height?: number; // mm
+  comp2Width?: number; // mm
+  comp2Height?: number; // mm
+  compSpacing?: number; // mm (两个矩形之间的间距)
+  // 自定义
+  customArea?: number; // mm²
+  customIz?: number; // mm⁴
+  customIy?: number; // mm⁴
+}
+
+// 计算截面属性
+export const calculateSectionProperties = (section: SectionProperties): { area: number; Iz: number; Iy: number; yMax: number; zMax: number } => {
+  switch (section.type) {
+    case 'rectangle': {
+      const b = section.width || 100;
+      const h = section.height || 150;
+      return {
+        area: b * h,
+        Iz: (b * Math.pow(h, 3)) / 12,
+        Iy: (h * Math.pow(b, 3)) / 12,
+        yMax: h / 2,
+        zMax: b / 2,
+      };
+    }
+    case 'circle': {
+      const r = section.radius || 50;
+      return {
+        area: Math.PI * r * r,
+        Iz: (Math.PI * Math.pow(r, 4)) / 4,
+        Iy: (Math.PI * Math.pow(r, 4)) / 4,
+        yMax: r,
+        zMax: r,
+      };
+    }
+    case 'hollow_circle': {
+      const ro = section.outerRadius || 50;
+      const ri = section.innerRadius || 40;
+      return {
+        area: Math.PI * (ro * ro - ri * ri),
+        Iz: (Math.PI * (Math.pow(ro, 4) - Math.pow(ri, 4))) / 4,
+        Iy: (Math.PI * (Math.pow(ro, 4) - Math.pow(ri, 4))) / 4,
+        yMax: ro,
+        zMax: ro,
+      };
+    }
+    case 'i_beam': {
+      const bf = section.flangeWidth || 100;
+      const tf = section.flangeThickness || 10;
+      const hw = section.webHeight || 100;
+      const tw = section.webThickness || 6;
+      const h = hw + 2 * tf;
+      // 工字钢惯性矩 = 外矩形 - 两侧空白矩形
+      const Iz = (bf * Math.pow(h, 3)) / 12 - 2 * ((bf - tw) / 2 * Math.pow(hw, 3)) / 12;
+      const Iy = 2 * (tf * Math.pow(bf, 3)) / 12 + (hw * Math.pow(tw, 3)) / 12;
+      const area = 2 * bf * tf + hw * tw;
+      return { area, Iz, Iy, yMax: h / 2, zMax: bf / 2 };
+    }
+    case 't_beam': {
+      // T型截面: 翼缘在上，腹板在下
+      const bf = section.tFlangeWidth || 100;
+      const tf = section.tFlangeThickness || 10;
+      const hw = section.tWebHeight || 80;
+      const tw = section.tWebThickness || 8;
+      const h = tf + hw;
+      const area = bf * tf + hw * tw;
+      // 计算形心位置 (从底部算起)
+      const yc = (bf * tf * (hw + tf / 2) + hw * tw * (hw / 2)) / area;
+      // 平行轴定理计算Iz
+      const Iz_flange = (bf * Math.pow(tf, 3)) / 12 + bf * tf * Math.pow((hw + tf / 2) - yc, 2);
+      const Iz_web = (tw * Math.pow(hw, 3)) / 12 + hw * tw * Math.pow((hw / 2) - yc, 2);
+      const Iz = Iz_flange + Iz_web;
+      const Iy = (tf * Math.pow(bf, 3)) / 12 + (hw * Math.pow(tw, 3)) / 12;
+      return { area, Iz, Iy, yMax: Math.max(yc, h - yc), zMax: bf / 2 };
+    }
+    case 'channel': {
+      const b = section.channelWidth || 50;
+      const h = section.channelHeight || 100;
+      const tf = section.channelFlange || 8;
+      const tw = section.channelWeb || 5;
+      const area = 2 * b * tf + (h - 2 * tf) * tw;
+      const Iz = (tw * Math.pow(h, 3)) / 12 + 2 * (b * Math.pow(tf, 3) / 12 + b * tf * Math.pow((h - tf) / 2, 2));
+      const Iy = 2 * (tf * Math.pow(b, 3)) / 12 + ((h - 2 * tf) * Math.pow(tw, 3)) / 12;
+      return { area, Iz, Iy, yMax: h / 2, zMax: b };
+    }
+    case 'composite': {
+      // 组合截面: 两个矩形上下排列
+      const b1 = section.comp1Width || 100;
+      const h1 = section.comp1Height || 20;
+      const b2 = section.comp2Width || 40;
+      const h2 = section.comp2Height || 80;
+      const spacing = section.compSpacing || 0;
+      const totalH = h1 + spacing + h2;
+      const area = b1 * h1 + b2 * h2;
+      // 形心位置 (从底部算起)
+      const yc = (b1 * h1 * (h2 + spacing + h1 / 2) + b2 * h2 * (h2 / 2)) / area;
+      // 平行轴定理
+      const Iz1 = (b1 * Math.pow(h1, 3)) / 12 + b1 * h1 * Math.pow((h2 + spacing + h1 / 2) - yc, 2);
+      const Iz2 = (b2 * Math.pow(h2, 3)) / 12 + b2 * h2 * Math.pow((h2 / 2) - yc, 2);
+      const Iz = Iz1 + Iz2;
+      const Iy = (h1 * Math.pow(b1, 3)) / 12 + (h2 * Math.pow(b2, 3)) / 12;
+      return { area, Iz, Iy, yMax: Math.max(yc, totalH - yc), zMax: Math.max(b1, b2) / 2 };
+    }
+    case 'custom': {
+      return {
+        area: section.customArea || 1000,
+        Iz: section.customIz || 1e6,
+        Iy: section.customIy || 1e6,
+        yMax: 50,
+        zMax: 50,
+      };
+    }
+    default:
+      return { area: 1000, Iz: 1e6, Iy: 1e6, yMax: 50, zMax: 50 };
+  }
+};
+
+// --- 截面选择器组件 ---
+export const SectionSelector = ({
+  section,
+  onChange,
+}: {
+  section: SectionProperties;
+  onChange: (s: SectionProperties) => void;
+}) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  
+  const sectionTypes: { type: SectionType; label: string; icon: string }[] = [
+    { type: 'rectangle', label: '矩形', icon: '▭' },
+    { type: 'circle', label: '圆形', icon: '○' },
+    { type: 'hollow_circle', label: '空心圆', icon: '◎' },
+    { type: 'i_beam', label: '工字钢', icon: 'Ⅰ' },
+    { type: 't_beam', label: 'T型', icon: '⊤' },
+    { type: 'channel', label: '槽钢', icon: '⊏' },
+    { type: 'composite', label: '组合', icon: '⊞' },
+    { type: 'custom', label: '自定义', icon: '✎' },
+  ];
+
+  const props = calculateSectionProperties(section);
+  const currentType = sectionTypes.find(st => st.type === section.type);
+
+  return (
+    <div className="mb-4 bg-slate-50 rounded-lg border border-slate-200 overflow-hidden">
+      {/* 可点击的标题栏 */}
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full p-3 flex items-center justify-between hover:bg-slate-100 transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <Shapes className="w-4 h-4" style={{ color: 'var(--color-2)' }} />
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">截面类型</span>
+          <span className="text-sm font-medium text-slate-700 ml-2">
+            {currentType?.icon} {currentType?.label}
+          </span>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-slate-500 font-mono hidden sm:inline">
+            A={props.area.toFixed(0)}mm² | Iz={(props.Iz/1e4).toFixed(1)}×10⁴mm⁴
+          </span>
+          <svg 
+            className={`w-4 h-4 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+            fill="none" viewBox="0 0 24 24" stroke="currentColor"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
+      </button>
+      
+      {/* 可折叠内容 */}
+      {isExpanded && (
+        <div className="p-3 pt-0 border-t border-slate-200">
+          {/* 截面类型选择 */}
+          <div className="grid grid-cols-4 sm:grid-cols-8 gap-1 mb-3 mt-3">
+            {sectionTypes.map((st) => (
+              <button
+                key={st.type}
+                onClick={() => onChange({ ...section, type: st.type })}
+                className={`p-2 text-center rounded border transition-colors ${
+                  section.type === st.type
+                    ? 'border-2 bg-white shadow-sm'
+                    : 'border-slate-200 hover:bg-white'
+                }`}
+                style={section.type === st.type ? { borderColor: 'var(--color-1)' } : {}}
+              >
+                <div className="text-lg">{st.icon}</div>
+                <div className="text-xs text-slate-600">{st.label}</div>
+              </button>
+            ))}
+          </div>
+
+          {/* 截面参数输入 */}
+          <div className="space-y-2">
+        {section.type === 'rectangle' && (
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-xs text-slate-500">宽度 b (mm)</label>
+              <input
+                type="number"
+                value={section.width || 100}
+                onChange={(e) => onChange({ ...section, width: parseFloat(e.target.value) || 100 })}
+                className="w-full px-2 py-1 text-sm border rounded"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-slate-500">高度 h (mm)</label>
+              <input
+                type="number"
+                value={section.height || 150}
+                onChange={(e) => onChange({ ...section, height: parseFloat(e.target.value) || 150 })}
+                className="w-full px-2 py-1 text-sm border rounded"
+              />
+            </div>
+          </div>
+        )}
+
+        {section.type === 'circle' && (
+          <div>
+            <label className="text-xs text-slate-500">半径 r (mm)</label>
+            <input
+              type="number"
+              value={section.radius || 50}
+              onChange={(e) => onChange({ ...section, radius: parseFloat(e.target.value) || 50 })}
+              className="w-full px-2 py-1 text-sm border rounded"
+            />
+          </div>
+        )}
+
+        {section.type === 'hollow_circle' && (
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-xs text-slate-500">外半径 R (mm)</label>
+              <input
+                type="number"
+                value={section.outerRadius || 50}
+                onChange={(e) => onChange({ ...section, outerRadius: parseFloat(e.target.value) || 50 })}
+                className="w-full px-2 py-1 text-sm border rounded"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-slate-500">内半径 r (mm)</label>
+              <input
+                type="number"
+                value={section.innerRadius || 40}
+                onChange={(e) => onChange({ ...section, innerRadius: parseFloat(e.target.value) || 40 })}
+                className="w-full px-2 py-1 text-sm border rounded"
+              />
+            </div>
+          </div>
+        )}
+
+        {section.type === 'i_beam' && (
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-xs text-slate-500">翼缘宽 bf (mm)</label>
+              <input
+                type="number"
+                value={section.flangeWidth || 100}
+                onChange={(e) => onChange({ ...section, flangeWidth: parseFloat(e.target.value) || 100 })}
+                className="w-full px-2 py-1 text-sm border rounded"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-slate-500">翼缘厚 tf (mm)</label>
+              <input
+                type="number"
+                value={section.flangeThickness || 10}
+                onChange={(e) => onChange({ ...section, flangeThickness: parseFloat(e.target.value) || 10 })}
+                className="w-full px-2 py-1 text-sm border rounded"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-slate-500">腹板高 hw (mm)</label>
+              <input
+                type="number"
+                value={section.webHeight || 100}
+                onChange={(e) => onChange({ ...section, webHeight: parseFloat(e.target.value) || 100 })}
+                className="w-full px-2 py-1 text-sm border rounded"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-slate-500">腹板厚 tw (mm)</label>
+              <input
+                type="number"
+                value={section.webThickness || 6}
+                onChange={(e) => onChange({ ...section, webThickness: parseFloat(e.target.value) || 6 })}
+                className="w-full px-2 py-1 text-sm border rounded"
+              />
+            </div>
+          </div>
+        )}
+
+        {section.type === 'channel' && (
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-xs text-slate-500">宽度 b (mm)</label>
+              <input
+                type="number"
+                value={section.channelWidth || 50}
+                onChange={(e) => onChange({ ...section, channelWidth: parseFloat(e.target.value) || 50 })}
+                className="w-full px-2 py-1 text-sm border rounded"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-slate-500">高度 h (mm)</label>
+              <input
+                type="number"
+                value={section.channelHeight || 100}
+                onChange={(e) => onChange({ ...section, channelHeight: parseFloat(e.target.value) || 100 })}
+                className="w-full px-2 py-1 text-sm border rounded"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-slate-500">翼缘厚 tf (mm)</label>
+              <input
+                type="number"
+                value={section.channelFlange || 8}
+                onChange={(e) => onChange({ ...section, channelFlange: parseFloat(e.target.value) || 8 })}
+                className="w-full px-2 py-1 text-sm border rounded"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-slate-500">腹板厚 tw (mm)</label>
+              <input
+                type="number"
+                value={section.channelWeb || 5}
+                onChange={(e) => onChange({ ...section, channelWeb: parseFloat(e.target.value) || 5 })}
+                className="w-full px-2 py-1 text-sm border rounded"
+              />
+            </div>
+          </div>
+        )}
+
+        {section.type === 't_beam' && (
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-xs text-slate-500">翼缘宽 bf (mm)</label>
+              <input
+                type="number"
+                value={section.tFlangeWidth || 100}
+                onChange={(e) => onChange({ ...section, tFlangeWidth: parseFloat(e.target.value) || 100 })}
+                className="w-full px-2 py-1 text-sm border rounded"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-slate-500">翼缘厚 tf (mm)</label>
+              <input
+                type="number"
+                value={section.tFlangeThickness || 10}
+                onChange={(e) => onChange({ ...section, tFlangeThickness: parseFloat(e.target.value) || 10 })}
+                className="w-full px-2 py-1 text-sm border rounded"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-slate-500">腹板高 hw (mm)</label>
+              <input
+                type="number"
+                value={section.tWebHeight || 80}
+                onChange={(e) => onChange({ ...section, tWebHeight: parseFloat(e.target.value) || 80 })}
+                className="w-full px-2 py-1 text-sm border rounded"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-slate-500">腹板厚 tw (mm)</label>
+              <input
+                type="number"
+                value={section.tWebThickness || 8}
+                onChange={(e) => onChange({ ...section, tWebThickness: parseFloat(e.target.value) || 8 })}
+                className="w-full px-2 py-1 text-sm border rounded"
+              />
+            </div>
+          </div>
+        )}
+
+        {section.type === 'composite' && (
+          <div className="space-y-2">
+            <div className="text-xs text-slate-500 font-medium">上部矩形</div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs text-slate-500">宽度 b1 (mm)</label>
+                <input
+                  type="number"
+                  value={section.comp1Width || 100}
+                  onChange={(e) => onChange({ ...section, comp1Width: parseFloat(e.target.value) || 100 })}
+                  className="w-full px-2 py-1 text-sm border rounded"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-slate-500">高度 h1 (mm)</label>
+                <input
+                  type="number"
+                  value={section.comp1Height || 20}
+                  onChange={(e) => onChange({ ...section, comp1Height: parseFloat(e.target.value) || 20 })}
+                  className="w-full px-2 py-1 text-sm border rounded"
+                />
+              </div>
+            </div>
+            <div className="text-xs text-slate-500 font-medium">下部矩形</div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs text-slate-500">宽度 b2 (mm)</label>
+                <input
+                  type="number"
+                  value={section.comp2Width || 40}
+                  onChange={(e) => onChange({ ...section, comp2Width: parseFloat(e.target.value) || 40 })}
+                  className="w-full px-2 py-1 text-sm border rounded"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-slate-500">高度 h2 (mm)</label>
+                <input
+                  type="number"
+                  value={section.comp2Height || 80}
+                  onChange={(e) => onChange({ ...section, comp2Height: parseFloat(e.target.value) || 80 })}
+                  className="w-full px-2 py-1 text-sm border rounded"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-slate-500">间距 (mm)</label>
+              <input
+                type="number"
+                value={section.compSpacing || 0}
+                onChange={(e) => onChange({ ...section, compSpacing: parseFloat(e.target.value) || 0 })}
+                className="w-full px-2 py-1 text-sm border rounded"
+              />
+            </div>
+          </div>
+        )}
+
+        {section.type === 'custom' && (
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <label className="text-xs text-slate-500">面积 A (mm²)</label>
+              <input
+                type="number"
+                value={section.customArea || 1000}
+                onChange={(e) => onChange({ ...section, customArea: parseFloat(e.target.value) || 1000 })}
+                className="w-full px-2 py-1 text-sm border rounded"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-slate-500">Iz (mm⁴)</label>
+              <input
+                type="number"
+                value={section.customIz || 1e6}
+                onChange={(e) => onChange({ ...section, customIz: parseFloat(e.target.value) || 1e6 })}
+                className="w-full px-2 py-1 text-sm border rounded"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-slate-500">Iy (mm⁴)</label>
+              <input
+                type="number"
+                value={section.customIy || 1e6}
+                onChange={(e) => onChange({ ...section, customIy: parseFloat(e.target.value) || 1e6 })}
+                className="w-full px-2 py-1 text-sm border rounded"
+              />
+            </div>
+          </div>
+        )}
+          </div>
+
+          {/* 计算结果显示 */}
+          <div className="mt-3 pt-2 border-t border-slate-200 grid grid-cols-3 gap-2 text-xs text-slate-500 font-mono">
+            <span>A: {props.area.toFixed(0)} mm²</span>
+            <span>Iz: {(props.Iz / 1e4).toFixed(1)}×10⁴ mm⁴</span>
+            <span>Iy: {(props.Iy / 1e4).toFixed(1)}×10⁴ mm⁴</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// --- 材料数据库 ---
+export interface MaterialData {
+  name: string;
+  E: number;      // 弹性模量 GPa
+  G: number;      // 剪切模量 GPa
+  yield: number;  // 屈服强度 MPa
+  poisson: number; // 泊松比
+  density?: number; // 密度 kg/m³
+  category: 'metal' | 'concrete' | 'wood' | 'polymer' | 'composite' | 'custom';
+}
+
+// 预设材料库（常见工程材料的真实参数）
+const DEFAULT_MATERIALS: MaterialData[] = [
+  // 钢材
+  { name: "Q235钢", E: 206, G: 79, yield: 235, poisson: 0.3, density: 7850, category: 'metal' },
+  { name: "Q345钢", E: 206, G: 79, yield: 345, poisson: 0.3, density: 7850, category: 'metal' },
+  { name: "Q460高强钢", E: 206, G: 79, yield: 460, poisson: 0.3, density: 7850, category: 'metal' },
+  { name: "304不锈钢", E: 193, G: 77, yield: 205, poisson: 0.29, density: 7930, category: 'metal' },
+  { name: "316不锈钢", E: 193, G: 77, yield: 290, poisson: 0.29, density: 7980, category: 'metal' },
+  // 铝合金
+  { name: "6061-T6铝合金", E: 68.9, G: 26, yield: 276, poisson: 0.33, density: 2700, category: 'metal' },
+  { name: "7075-T6铝合金", E: 71.7, G: 26.9, yield: 503, poisson: 0.33, density: 2810, category: 'metal' },
+  { name: "2024-T3铝合金", E: 73.1, G: 28, yield: 345, poisson: 0.33, density: 2780, category: 'metal' },
+  // 其他金属
+  { name: "Ti-6Al-4V钛合金", E: 113.8, G: 44, yield: 880, poisson: 0.34, density: 4430, category: 'metal' },
+  { name: "H62黄铜", E: 105, G: 39, yield: 250, poisson: 0.35, density: 8430, category: 'metal' },
+  { name: "T2紫铜", E: 108, G: 40, yield: 70, poisson: 0.34, density: 8900, category: 'metal' },
+  { name: "铸铁HT200", E: 100, G: 40, yield: 200, poisson: 0.26, density: 7200, category: 'metal' },
+  // 混凝土
+  { name: "C20混凝土", E: 25.5, G: 10.6, yield: 9.6, poisson: 0.2, density: 2400, category: 'concrete' },
+  { name: "C30混凝土", E: 30, G: 12.5, yield: 14.3, poisson: 0.2, density: 2400, category: 'concrete' },
+  { name: "C40混凝土", E: 32.5, G: 13.5, yield: 19.1, poisson: 0.2, density: 2400, category: 'concrete' },
+  { name: "C50混凝土", E: 34.5, G: 14.4, yield: 23.1, poisson: 0.2, density: 2450, category: 'concrete' },
+  // 木材
+  { name: "松木", E: 12, G: 0.7, yield: 30, poisson: 0.35, density: 500, category: 'wood' },
+  { name: "橡木", E: 12.5, G: 0.8, yield: 40, poisson: 0.35, density: 700, category: 'wood' },
+  { name: "胶合板", E: 8.5, G: 0.5, yield: 25, poisson: 0.3, density: 600, category: 'wood' },
+  // 高分子/复合材料
+  { name: "环氧树脂", E: 3.5, G: 1.3, yield: 80, poisson: 0.35, density: 1200, category: 'polymer' },
+  { name: "尼龙PA66", E: 3.0, G: 1.1, yield: 85, poisson: 0.4, density: 1140, category: 'polymer' },
+  { name: "GFRP玻璃钢", E: 25, G: 4, yield: 200, poisson: 0.25, density: 1900, category: 'composite' },
+  { name: "CFRP碳纤维", E: 135, G: 5, yield: 1500, poisson: 0.3, density: 1600, category: 'composite' },
+  // 其他
+  { name: "玻璃", E: 70, G: 28, yield: 50, poisson: 0.22, density: 2500, category: 'polymer' },
+  { name: "橡胶", E: 0.01, G: 0.003, yield: 15, poisson: 0.49, density: 1100, category: 'polymer' },
+];
+
 // --- Material Selector ---
 export const MaterialSelector = ({ 
   onSelect,
@@ -135,48 +759,241 @@ export const MaterialSelector = ({
   currentYield?: number;
   currentPoisson?: number;
 }) => {
-  const materials = [
-    { name: "结构钢 (Structural Steel)", E: 200, G: 77, yield: 250, poisson: 0.3 },
-    { name: "高强钢 (High Strength Steel)", E: 210, G: 80, yield: 700, poisson: 0.3 }, 
-    { name: "铝合金 (Aluminum 6061)", E: 70, G: 26, yield: 276, poisson: 0.33 },
-    { name: "钛合金 (Titanium)", E: 110, G: 42, yield: 830, poisson: 0.34 },
-    { name: "黄铜 (Brass)", E: 100, G: 39, yield: 200, poisson: 0.34 },
-    { name: "混凝土 (Concrete C30)", E: 30, G: 12.5, yield: 30, poisson: 0.2 },
-    { name: "木材 (Timber - Oak)", E: 12, G: 0.8, yield: 40, poisson: 0.35 },
-    { name: "玻璃 (Glass)", E: 70, G: 28, yield: 50, poisson: 0.22 },
-    { name: "橡胶 (Rubber, Isoprene)", E: 0.01, G: 0.003, yield: 15, poisson: 0.49 }, 
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isCustomMode, setIsCustomMode] = useState(false);
+  const [customE, setCustomE] = useState(currentE || 200);
+  const [customG, setCustomG] = useState(currentG || 77);
+  const [customYield, setCustomYield] = useState(currentYield || 250);
+  const [customPoisson, setCustomPoisson] = useState(currentPoisson || 0.3);
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+
+  const materials = DEFAULT_MATERIALS;
+
+  const categories = [
+    { id: 'all', label: '全部' },
+    { id: 'metal', label: '金属' },
+    { id: 'concrete', label: '混凝土' },
+    { id: 'wood', label: '木材' },
+    { id: 'polymer', label: '高分子' },
+    { id: 'composite', label: '复合材料' },
   ];
 
+  const filteredMaterials = selectedCategory === 'all' 
+    ? materials 
+    : materials.filter(m => m.category === selectedCategory);
+
   const activeMat = materials.find(m => 
-    ((currentE && Math.abs(m.E - currentE) < 1) || (currentG && Math.abs(m.G - currentG) < 1)) &&
-    (!currentYield || Math.abs(m.yield - currentYield) < 5)
+    currentE && Math.abs(m.E - currentE) < 0.5 &&
+    currentYield && Math.abs(m.yield - currentYield) < 1
   );
 
+  // 当泊松比改变时自动计算剪切模量 G = E / (2(1+ν))
+  const calculateG = (E: number, poisson: number) => {
+    return E / (2 * (1 + poisson));
+  };
+
+  const handleCustomApply = () => {
+    onSelect({
+      name: '自定义材料',
+      E: customE,
+      G: customG,
+      yield: customYield,
+      poisson: customPoisson
+    });
+    setIsCustomMode(false);
+  };
+
+  // 同步外部值到自定义输入
+  useEffect(() => {
+    if (currentE) setCustomE(currentE);
+    if (currentG) setCustomG(currentG);
+    if (currentYield) setCustomYield(currentYield);
+    if (currentPoisson) setCustomPoisson(currentPoisson);
+  }, [currentE, currentG, currentYield, currentPoisson]);
+
   return (
-    <div className="mb-6 bg-slate-50 p-3 rounded-lg border border-slate-200">
-      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1">
-        <Beaker className="w-3 h-3" style={{ color: 'var(--color-2)' }} /> 常用材料库 (Material Library)
-      </label>
-      <select 
-        className="w-full p-2 text-sm border rounded bg-white text-slate-700 outline-none"
-        style={{ borderColor: 'var(--color-3)', focusRing: 'var(--color-1)' }}
-        value={activeMat ? activeMat.name : "custom"}
-        onChange={(e) => {
-          const mat = materials.find(m => m.name === e.target.value);
-          if (mat) onSelect(mat);
-        }}
+    <div className="mb-4 bg-slate-50 rounded-lg border border-slate-200 overflow-hidden">
+      {/* 可点击的标题栏 */}
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full p-3 flex items-center justify-between hover:bg-slate-100 transition-colors"
       >
-        <option value="custom" disabled>-- 自定义参数 (Custom) --</option>
-        {materials.map(m => (
-          <option key={m.name} value={m.name}>{m.name}</option>
-        ))}
-      </select>
-      <div className="mt-2 grid grid-cols-2 gap-x-2 gap-y-1 text-xs text-slate-500 font-mono">
-         <span>E: {activeMat ? activeMat.E : currentE} GPa</span>
-         <span>G: {activeMat ? activeMat.G : currentG} GPa</span>
-         <span>σ_y: {activeMat ? activeMat.yield : currentYield} MPa</span>
-         <span>ν: {activeMat ? activeMat.poisson : currentPoisson}</span>
-      </div>
+        <div className="flex items-center gap-2">
+          <Beaker className="w-4 h-4" style={{ color: 'var(--color-2)' }} />
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">材料</span>
+          <span className="text-sm font-medium text-slate-700 ml-2">
+            {activeMat?.name || '自定义材料'}
+          </span>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-slate-500 font-mono hidden sm:inline">
+            E={currentE}GPa | σy={currentYield}MPa
+          </span>
+          <svg 
+            className={`w-4 h-4 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+            fill="none" viewBox="0 0 24 24" stroke="currentColor"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
+      </button>
+
+      {/* 可折叠内容 */}
+      {isExpanded && (
+        <div className="p-3 pt-0 border-t border-slate-200">
+          {/* 模式切换 */}
+          <div className="flex gap-2 mt-3 mb-3">
+            <button
+              onClick={() => setIsCustomMode(false)}
+              className={`flex-1 py-1.5 text-xs font-medium rounded transition-colors ${
+                !isCustomMode 
+                  ? 'bg-white shadow-sm border-2' 
+                  : 'bg-slate-100 border border-slate-200 hover:bg-white'
+              }`}
+              style={!isCustomMode ? { borderColor: 'var(--color-1)', color: 'var(--color-1)' } : {}}
+            >
+              📚 材料库选择
+            </button>
+            <button
+              onClick={() => setIsCustomMode(true)}
+              className={`flex-1 py-1.5 text-xs font-medium rounded transition-colors ${
+                isCustomMode 
+                  ? 'bg-white shadow-sm border-2' 
+                  : 'bg-slate-100 border border-slate-200 hover:bg-white'
+              }`}
+              style={isCustomMode ? { borderColor: 'var(--color-1)', color: 'var(--color-1)' } : {}}
+            >
+              ✏️ 自定义参数
+            </button>
+          </div>
+
+          {!isCustomMode ? (
+            <>
+              {/* 分类筛选 */}
+              <div className="flex flex-wrap gap-1 mb-2">
+                {categories.map(cat => (
+                  <button
+                    key={cat.id}
+                    onClick={() => setSelectedCategory(cat.id)}
+                    className={`px-2 py-0.5 text-xs rounded transition-colors ${
+                      selectedCategory === cat.id
+                        ? 'bg-slate-700 text-white'
+                        : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
+                    }`}
+                  >
+                    {cat.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* 材料列表 */}
+              <div className="max-h-48 overflow-y-auto space-y-1 custom-scrollbar">
+                {filteredMaterials.map(mat => (
+                  <button
+                    key={mat.name}
+                    onClick={() => onSelect(mat)}
+                    className={`w-full p-2 text-left rounded border transition-colors ${
+                      activeMat?.name === mat.name
+                        ? 'bg-white border-2 shadow-sm'
+                        : 'bg-white/50 border-slate-200 hover:bg-white hover:border-slate-300'
+                    }`}
+                    style={activeMat?.name === mat.name ? { borderColor: 'var(--color-1)' } : {}}
+                  >
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium text-slate-700">{mat.name}</span>
+                      {mat.density && (
+                        <span className="text-xs text-slate-400">{mat.density} kg/m³</span>
+                      )}
+                    </div>
+                    <div className="flex gap-3 mt-1 text-xs text-slate-500 font-mono">
+                      <span>E:{mat.E}</span>
+                      <span>G:{mat.G}</span>
+                      <span>σy:{mat.yield}</span>
+                      <span>ν:{mat.poisson}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : (
+            /* 自定义参数输入 */
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs text-slate-500">弹性模量 E (GPa)</label>
+                  <input
+                    type="number"
+                    value={customE}
+                    onChange={(e) => {
+                      const E = parseFloat(e.target.value) || 200;
+                      setCustomE(E);
+                      setCustomG(parseFloat(calculateG(E, customPoisson).toFixed(1)));
+                    }}
+                    className="w-full px-2 py-1.5 text-sm border rounded"
+                    step="0.1"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500">剪切模量 G (GPa)</label>
+                  <input
+                    type="number"
+                    value={customG}
+                    onChange={(e) => setCustomG(parseFloat(e.target.value) || 77)}
+                    className="w-full px-2 py-1.5 text-sm border rounded"
+                    step="0.1"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500">屈服强度 σy (MPa)</label>
+                  <input
+                    type="number"
+                    value={customYield}
+                    onChange={(e) => setCustomYield(parseFloat(e.target.value) || 250)}
+                    className="w-full px-2 py-1.5 text-sm border rounded"
+                    step="1"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500">泊松比 ν</label>
+                  <input
+                    type="number"
+                    value={customPoisson}
+                    onChange={(e) => {
+                      const nu = Math.min(0.5, Math.max(0, parseFloat(e.target.value) || 0.3));
+                      setCustomPoisson(nu);
+                      setCustomG(parseFloat(calculateG(customE, nu).toFixed(1)));
+                    }}
+                    className="w-full px-2 py-1.5 text-sm border rounded"
+                    step="0.01"
+                    min="0"
+                    max="0.5"
+                  />
+                </div>
+              </div>
+              
+              <div className="text-xs text-slate-400 bg-slate-100 p-2 rounded">
+                💡 提示：G = E / 2(1+ν)，修改 E 或 ν 时会自动计算 G
+              </div>
+
+              <button
+                onClick={handleCustomApply}
+                className="w-full py-2 text-sm font-medium text-white rounded transition-colors"
+                style={{ backgroundColor: 'var(--color-1)' }}
+              >
+                应用自定义材料
+              </button>
+            </div>
+          )}
+
+          {/* 当前参数显示 */}
+          <div className="mt-3 pt-2 border-t border-slate-200 grid grid-cols-4 gap-2 text-xs text-slate-500 font-mono">
+            <span>E: {currentE} GPa</span>
+            <span>G: {currentG || calculateG(currentE || 200, currentPoisson || 0.3).toFixed(1)} GPa</span>
+            <span>σy: {currentYield} MPa</span>
+            <span>ν: {currentPoisson}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -211,6 +1028,7 @@ export const Sidebar = ({
     { id: "stress", label: "应力状态", icon: <MoveDiagonal className="w-5 h-5" /> },
     { id: "solver", label: "结构求解器", icon: <Calculator className="w-5 h-5" /> },
     { id: "section", label: "截面计算", icon: <Shapes className="w-5 h-5" /> },
+    { id: "formulas", label: "常用公式", icon: <BookOpen className="w-5 h-5" /> },
     { id: "resources", label: "资源库", icon: <Library className="w-5 h-5" /> },
     { id: "settings", label: "设置", icon: <Settings className="w-5 h-5" /> },
   ];

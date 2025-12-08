@@ -9,6 +9,7 @@ import { HomeModule } from "./modules/HomeModule";
 import { SettingsModule } from "./modules/SettingsModule";
 import { ResourcesModule } from "./modules/ResourcesModule";
 import { SectionModule } from "./modules/SectionModule";
+import { FormulasModule } from "./modules/FormulasModule";
 import { SolverModule } from "./solver/SolverModule";
 import { AITutor } from "./ai";
 import { ThemeName, getCurrentTheme, applyTheme } from "./theme";
@@ -479,6 +480,7 @@ const App = () => {
         case "combined": return <CombinedModule state={simState} onChange={handleStateChange} />;
         case "solver": return <SolverModule />;
         case "section": return <SectionModule />;
+        case "formulas": return <FormulasModule />;
         case "resources": return <ResourcesModule />;
         case "settings": return <SettingsModule currentTheme={currentTheme} onThemeChange={handleThemeChange} />;
         default: return null;
@@ -561,7 +563,7 @@ const App = () => {
                 <div className="h-full overflow-y-auto">
                   {renderModule()}
                 </div>
-              ) : activeModule === "solver" || activeModule === "settings" || activeModule === "resources" || activeModule === "section" ? (
+              ) : activeModule === "solver" || activeModule === "settings" || activeModule === "resources" || activeModule === "section" || activeModule === "formulas" ? (
                 <div className="h-full overflow-y-auto py-6">
                   {renderModule()}
                 </div>
