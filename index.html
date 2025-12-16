@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>材料力学可视化实验室</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <style>
+      :root {
+        /* 默认主题色（日落暖色） */
+        --color-1: #D77186;  /* 主标题、主要按钮 */
+        --color-2: #61A2DA;  /* 次要标题、图标 */
+        --color-3: #6CB7DA;  /* 强调元素、边框 */
+        --color-4: #B5B5B3;  /* 背景色、卡片 */
+        --color-5: #D75725;  /* 高亮提示、警告 */
+        
+        /* RGB 版本（用于透明度） */
+        --color-1-rgb: 215 113 134;
+        --color-2-rgb: 97 162 218;
+        --color-3-rgb: 108 183 218;
+        --color-4-rgb: 181 181 179;
+        --color-5-rgb: 215 87 37;
+      }
+      
+      body {
+        font-family: 'Inter', "Microsoft YaHei", sans-serif;
+        background-color: #f8fafc;
+      }
+      input[type=range] {
+        -webkit-appearance: none;
+        width: 100%;
+        background: transparent;
+      }
+      input[type=range]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        height: 16px;
+        width: 16px;
+        border-radius: 50%;
+        background: var(--color-1);
+        cursor: pointer;
+        margin-top: -6px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+      }
+      input[type=range]::-webkit-slider-runnable-track {
+        width: 100%;
+        height: 4px;
+        cursor: pointer;
+        background: #cbd5e1;
+        border-radius: 2px;
+      }
+      
+      /* 自定义滚动条样式 */
+      .custom-scrollbar::-webkit-scrollbar {
+        width: 6px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-track {
+        background: #f1f5f9;
+        border-radius: 3px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: var(--color-4);
+        border-radius: 3px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: var(--color-1);
+      }
+      
+      /* 主题色通用类 */
+      .text-theme-1 { color: var(--color-1) !important; }
+      .text-theme-2 { color: var(--color-2) !important; }
+      .text-theme-3 { color: var(--color-3) !important; }
+      .text-theme-4 { color: var(--color-4) !important; }
+      .text-theme-5 { color: var(--color-5) !important; }
+      
+      .bg-theme-1 { background-color: var(--color-1) !important; }
+      .bg-theme-2 { background-color: var(--color-2) !important; }
+      .bg-theme-3 { background-color: var(--color-3) !important; }
+      .bg-theme-4 { background-color: var(--color-4) !important; }
+      .bg-theme-5 { background-color: var(--color-5) !important; }
+      
+      .border-theme-1 { border-color: var(--color-1) !important; }
+      .border-theme-2 { border-color: var(--color-2) !important; }
+      .border-theme-3 { border-color: var(--color-3) !important; }
+      .border-theme-4 { border-color: var(--color-4) !important; }
+      .border-theme-5 { border-color: var(--color-5) !important; }
+      
+      .fill-theme-1 { fill: var(--color-1) !important; }
+      .fill-theme-2 { fill: var(--color-2) !important; }
+      .fill-theme-3 { fill: var(--color-3) !important; }
+      .fill-theme-4 { fill: var(--color-4) !important; }
+      .fill-theme-5 { fill: var(--color-5) !important; }
+      
+      .stroke-theme-1 { stroke: var(--color-1) !important; }
+      .stroke-theme-2 { stroke: var(--color-2) !important; }
+      .stroke-theme-3 { stroke: var(--color-3) !important; }
+      .stroke-theme-4 { stroke: var(--color-4) !important; }
+      .stroke-theme-5 { stroke: var(--color-5) !important; }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.554.0",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
+    "katex": "https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.mjs"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./index.tsx"></script>
+  </body>
+</html>
