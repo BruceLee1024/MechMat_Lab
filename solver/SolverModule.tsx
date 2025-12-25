@@ -1029,137 +1029,18 @@ const DiagramPanel = ({ state, diagramType }: { state: SolverState; diagramType:
     const L = Math.sqrt(Math.pow(n2.x - n1.x, 2) + Math.pow(n2.y - n1.y, 2));
     elemLengths.push(L);
     
-    const elemResult = result.elements[i];
+    // 使用 elementId 匹配，而不是索引
+    const elemResult = result.elements.find(er => er.elementId === elem.id);
     if (elemResult) {
       const forces = elemResult.internalForces;
       
-      // 如果只有一个点，直接添加
-      if (forces.length < 2) {
-        forces.forEach(f => {
-          allForces.push({
-            x: totalLength + f.position * L,
-            V: f.V,
-            M: f.M,
-            elemIdx: i,
-          });
-        });
-      } else {
-        // 多点插值
-        for (let j = 0; j < forces.length - 1; j++) {
-          const f1 = forces[j];
-          const f2 = forces[j+1];
-          
-          // 添加这一段的起始点
-          // 只有当它是第一个点，或者它与上一个点位置不同时才添加（避免重复）
-          if (j === 0 || f1.position > forces[j-1].position + 0.0001) {
-             allForces.push({
-              x: totalLength + f1.position * L,
-              V: f1.V,
-              M: f1.M,
-              elemIdx: i,
-            });
-          }
-          
-          const segmentLen = (f2.position - f1.position) * L;
-          
-          // 如果两点重合（例如集中力处的突变），直接跳过插值，只添加点
-          if (segmentLen <= 0.001) {
-             continue;
-          }
-
-          // 自洽推导法：利用 M 和 V 的关系推导这一段的有效物理长度
-          // M2 - M1 = Integral(V) ≈ Avg(V) * L_phys
-          // => L_phys ≈ (M2 - M1) / ((V1 + V2) / 2)
-          // 这种方法不需要知道外部单位制，直接利用内力数据的自洽性
-          
-          let slope0 = 0;
-          let slope1 = 0;
-          let useHermite = false;
-          
-          const deltaM = f2.M - f1.M;
-          const avgV = (f1.V + f2.V) / 2;
-          
-          // 阈值：避免除以零
-          if (Math.abs(avgV) > 0.1) { // V 不为 0
-             // 计算等效物理长度
-             const l_phys = deltaM / avgV;
-             
-             // 只有当计算出的物理长度为正值（方向一致）时才使用
-             // 如果 l_phys < 0，说明 V 的方向定义与 dM/dx 相反，或者数据有噪声
-             // 我们取绝对值，并根据 V 的符号调整斜率
-             // m = V * L_phys
-             // 验证：Integral = avgV * L_phys = avgV * (deltaM/avgV) = deltaM. 正确。
-             
-             // 实际上，直接用比例即可：
-             // m0 = V1 * (deltaM / avgV)
-             // m1 = V2 * (deltaM / avgV)
-             slope0 = f1.V * (deltaM / avgV);
-             slope1 = f2.V * (deltaM / avgV);
-             useHermite = true;
-          } else {
-             // 如果 V ~ 0 (纯弯或弯矩极值点附近)
-             // 尝试使用均布荷载 q 推导: V2 - V1 = -q * L_phys
-             // L_phys = (V1 - V2) / q
-             const elemLoads = state.loads.filter(l => l.targetId === elem.id && (l.type === 'distributed' || l.type === 'triangular'));
-             let avgQ = 0;
-             elemLoads.forEach(l => {
-                const q1 = l.value;
-                const q2 = l.valueEnd ?? l.value;
-                avgQ += (q1 + q2) / 2;
-             });
-             
-             if (Math.abs(avgQ) > 0.001 && Math.abs(f1.V - f2.V) > 0.001) {
-                 const l_phys = Math.abs((f1.V - f2.V) / avgQ);
-                 // 这种情况下 dM/dx = V (通常)
-                 // 我们需要确定符号。如果 V 从正变负，M 应该是凸的（斜率从正变负）。
-                 // l_phys 是正的。
-                 // 还需要判断 V 和 dM/dx 的符号关系。通常是一致的。
-                 slope0 = f1.V * l_phys;
-                 slope1 = f2.V * l_phys;
-                 useHermite = true;
-             }
-             // 如果都算不出来，useHermite = false，退化为线性插值
-          }
-
-          // 插值中间点
-          const steps = 20;
-          for (let k = 1; k < steps; k++) {
-            const t = k / steps;
-            const xLocal = t * segmentLen;
-            
-            // 剪力 V (线性插值)
-            const V = f1.V + (f2.V - f1.V) * t;
-            
-            let M = 0;
-            if (useHermite) {
-                const t2 = t * t;
-                const t3 = t2 * t;
-                const h00 = 2 * t3 - 3 * t2 + 1;
-                const h10 = t3 - 2 * t2 + t;
-                const h01 = -2 * t3 + 3 * t2;
-                const h11 = t3 - t2;
-                
-                M = h00 * f1.M + h10 * slope0 + h01 * f2.M + h11 * slope1;
-            } else {
-                // 线性插值
-                M = f1.M + (f2.M - f1.M) * t;
-            }
-            
-            allForces.push({
-              x: totalLength + (f1.position * L) + xLocal,
-              V: V,
-              M: M,
-              elemIdx: i,
-            });
-          }
-        }
-        
-        // 添加最后一个点
-        const lastF = forces[forces.length - 1];
+      // 直接添加所有内力点，不做插值
+      // 内力数据已经包含了足够的采样点和突变点
+      for (const f of forces) {
         allForces.push({
-          x: totalLength + lastF.position * L,
-          V: lastF.V,
-          M: lastF.M,
+          x: totalLength + f.position * L,
+          V: f.V,
+          M: f.M,
           elemIdx: i,
         });
       }
@@ -1231,16 +1112,52 @@ const DiagramPanel = ({ state, diagramType }: { state: SolverState; diagramType:
         pathData += ` L ${x} ${y}`;
       }
     });
-  } else {
-    // 剪力图和弯矩图
+  } else if (diagramType === 'shear') {
+    // 剪力图 - 智能绘制
+    // 对于集中力处的突变：先画水平线再画垂直线（阶梯状）
+    // 对于均布荷载：直接连线（斜线）
+    
     allForces.forEach((f, i) => {
       const x = padding + (f.x / totalLength) * plotWidth;
-      let y: number;
-      if (diagramType === 'shear') {
-        y = height / 2 - (f.V / maxV) * (plotHeight / 2) * 0.8;
+      const y = height / 2 - (f.V / maxV) * (plotHeight / 2) * 0.8;
+      
+      if (i === 0) {
+        // 第一个点：从基线开始
+        pathData = `M ${padding} ${height / 2} L ${x} ${y}`;
       } else {
-        y = height / 2 + (f.M / maxM) * (plotHeight / 2) * 0.8;
+        const prevF = allForces[i - 1];
+        const prevX = padding + (prevF.x / totalLength) * plotWidth;
+        const prevY = height / 2 - (prevF.V / maxV) * (plotHeight / 2) * 0.8;
+        const xDiff = Math.abs(f.x - prevF.x);
+        
+        if (xDiff < 0.1) {
+          // 突变点（集中力处）：x 位置几乎相同但 V 值不同
+          // 只画垂直线
+          pathData += ` L ${x} ${y}`;
+        } else {
+          // 检查是否是阶梯变化（剪力值相同）还是线性变化（剪力值不同）
+          const vDiff = Math.abs(f.V - prevF.V);
+          if (vDiff < 0.1) {
+            // 剪力值相同：画水平线
+            pathData += ` L ${x} ${y}`;
+          } else {
+            // 剪力值不同：直接连线（均布荷载导致的线性变化）
+            pathData += ` L ${x} ${y}`;
+          }
+        }
       }
+    });
+    
+    // 最后画回基线
+    if (allForces.length > 0) {
+      const lastX = padding + (allForces[allForces.length - 1].x / totalLength) * plotWidth;
+      pathData += ` L ${lastX} ${height / 2} Z`;
+    }
+  } else {
+    // 弯矩图 - 直接连线
+    allForces.forEach((f, i) => {
+      const x = padding + (f.x / totalLength) * plotWidth;
+      const y = height / 2 + (f.M / maxM) * (plotHeight / 2) * 0.8;
       pathData += ` L ${x} ${y}`;
     });
     pathData += ` L ${padding + plotWidth} ${height / 2} Z`;

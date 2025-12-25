@@ -313,24 +313,41 @@ function solveSimplySupported_DistributedLoad(
   return { forces, R1, R2, maxDeflection };
 }
 
-// 悬臂梁集中力（固定端在左）
+// 悬臂梁集中力（固定端在左，荷载距固定端距离为 a）
 function solveCantilever_PointLoad(
   P: number, a: number, L: number, E: number, I: number
 ): { forces: { position: number; N: number; V: number; M: number }[]; R1: number; M1: number; maxDeflection: number } {
+  // a 是荷载到固定端的距离
+  // 固定端反力：R1 = P（向上），M1 = -P*a（逆时针为负）
   const R1 = P;
   const M1 = -P * a;
   
+  // 收集采样点，确保包含荷载作用点的左右极限
+  const positions = new Set<number>();
   const nPoints = 21;
+  for (let i = 0; i <= nPoints; i++) {
+    positions.add(i / nPoints);
+  }
+  // 添加荷载作用点的左右极限
+  const loadPos = a / L;
+  if (loadPos > 0 && loadPos < 1) {
+    positions.add(loadPos - 1e-9);
+    positions.add(loadPos + 1e-9);
+  }
+  
+  const sortedPositions = Array.from(positions).sort((a, b) => a - b);
   const forces: { position: number; N: number; V: number; M: number }[] = [];
   
-  for (let i = 0; i <= nPoints; i++) {
-    const xi = i / nPoints;
+  for (const xi of sortedPositions) {
     const x = xi * L;
     let V: number, M: number;
     
-    if (x <= a) {
+    // 截面法：从左端（固定端）向右
+    // 在荷载点左侧：V = R1 = P，M = M1 + R1*x = -P*a + P*x = P*(x-a)
+    // 在荷载点右侧：V = R1 - P = 0，M = M1 + R1*x - P*(x-a) = 0
+    if (x <= a + 1e-6) {
       V = P;
-      M = -P * (a - x);
+      M = P * (x - a);  // 负值表示上侧受拉
     } else {
       V = 0;
       M = 0;
@@ -339,15 +356,17 @@ function solveCantilever_PointLoad(
     forces.push({ position: xi, N: 0, V, M });
   }
   
+  // 最大挠度在自由端
   const maxDeflection = (P * a * a * (3 * L - a)) / (6 * E * I);
   
   return { forces, R1, M1, maxDeflection };
 }
 
-// 悬臂梁均布荷载
+// 悬臂梁均布荷载（固定端在左，均布荷载作用在全跨）
 function solveCantilever_DistributedLoad(
   q: number, L: number, E: number, I: number
 ): { forces: { position: number; N: number; V: number; M: number }[]; R1: number; M1: number; maxDeflection: number } {
+  // 固定端反力
   const R1 = q * L;
   const M1 = -q * L * L / 2;
   
@@ -357,11 +376,15 @@ function solveCantilever_DistributedLoad(
   for (let i = 0; i <= nPoints; i++) {
     const xi = i / nPoints;
     const x = xi * L;
+    // 截面法：从左端（固定端）向右
+    // V(x) = R1 - q*x = q*L - q*x = q*(L-x)
+    // M(x) = M1 + R1*x - q*x²/2 = -qL²/2 + qLx - qx²/2 = -q(L-x)²/2
     const V = q * (L - x);
     const M = -q * (L - x) * (L - x) / 2;
     forces.push({ position: xi, N: 0, V, M });
   }
   
+  // 最大挠度在自由端
   const maxDeflection = (q * L * L * L * L) / (8 * E * I);
   
   return { forces, R1, M1, maxDeflection };
@@ -495,12 +518,55 @@ function solveBySectionMethod(
   
   // 根据支座和荷载类型选择公式
   if (structureInfo.type === 'cantilever') {
-    // 悬臂梁
+    // 悬臂梁 - 需要判断固定端在哪一侧
+    const fixedAtLeft = n1.support === 'fixed';
+    const fixedAtRight = n2.support === 'fixed';
+    
     if (load.type === 'point') {
-      result = solveCantilever_PointLoad(P, a, L, E, I);
+      if (fixedAtLeft) {
+        // 固定端在左侧，a 是荷载到固定端的距离
+        result = solveCantilever_PointLoad(P, a, L, E, I);
+      } else if (fixedAtRight) {
+        // 固定端在右侧，需要将坐标系翻转
+        // 荷载到固定端的距离 = L - a
+        const aFromFixed = L - a;
+        const tempResult = solveCantilever_PointLoad(P, aFromFixed, L, E, I);
+        // 翻转内力分布
+        result = {
+          forces: tempResult.forces.map(f => ({
+            position: 1 - f.position,
+            N: f.N,
+            V: -f.V,  // 剪力方向翻转
+            M: f.M,   // 弯矩保持（因为符号约定是上侧受拉为负）
+          })).reverse(),
+          R1: 0,  // 左端（自由端）无反力
+          R2: tempResult.R1,  // 右端（固定端）反力
+          M1: 0,
+          M2: tempResult.M1,
+          maxDeflection: tempResult.maxDeflection,
+        };
+      }
     } else if (load.type === 'distributed') {
       const q = load.value / 1000; // N/m -> N/mm
-      result = solveCantilever_DistributedLoad(q, L, E, I);
+      if (fixedAtLeft) {
+        result = solveCantilever_DistributedLoad(q, L, E, I);
+      } else if (fixedAtRight) {
+        // 固定端在右侧，翻转结果
+        const tempResult = solveCantilever_DistributedLoad(q, L, E, I);
+        result = {
+          forces: tempResult.forces.map(f => ({
+            position: 1 - f.position,
+            N: f.N,
+            V: -f.V,
+            M: f.M,
+          })).reverse(),
+          R1: 0,
+          R2: tempResult.R1,
+          M1: 0,
+          M2: tempResult.M1,
+          maxDeflection: tempResult.maxDeflection,
+        };
+      }
     }
   } else if (structureInfo.type === 'simple-beam') {
     // 简支梁或其他单跨梁
@@ -529,10 +595,18 @@ function solveBySectionMethod(
   // 构建结果
   const nodeResults: NodeResult[] = [];
   
+  // 判断悬臂梁固定端位置
+  const isCantilever = structureInfo.type === 'cantilever';
+  const fixedAtRight = isCantilever && n2.support === 'fixed';
+  
   // 节点1结果
   const node1Result: NodeResult = {
     nodeId: n1.id,
-    displacement: { dx: 0, dy: 0, rz: 0 },
+    displacement: { 
+      dx: 0, 
+      dy: (n1.support === 'none' && isCantilever && fixedAtRight) ? result.maxDeflection : 0, 
+      rz: 0 
+    },
   };
   if (n1.support !== 'none') {
     node1Result.reaction = {
@@ -548,7 +622,7 @@ function solveBySectionMethod(
     nodeId: n2.id,
     displacement: { 
       dx: 0, 
-      dy: n2.support === 'none' ? result.maxDeflection : 0, 
+      dy: (n2.support === 'none' && isCantilever && !fixedAtRight) ? result.maxDeflection : 0, 
       rz: 0 
     },
   };
@@ -566,6 +640,80 @@ function solveBySectionMethod(
   const yieldStrength = elem.material.yield;
   const stressResult = calculateElementStress(result.forces, A, I, b, h, yieldStrength);
   
+  // 计算挠度曲线
+  const deflectionCurve: { position: number; dy: number }[] = [];
+  const nPoints = 21;
+  for (let i = 0; i <= nPoints; i++) {
+    const xi = i / nPoints;
+    const x = xi * L;
+    let dy = 0;
+    
+    // 根据结构类型和荷载类型计算挠度
+    if (structureInfo.type === 'cantilever') {
+      const fixedAtLeft = n1.support === 'fixed';
+      if (load.type === 'point') {
+        const loadA = loadPos * L;  // 荷载到左端的距离
+        if (fixedAtLeft) {
+          // 固定端在左，荷载在 a 处
+          if (x <= loadA) {
+            dy = (P * x * x * (3 * loadA - x)) / (6 * E * I);
+          } else {
+            dy = (P * loadA * loadA * (3 * x - loadA)) / (6 * E * I);
+          }
+        } else {
+          // 固定端在右，需要从右端计算
+          const xFromRight = L - x;
+          const aFromRight = L - loadA;
+          if (xFromRight <= aFromRight) {
+            dy = (P * xFromRight * xFromRight * (3 * aFromRight - xFromRight)) / (6 * E * I);
+          } else {
+            dy = (P * aFromRight * aFromRight * (3 * xFromRight - aFromRight)) / (6 * E * I);
+          }
+        }
+      } else if (load.type === 'distributed') {
+        const q = load.value / 1000;
+        if (fixedAtLeft) {
+          dy = (q * x * x * (6 * L * L - 4 * L * x + x * x)) / (24 * E * I);
+        } else {
+          const xFromRight = L - x;
+          dy = (q * xFromRight * xFromRight * (6 * L * L - 4 * L * xFromRight + xFromRight * xFromRight)) / (24 * E * I);
+        }
+      }
+    } else if (structureInfo.type === 'simple-beam') {
+      if (leftFixed && rightFixed) {
+        // 两端固定
+        if (load.type === 'point') {
+          const loadA = loadPos * L;
+          const loadB = L - loadA;
+          if (x <= loadA) {
+            dy = (P * loadB * loadB * x * x * (3 * loadA * L - x * (3 * loadA + loadB))) / (6 * E * I * L * L * L);
+          } else {
+            dy = (P * loadA * loadA * (L - x) * (L - x) * (3 * loadB * L - (L - x) * (3 * loadB + loadA))) / (6 * E * I * L * L * L);
+          }
+        } else if (load.type === 'distributed') {
+          const q = load.value / 1000;
+          dy = (q * x * x * (L - x) * (L - x)) / (24 * E * I);
+        }
+      } else {
+        // 简支梁
+        if (load.type === 'point') {
+          const loadA = loadPos * L;
+          const loadB = L - loadA;
+          if (x <= loadA) {
+            dy = (P * loadB * x * (L * L - loadB * loadB - x * x)) / (6 * E * I * L);
+          } else {
+            dy = (P * loadA * (L - x) * (L * L - loadA * loadA - (L - x) * (L - x))) / (6 * E * I * L);
+          }
+        } else if (load.type === 'distributed') {
+          const q = load.value / 1000;
+          dy = (q * x * (L - x) * (L * L + x * (L - x))) / (24 * E * I);
+        }
+      }
+    }
+    
+    deflectionCurve.push({ position: xi, dy });
+  }
+  
   // 应变能（简化计算）
   let strainEnergy = 0;
   for (let i = 1; i < result.forces.length; i++) {
@@ -574,9 +722,16 @@ function solveBySectionMethod(
     strainEnergy += M_avg * M_avg * dx / (2 * E * I);
   }
   
+  // 将弯矩从 Nmm 转换为 Nm
+  const convertedForces = result.forces.map(f => ({
+    ...f,
+    M: f.M / 1000,  // Nmm -> Nm
+  }));
+  
   const elementResults: ElementResult[] = [{
     elementId: elem.id,
-    internalForces: result.forces,
+    internalForces: convertedForces,
+    deflectionCurve,
     stressDistribution: stressResult.stressDistribution,
     maxStress: stressResult.maxStress,
     minStress: stressResult.minStress,
@@ -1094,12 +1249,32 @@ function solveByMatrixMethod(
         }
       }
       
-      // 单元端部内力 = 位移产生的节点力 - 固端力
-      // 注意：节点力和截面内力的符号规定不同
-      // 左端：截面内力 = -节点力（因为节点力是作用在节点上的，截面内力是截面左侧对右侧的作用）
-      // 这里 V1, M1 是左端截面的剪力和弯矩
-      const V1 = F_disp[1] - F_fixed[1];  // 左端剪力
-      const M1 = F_disp[2] - F_fixed[2];  // 左端弯矩
+      // 单元端部内力计算
+      // 
+      // 矩阵位移法中的力学关系：
+      // 1. 固端力 F_fixed：当两端完全固定时，荷载在端部产生的约束力
+      //    - 对于向下的集中力 P 在 a 处：
+      //      F_fixed[1] = P*b²*(3a+b)/L³ (左端向上的反力)
+      //      F_fixed[2] = P*a*b²/L² (左端正弯矩，使下侧受拉)
+      // 
+      // 2. 等效节点荷载 F_eq = F_fixed（加到节点上的等效外力）
+      //    - 这样做是为了让节点力平衡
+      // 
+      // 3. 位移产生的端部力 F_disp = K_local * u_local
+      //    - 这是由于节点位移导致单元产生的内力
+      // 
+      // 4. 实际的单元端部力 = F_disp（因为等效节点荷载已经考虑了荷载效应）
+      //    - 但需要加上固端力来得到真实的截面内力
+      // 
+      // 截面内力符号约定：
+      // - 剪力：使截面顺时针转动为正（左侧向上为正）
+      // - 弯矩：使梁下侧受拉为正
+      //
+      // 从左端截面开始，用截面法：
+      // V1 = 左端截面的剪力 = F_disp[1] + F_fixed[1]
+      // M1 = 左端截面的弯矩 = F_disp[2] + F_fixed[2]
+      const V1 = F_disp[1] + F_fixed[1];  // 左端剪力
+      const M1 = F_disp[2] + F_fixed[2];  // 左端弯矩
       
       // 收集所有关键位置
       const keyPositions = new Set<number>([0, 1]);
@@ -1182,7 +1357,7 @@ function solveByMatrixMethod(
           }
         }
         
-        return { position: xi, N: N_axial, V, M };
+        return { position: xi, N: N_axial, V, M: M / 1000 };  // M 从 Nmm 转换为 Nm
       };
       
       for (const xi of sortedPositions) {
@@ -1199,6 +1374,61 @@ function solveByMatrixMethod(
     const b = elem.section.width;
     const yieldStrength = elem.material.yield;
     const stressResult = calculateElementStress(forces, A, I, b, h, yieldStrength);
+    
+    // 计算挠度曲线
+    // 使用梁的形函数插值：y(x) = N1*v1 + N2*θ1 + N3*v2 + N4*θ2
+    // 其中 N1, N2, N3, N4 是 Hermite 形函数
+    const deflectionCurve: { position: number; dy: number }[] = [];
+    if (isBeam) {
+      const v1 = uLocal[1];  // 左端挠度（局部y方向）
+      const theta1 = uLocal[2];  // 左端转角
+      const v2 = uLocal[4];  // 右端挠度
+      const theta2 = uLocal[5];  // 右端转角
+      
+      const nPoints = 21;
+      for (let i = 0; i <= nPoints; i++) {
+        const xi = i / nPoints;
+        const x = xi * L;
+        
+        // Hermite 形函数
+        const xi2 = xi * xi;
+        const xi3 = xi2 * xi;
+        const N1 = 1 - 3 * xi2 + 2 * xi3;
+        const N2 = L * (xi - 2 * xi2 + xi3);
+        const N3 = 3 * xi2 - 2 * xi3;
+        const N4 = L * (-xi2 + xi3);
+        
+        // 由节点位移插值得到的挠度
+        let dy = N1 * v1 + N2 * theta1 + N3 * v2 + N4 * theta2;
+        
+        // 加上荷载引起的局部变形（固端梁的挠度）
+        for (const load of elemLoads) {
+          const loadRad = (load.angle * Math.PI) / 180;
+          const Py = load.value * Math.sin(loadRad);
+          
+          if (load.type === 'point') {
+            const a = (load.position ?? 0.5) * L;
+            const b_load = L - a;
+            // 固端梁集中力挠度公式
+            if (x <= a) {
+              dy += Py * x * x * b_load * b_load * (3 * a * L - x * (3 * a + b_load)) / (6 * E * I * L * L * L);
+            } else {
+              dy += Py * a * a * (L - x) * (L - x) * (3 * b_load * L - (L - x) * (3 * b_load + a)) / (6 * E * I * L * L * L);
+            }
+          } else if (load.type === 'distributed') {
+            const q = Py / 1000;  // N/m -> N/mm
+            // 固端梁均布荷载挠度公式
+            dy += q * x * x * (L - x) * (L - x) / (24 * E * I);
+          }
+        }
+        
+        deflectionCurve.push({ position: xi, dy });
+      }
+    } else {
+      // 桁架没有弯曲挠度
+      deflectionCurve.push({ position: 0, dy: 0 });
+      deflectionCurve.push({ position: 1, dy: 0 });
+    }
     
     // 应变能
     let strainEnergy = 0;
@@ -1219,6 +1449,7 @@ function solveByMatrixMethod(
     return {
       elementId: elem.id,
       internalForces: forces,
+      deflectionCurve,
       stressDistribution: stressResult.stressDistribution,
       maxStress: stressResult.maxStress,
       minStress: stressResult.minStress,

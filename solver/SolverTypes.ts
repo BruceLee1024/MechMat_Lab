@@ -109,6 +109,11 @@ export interface ElementResult {
     V: number;         // 剪力 (N)
     M: number;         // 弯矩 (Nm)
   }[];
+  // 挠度分布 (沿单元长度)
+  deflectionCurve: {
+    position: number;  // 0-1
+    dy: number;        // 挠度 (mm)，向下为正
+  }[];
   // 应力分布
   stressDistribution: StressPoint[];
   // 应力极值
