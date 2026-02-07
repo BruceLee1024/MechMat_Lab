@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Circle, Minus, ArrowDown } from "lucide-react";
 import { SolverState, SolverNode, SolverElement, SolverLoad, SupportType, ElementType } from "../SolverTypes";
 import { SectionProperties, SectionType, calculateSectionProperties } from "../../components";
@@ -119,10 +119,36 @@ export const ModelingPanel = ({
     });
   };
 
+  // 选中项编辑用的截面状态
+  const [editSection, setEditSection] = useState<SectionProperties>({ type: 'rectangle', width: 100, height: 100 });
+
   // 更新选中节点
   const selectedNode = state.nodes.find(n => n.id === state.selectedId);
   const selectedElement = state.elements.find(e => e.id === state.selectedId);
   const selectedLoad = state.loads.find(l => l.id === state.selectedId);
+
+  // 选中单元变化时，同步截面编辑状态
+  useEffect(() => {
+    if (selectedElement) {
+      setEditSection({
+        type: 'custom',
+        customArea: selectedElement.section.A,
+        customIz: selectedElement.section.I,
+      });
+    }
+  }, [state.selectedId]);
+
+  // 更新选中单元的截面
+  const updateSelectedSection = (newSection: SectionProperties) => {
+    setEditSection(newSection);
+    if (!selectedElement) return;
+    const sec = selectedElement.type === 'truss'
+      ? { A: computeSolverSection(newSection).A, I: 0, width: 0, height: 0 }
+      : computeSolverSection(newSection);
+    onChange({ elements: state.elements.map(el =>
+      el.id === selectedElement.id ? { ...el, section: sec } : el
+    )});
+  };
 
   return (
     <div className="space-y-4 text-xs">
@@ -436,24 +462,91 @@ export const ModelingPanel = ({
           {selectedElement && (
             <div className="space-y-2">
               <div className="text-[10px] text-amber-700">单元 {selectedElement.id} ({selectedElement.type === 'beam' ? '梁' : '桁架'})</div>
-              <div className="grid grid-cols-2 gap-2">
-                <div><label className="text-[10px] text-slate-500">A (mm²)</label>
-                  <input type="number" value={Math.round(selectedElement.section.A)}
-                    onChange={(e) => onChange({ elements: state.elements.map(el => el.id === selectedElement.id ? { ...el, section: { ...el.section, A: parseFloat(e.target.value) || 0 } } : el) })}
-                    className="w-full px-2 py-1 border rounded text-xs" /></div>
-                <div><label className="text-[10px] text-slate-500">I (mm⁴)</label>
-                  <input type="number" value={Math.round(selectedElement.section.I)}
-                    onChange={(e) => onChange({ elements: state.elements.map(el => el.id === selectedElement.id ? { ...el, section: { ...el.section, I: parseFloat(e.target.value) || 0 } } : el) })}
-                    className="w-full px-2 py-1 border rounded text-xs" /></div>
-                <div><label className="text-[10px] text-slate-500">宽 (mm)</label>
-                  <input type="number" value={Math.round(selectedElement.section.width)}
-                    onChange={(e) => onChange({ elements: state.elements.map(el => el.id === selectedElement.id ? { ...el, section: { ...el.section, width: parseFloat(e.target.value) || 0 } } : el) })}
-                    className="w-full px-2 py-1 border rounded text-xs" /></div>
-                <div><label className="text-[10px] text-slate-500">高 (mm)</label>
-                  <input type="number" value={Math.round(selectedElement.section.height)}
-                    onChange={(e) => onChange({ elements: state.elements.map(el => el.id === selectedElement.id ? { ...el, section: { ...el.section, height: parseFloat(e.target.value) || 0 } } : el) })}
-                    className="w-full px-2 py-1 border rounded text-xs" /></div>
+              {/* 截面类型选择 */}
+              <div>
+                <label className="text-[10px] text-slate-500">截面类型</label>
+                <div className="grid grid-cols-7 gap-1 mt-1">
+                  {SECTION_TYPES.map(st => (
+                    <button key={st.type} onClick={() => updateSelectedSection({ ...editSection, type: st.type })}
+                      className={`p-1 text-center rounded border text-[10px] ${editSection.type === st.type ? 'bg-indigo-100 border-indigo-400 font-bold' : 'bg-white border-slate-200 hover:bg-slate-50'}`}
+                      title={st.label}
+                    >
+                      <div className="text-sm leading-none">{st.icon}</div>
+                    </button>
+                  ))}
+                </div>
               </div>
+              {/* 截面参数 */}
+              {editSection.type === 'rectangle' && (
+                <div className="grid grid-cols-2 gap-2">
+                  <div><label className="text-[10px] text-slate-500">宽 b (mm)</label>
+                    <input type="number" value={editSection.width || 100} onChange={(e) => updateSelectedSection({ ...editSection, width: parseFloat(e.target.value) || 100 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
+                  <div><label className="text-[10px] text-slate-500">高 h (mm)</label>
+                    <input type="number" value={editSection.height || 100} onChange={(e) => updateSelectedSection({ ...editSection, height: parseFloat(e.target.value) || 100 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
+                </div>
+              )}
+              {editSection.type === 'circle' && (
+                <div><label className="text-[10px] text-slate-500">半径 r (mm)</label>
+                  <input type="number" value={editSection.radius || 50} onChange={(e) => updateSelectedSection({ ...editSection, radius: parseFloat(e.target.value) || 50 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
+              )}
+              {editSection.type === 'hollow_circle' && (
+                <div className="grid grid-cols-2 gap-2">
+                  <div><label className="text-[10px] text-slate-500">外径 R (mm)</label>
+                    <input type="number" value={editSection.outerRadius || 50} onChange={(e) => updateSelectedSection({ ...editSection, outerRadius: parseFloat(e.target.value) || 50 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
+                  <div><label className="text-[10px] text-slate-500">内径 r (mm)</label>
+                    <input type="number" value={editSection.innerRadius || 40} onChange={(e) => updateSelectedSection({ ...editSection, innerRadius: parseFloat(e.target.value) || 40 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
+                </div>
+              )}
+              {editSection.type === 'i_beam' && (
+                <div className="grid grid-cols-2 gap-2">
+                  <div><label className="text-[10px] text-slate-500">翼缘宽 bf</label>
+                    <input type="number" value={editSection.flangeWidth || 100} onChange={(e) => updateSelectedSection({ ...editSection, flangeWidth: parseFloat(e.target.value) || 100 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
+                  <div><label className="text-[10px] text-slate-500">翼缘厚 tf</label>
+                    <input type="number" value={editSection.flangeThickness || 10} onChange={(e) => updateSelectedSection({ ...editSection, flangeThickness: parseFloat(e.target.value) || 10 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
+                  <div><label className="text-[10px] text-slate-500">腹板高 hw</label>
+                    <input type="number" value={editSection.webHeight || 100} onChange={(e) => updateSelectedSection({ ...editSection, webHeight: parseFloat(e.target.value) || 100 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
+                  <div><label className="text-[10px] text-slate-500">腹板厚 tw</label>
+                    <input type="number" value={editSection.webThickness || 6} onChange={(e) => updateSelectedSection({ ...editSection, webThickness: parseFloat(e.target.value) || 6 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
+                </div>
+              )}
+              {editSection.type === 't_beam' && (
+                <div className="grid grid-cols-2 gap-2">
+                  <div><label className="text-[10px] text-slate-500">翼缘宽 bf</label>
+                    <input type="number" value={editSection.tFlangeWidth || 100} onChange={(e) => updateSelectedSection({ ...editSection, tFlangeWidth: parseFloat(e.target.value) || 100 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
+                  <div><label className="text-[10px] text-slate-500">翼缘厚 tf</label>
+                    <input type="number" value={editSection.tFlangeThickness || 10} onChange={(e) => updateSelectedSection({ ...editSection, tFlangeThickness: parseFloat(e.target.value) || 10 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
+                  <div><label className="text-[10px] text-slate-500">腹板高 hw</label>
+                    <input type="number" value={editSection.tWebHeight || 80} onChange={(e) => updateSelectedSection({ ...editSection, tWebHeight: parseFloat(e.target.value) || 80 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
+                  <div><label className="text-[10px] text-slate-500">腹板厚 tw</label>
+                    <input type="number" value={editSection.tWebThickness || 8} onChange={(e) => updateSelectedSection({ ...editSection, tWebThickness: parseFloat(e.target.value) || 8 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
+                </div>
+              )}
+              {editSection.type === 'channel' && (
+                <div className="grid grid-cols-2 gap-2">
+                  <div><label className="text-[10px] text-slate-500">宽 b</label>
+                    <input type="number" value={editSection.channelWidth || 50} onChange={(e) => updateSelectedSection({ ...editSection, channelWidth: parseFloat(e.target.value) || 50 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
+                  <div><label className="text-[10px] text-slate-500">高 h</label>
+                    <input type="number" value={editSection.channelHeight || 100} onChange={(e) => updateSelectedSection({ ...editSection, channelHeight: parseFloat(e.target.value) || 100 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
+                  <div><label className="text-[10px] text-slate-500">翼缘厚 tf</label>
+                    <input type="number" value={editSection.channelFlange || 8} onChange={(e) => updateSelectedSection({ ...editSection, channelFlange: parseFloat(e.target.value) || 8 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
+                  <div><label className="text-[10px] text-slate-500">腹板厚 tw</label>
+                    <input type="number" value={editSection.channelWeb || 5} onChange={(e) => updateSelectedSection({ ...editSection, channelWeb: parseFloat(e.target.value) || 5 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
+                </div>
+              )}
+              {editSection.type === 'custom' && (
+                <div className="grid grid-cols-2 gap-2">
+                  <div><label className="text-[10px] text-slate-500">A (mm²)</label>
+                    <input type="number" value={editSection.customArea || Math.round(selectedElement.section.A)} onChange={(e) => updateSelectedSection({ ...editSection, customArea: parseFloat(e.target.value) || 1000 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
+                  <div><label className="text-[10px] text-slate-500">Iz (mm⁴)</label>
+                    <input type="number" value={editSection.customIz || Math.round(selectedElement.section.I)} onChange={(e) => updateSelectedSection({ ...editSection, customIz: parseFloat(e.target.value) || 1e6 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
+                </div>
+              )}
+              {/* 计算后的截面属性 */}
+              <div className="px-2 py-1 bg-white rounded border text-[10px] text-slate-500 font-mono flex gap-3">
+                <span>A={Math.round(selectedElement.section.A)}</span>
+                <span>Iz={(selectedElement.section.I/1e4).toFixed(1)}×10⁴</span>
+              </div>
+              {/* 材料 */}
               <div className="grid grid-cols-2 gap-2">
                 <div><label className="text-[10px] text-slate-500">E (MPa)</label>
                   <input type="number" value={selectedElement.material.E}
