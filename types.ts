@@ -1,4 +1,4 @@
-export type ModuleType = "home" | "fundamentals" | "axial" | "bending" | "torsion" | "buckling" | "stress" | "combined" | "solver" | "section" | "formulas" | "resources" | "settings";
+export type ModuleType = "home" | "fundamentals" | "axial" | "bending" | "torsion" | "buckling" | "stress" | "shear" | "strength" | "combined" | "solver" | "section" | "formulas" | "resources" | "settings";
 
 // 截面类型
 export type SectionType = 'rectangle' | 'circle' | 'hollow_circle' | 'i_beam' | 't_beam' | 'channel' | 'composite' | 'custom';
@@ -202,6 +202,26 @@ export const THEORY_INFO = {
       { label: "特征方程 (Characteristic Eq)", latex: "\\sigma^3 - I_1\\sigma^2 + I_2\\sigma - I_3 = 0", desc: "求解该三次方程的根即为三个主应力。" }
     ],
     insight: "无论外部载荷多么复杂，在某一个特定的坐标系下（主轴），切应力分量全部为零，此时的正应力即为主应力。这是强度理论的基础。"
+  },
+  shear: {
+    title: "梁的剪应力 (Shear Stress in Beams)",
+    definition: "梁在横向载荷作用下，截面上除了弯曲正应力外还存在剪应力。剪应力沿截面高度呈抛物线分布，中性轴处最大。",
+    formulas: [
+      { label: "剪应力公式", latex: "\\tau = \\frac{V \\cdot Q}{I \\cdot b}", desc: "V为剪力，Q为面积静矩，I为惯性矩，b为截面宽度。" },
+      { label: "矩形截面最大剪应力", latex: "\\tau_{max} = \\frac{3V}{2A}", desc: "矩形截面中性轴处的剪应力为平均值的1.5倍。" },
+      { label: "面积静矩", latex: "Q = \\int_{y}^{y_{max}} y \\cdot b \\, dy", desc: "截面上从y到边缘的面积对中性轴的静矩。" }
+    ],
+    insight: "剪应力在中性轴处最大，在截面上下边缘为零——恰好与弯曲正应力分布相反。工字钢腹板承担了大部分剪力，这是工字钢设计的关键。"
+  },
+  strength: {
+    title: "强度理论 (Strength Theories)",
+    definition: "当构件处于复杂应力状态时，需要用强度理论将多轴应力转化为等效单轴应力，与材料的单轴拉伸强度进行比较来判断是否破坏。",
+    formulas: [
+      { label: "第一强度理论", latex: "\\sigma_1 \\le [\\sigma]", desc: "最大拉应力理论，适用于脆性材料。" },
+      { label: "第三强度理论 (Tresca)", latex: "\\sigma_1 - \\sigma_3 \\le [\\sigma]", desc: "最大剪应力理论，偏安全。" },
+      { label: "第四强度理论 (von Mises)", latex: "\\sqrt{\\frac{1}{2}[(\\sigma_1-\\sigma_2)^2+(\\sigma_2-\\sigma_3)^2+(\\sigma_3-\\sigma_1)^2]} \\le [\\sigma]", desc: "形状改变比能理论，最常用。" }
+    ],
+    insight: "第三和第四强度理论适用于塑性材料（如钢材），第一和第二强度理论适用于脆性材料（如铸铁、混凝土）。von Mises准则是工程中最广泛使用的。"
   },
   combined: {
     title: "组合变形 (Combined Loading)",

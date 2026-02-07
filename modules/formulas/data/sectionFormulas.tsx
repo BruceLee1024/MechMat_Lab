@@ -1,0 +1,9 @@
+import React from "react";
+import { SectionFormula } from "../types";
+
+export const SECTION_FORMULAS: SectionFormula[] = [
+  { id:"rect", name:"矩形", group:"基本截面", diagram:(<svg viewBox="0 0 80 70"><rect x="15" y="8" width="50" height="54" fill="rgba(99,102,241,0.2)" stroke="#6366f1" strokeWidth="2"/><line x1="15" y1="35" x2="65" y2="35" stroke="#94a3b8" strokeWidth="1" strokeDasharray="3,2"/><text x="40" y="68" textAnchor="middle" fill="#64748b" fontSize="10">b</text><text x="73" y="38" fill="#64748b" fontSize="10">h</text></svg>), formulas:[{label:"A",formula:"A=bh"},{label:"Ix",formula:"I_x=\\frac{bh^3}{12}"},{label:"Wx",formula:"W_x=\\frac{bh^2}{6}"}] },
+  { id:"circle", name:"圆形", group:"基本截面", diagram:(<svg viewBox="0 0 80 70"><circle cx="40" cy="35" r="27" fill="rgba(99,102,241,0.2)" stroke="#6366f1" strokeWidth="2"/><line x1="40" y1="35" x2="67" y2="35" stroke="#64748b" strokeWidth="1"/><text x="54" y="30" fill="#64748b" fontSize="10">r</text></svg>), formulas:[{label:"A",formula:"A=\\pi r^2"},{label:"I",formula:"I=\\frac{\\pi r^4}{4}"},{label:"W",formula:"W=\\frac{\\pi r^3}{4}"}] },
+  { id:"hollow", name:"空心圆", group:"基本截面", diagram:(<svg viewBox="0 0 80 70"><circle cx="40" cy="35" r="27" fill="rgba(99,102,241,0.2)" stroke="#6366f1" strokeWidth="2"/><circle cx="40" cy="35" r="16" fill="white" stroke="#6366f1" strokeWidth="2"/></svg>), formulas:[{label:"A",formula:"A=\\pi(R^2-r^2)"},{label:"I",formula:"I=\\frac{\\pi(R^4-r^4)}{4}"}] },
+  { id:"i-beam", name:"I型钢", group:"型钢截面", diagram:(<svg viewBox="0 0 80 70"><path d="M 15 8 L 65 8 L 65 18 L 47 18 L 47 52 L 65 52 L 65 62 L 15 62 L 15 52 L 33 52 L 33 18 L 15 18 Z" fill="rgba(99,102,241,0.2)" stroke="#6366f1" strokeWidth="2"/></svg>), formulas:[{label:"A",formula:"A=2Bt_f+(H-2t_f)t_w"},{label:"Ix",formula:"I_x\\approx\\frac{BH^3-(B-t_w)(H-2t_f)^3}{12}"}] },
+];

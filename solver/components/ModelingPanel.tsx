@@ -1,6 +1,17 @@
 import React, { useState } from "react";
 import { Circle, Minus, ArrowDown } from "lucide-react";
-import { SolverState, SolverNode, SolverElement, SolverLoad, SupportType } from "../SolverTypes";
+import { SolverState, SolverNode, SolverElement, SolverLoad, SupportType, ElementType } from "../SolverTypes";
+import { SectionProperties, SectionType, calculateSectionProperties } from "../../components";
+
+const SECTION_TYPES: { type: SectionType; label: string; icon: string }[] = [
+  { type: 'rectangle', label: '矩形', icon: '▭' },
+  { type: 'circle', label: '圆形', icon: '○' },
+  { type: 'hollow_circle', label: '空心圆', icon: '◎' },
+  { type: 'i_beam', label: '工字钢', icon: 'Ⅰ' },
+  { type: 't_beam', label: 'T型', icon: '⊤' },
+  { type: 'channel', label: '槽钢', icon: '⊏' },
+  { type: 'custom', label: '自定义', icon: '✎' },
+];
 
 export const ModelingPanel = ({
   state,
@@ -15,9 +26,10 @@ export const ModelingPanel = ({
   
   const [elemStart, setElemStart] = useState('');
   const [elemEnd, setElemEnd] = useState('');
-  const [elemWidth, setElemWidth] = useState(100);
-  const [elemHeight, setElemHeight] = useState(100);
+  const [elemType, setElemType] = useState<ElementType>('beam');
+  const [elemSection, setElemSection] = useState<SectionProperties>({ type: 'rectangle', width: 100, height: 100 });
   const [elemE, setElemE] = useState(200000);
+  const [elemYield, setElemYield] = useState(250);
   
   const [loadTarget, setLoadTarget] = useState('');
   const [loadType, setLoadType] = useState<'point' | 'distributed' | 'triangular' | 'moment'>('point');
@@ -47,24 +59,33 @@ export const ModelingPanel = ({
     setNodeX(nodeX + 200); // 自动递增X坐标
   };
 
+  // 从 SectionProperties 计算求解器所需的截面参数
+  const computeSolverSection = (sp: SectionProperties) => {
+    const props = calculateSectionProperties(sp);
+    return { A: props.area, I: props.Iz, width: 2 * props.zMax, height: 2 * props.yMax };
+  };
+
   // 添加单元
   const addElement = () => {
     if (!elemStart || !elemEnd) return;
     const id = `E${state.elements.length + 1}`;
-    const A = elemWidth * elemHeight;
-    const I = (elemWidth * Math.pow(elemHeight, 3)) / 12;
+    const sec = elemType === 'truss'
+      ? { A: computeSolverSection(elemSection).A, I: 0, width: 0, height: 0 }
+      : computeSolverSection(elemSection);
     
     onChange({
       elements: [...state.elements, {
         id,
-        type: 'beam',
+        type: elemType,
         nodeStart: elemStart,
         nodeEnd: elemEnd,
-        section: { A, I, width: elemWidth, height: elemHeight },
-        material: { E: elemE, G: 77000, yield: 250 },
+        section: sec,
+        material: { E: elemE, G: Math.round(elemE / 2.6), yield: elemYield },
       }],
     });
   };
+
+  const sectionProps = calculateSectionProperties(elemSection);
 
   // 添加荷载
   const addLoad = () => {
@@ -155,66 +176,128 @@ export const ModelingPanel = ({
         <h4 className="font-semibold text-slate-700 mb-2 flex items-center gap-1">
           <Minus className="w-3 h-3" /> 添加单元
         </h4>
+        {/* 节点选择 + 单元类型 */}
         <div className="grid grid-cols-2 gap-2 mb-2">
           <div>
             <label className="text-[10px] text-slate-500">起点节点</label>
-            <select
-              value={elemStart}
-              onChange={(e) => setElemStart(e.target.value)}
-              className="w-full px-2 py-1 border rounded text-xs"
-            >
+            <select value={elemStart} onChange={(e) => setElemStart(e.target.value)} className="w-full px-2 py-1 border rounded text-xs">
               <option value="">选择...</option>
               {state.nodes.map(n => <option key={n.id} value={n.id}>{n.id}</option>)}
             </select>
           </div>
           <div>
             <label className="text-[10px] text-slate-500">终点节点</label>
-            <select
-              value={elemEnd}
-              onChange={(e) => setElemEnd(e.target.value)}
-              className="w-full px-2 py-1 border rounded text-xs"
-            >
+            <select value={elemEnd} onChange={(e) => setElemEnd(e.target.value)} className="w-full px-2 py-1 border rounded text-xs">
               <option value="">选择...</option>
               {state.nodes.map(n => <option key={n.id} value={n.id}>{n.id}</option>)}
             </select>
           </div>
         </div>
-        <div className="grid grid-cols-3 gap-2 mb-2">
-          <div>
-            <label className="text-[10px] text-slate-500">宽 (mm)</label>
-            <input
-              type="number"
-              value={elemWidth}
-              onChange={(e) => setElemWidth(parseFloat(e.target.value) || 100)}
-              className="w-full px-2 py-1 border rounded text-xs"
-            />
-          </div>
-          <div>
-            <label className="text-[10px] text-slate-500">高 (mm)</label>
-            <input
-              type="number"
-              value={elemHeight}
-              onChange={(e) => setElemHeight(parseFloat(e.target.value) || 100)}
-              className="w-full px-2 py-1 border rounded text-xs"
-            />
-          </div>
-          <div>
-            <label className="text-[10px] text-slate-500">E (MPa)</label>
-            <input
-              type="number"
-              value={elemE}
-              onChange={(e) => setElemE(parseFloat(e.target.value) || 200000)}
-              className="w-full px-2 py-1 border rounded text-xs"
-            />
+        <div className="mb-2">
+          <label className="text-[10px] text-slate-500">单元类型</label>
+          <div className="flex gap-1 mt-1">
+            {(['beam', 'truss'] as ElementType[]).map(t => (
+              <button key={t} onClick={() => setElemType(t)}
+                className={`flex-1 px-2 py-1 rounded text-xs border ${elemType === t ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white hover:bg-slate-100 border-slate-200'}`}
+              >{t === 'beam' ? '梁' : '桁架'}</button>
+            ))}
           </div>
         </div>
-        <button
-          onClick={addElement}
-          disabled={!elemStart || !elemEnd}
-          className="w-full px-3 py-1 bg-indigo-600 text-white rounded text-xs hover:bg-indigo-700 disabled:opacity-50"
-        >
-          添加单元
-        </button>
+        {/* 截面类型选择 */}
+        <div className="mb-2">
+          <label className="text-[10px] text-slate-500">截面类型</label>
+          <div className="grid grid-cols-7 gap-1 mt-1">
+            {SECTION_TYPES.map(st => (
+              <button key={st.type} onClick={() => setElemSection({ ...elemSection, type: st.type })}
+                className={`p-1 text-center rounded border text-[10px] ${elemSection.type === st.type ? 'bg-indigo-100 border-indigo-400 font-bold' : 'bg-white border-slate-200 hover:bg-slate-50'}`}
+                title={st.label}
+              >
+                <div className="text-sm leading-none">{st.icon}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+        {/* 截面参数 */}
+        <div className="mb-2">
+          {elemSection.type === 'rectangle' && (
+            <div className="grid grid-cols-2 gap-2">
+              <div><label className="text-[10px] text-slate-500">宽 b (mm)</label>
+                <input type="number" value={elemSection.width || 100} onChange={(e) => setElemSection({ ...elemSection, width: parseFloat(e.target.value) || 100 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
+              <div><label className="text-[10px] text-slate-500">高 h (mm)</label>
+                <input type="number" value={elemSection.height || 100} onChange={(e) => setElemSection({ ...elemSection, height: parseFloat(e.target.value) || 100 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
+            </div>
+          )}
+          {elemSection.type === 'circle' && (
+            <div><label className="text-[10px] text-slate-500">半径 r (mm)</label>
+              <input type="number" value={elemSection.radius || 50} onChange={(e) => setElemSection({ ...elemSection, radius: parseFloat(e.target.value) || 50 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
+          )}
+          {elemSection.type === 'hollow_circle' && (
+            <div className="grid grid-cols-2 gap-2">
+              <div><label className="text-[10px] text-slate-500">外径 R (mm)</label>
+                <input type="number" value={elemSection.outerRadius || 50} onChange={(e) => setElemSection({ ...elemSection, outerRadius: parseFloat(e.target.value) || 50 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
+              <div><label className="text-[10px] text-slate-500">内径 r (mm)</label>
+                <input type="number" value={elemSection.innerRadius || 40} onChange={(e) => setElemSection({ ...elemSection, innerRadius: parseFloat(e.target.value) || 40 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
+            </div>
+          )}
+          {elemSection.type === 'i_beam' && (
+            <div className="grid grid-cols-2 gap-2">
+              <div><label className="text-[10px] text-slate-500">翼缘宽 bf</label>
+                <input type="number" value={elemSection.flangeWidth || 100} onChange={(e) => setElemSection({ ...elemSection, flangeWidth: parseFloat(e.target.value) || 100 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
+              <div><label className="text-[10px] text-slate-500">翼缘厚 tf</label>
+                <input type="number" value={elemSection.flangeThickness || 10} onChange={(e) => setElemSection({ ...elemSection, flangeThickness: parseFloat(e.target.value) || 10 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
+              <div><label className="text-[10px] text-slate-500">腹板高 hw</label>
+                <input type="number" value={elemSection.webHeight || 100} onChange={(e) => setElemSection({ ...elemSection, webHeight: parseFloat(e.target.value) || 100 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
+              <div><label className="text-[10px] text-slate-500">腹板厚 tw</label>
+                <input type="number" value={elemSection.webThickness || 6} onChange={(e) => setElemSection({ ...elemSection, webThickness: parseFloat(e.target.value) || 6 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
+            </div>
+          )}
+          {elemSection.type === 't_beam' && (
+            <div className="grid grid-cols-2 gap-2">
+              <div><label className="text-[10px] text-slate-500">翼缘宽 bf</label>
+                <input type="number" value={elemSection.tFlangeWidth || 100} onChange={(e) => setElemSection({ ...elemSection, tFlangeWidth: parseFloat(e.target.value) || 100 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
+              <div><label className="text-[10px] text-slate-500">翼缘厚 tf</label>
+                <input type="number" value={elemSection.tFlangeThickness || 10} onChange={(e) => setElemSection({ ...elemSection, tFlangeThickness: parseFloat(e.target.value) || 10 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
+              <div><label className="text-[10px] text-slate-500">腹板高 hw</label>
+                <input type="number" value={elemSection.tWebHeight || 80} onChange={(e) => setElemSection({ ...elemSection, tWebHeight: parseFloat(e.target.value) || 80 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
+              <div><label className="text-[10px] text-slate-500">腹板厚 tw</label>
+                <input type="number" value={elemSection.tWebThickness || 8} onChange={(e) => setElemSection({ ...elemSection, tWebThickness: parseFloat(e.target.value) || 8 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
+            </div>
+          )}
+          {elemSection.type === 'channel' && (
+            <div className="grid grid-cols-2 gap-2">
+              <div><label className="text-[10px] text-slate-500">宽 b</label>
+                <input type="number" value={elemSection.channelWidth || 50} onChange={(e) => setElemSection({ ...elemSection, channelWidth: parseFloat(e.target.value) || 50 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
+              <div><label className="text-[10px] text-slate-500">高 h</label>
+                <input type="number" value={elemSection.channelHeight || 100} onChange={(e) => setElemSection({ ...elemSection, channelHeight: parseFloat(e.target.value) || 100 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
+              <div><label className="text-[10px] text-slate-500">翼缘厚 tf</label>
+                <input type="number" value={elemSection.channelFlange || 8} onChange={(e) => setElemSection({ ...elemSection, channelFlange: parseFloat(e.target.value) || 8 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
+              <div><label className="text-[10px] text-slate-500">腹板厚 tw</label>
+                <input type="number" value={elemSection.channelWeb || 5} onChange={(e) => setElemSection({ ...elemSection, channelWeb: parseFloat(e.target.value) || 5 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
+            </div>
+          )}
+          {elemSection.type === 'custom' && (
+            <div className="grid grid-cols-2 gap-2">
+              <div><label className="text-[10px] text-slate-500">A (mm²)</label>
+                <input type="number" value={elemSection.customArea || 1000} onChange={(e) => setElemSection({ ...elemSection, customArea: parseFloat(e.target.value) || 1000 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
+              <div><label className="text-[10px] text-slate-500">Iz (mm⁴)</label>
+                <input type="number" value={elemSection.customIz || 1e6} onChange={(e) => setElemSection({ ...elemSection, customIz: parseFloat(e.target.value) || 1e6 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
+            </div>
+          )}
+        </div>
+        {/* 截面属性显示 */}
+        <div className="mb-2 px-2 py-1 bg-white rounded border text-[10px] text-slate-500 font-mono flex gap-3">
+          <span>A={sectionProps.area.toFixed(0)}</span>
+          <span>Iz={(sectionProps.Iz/1e4).toFixed(1)}×10⁴</span>
+        </div>
+        {/* 材料 */}
+        <div className="grid grid-cols-2 gap-2 mb-2">
+          <div><label className="text-[10px] text-slate-500">E (MPa)</label>
+            <input type="number" value={elemE} onChange={(e) => setElemE(parseFloat(e.target.value) || 200000)} className="w-full px-2 py-1 border rounded text-xs" /></div>
+          <div><label className="text-[10px] text-slate-500">屈服强度 (MPa)</label>
+            <input type="number" value={elemYield} onChange={(e) => setElemYield(parseFloat(e.target.value) || 250)} className="w-full px-2 py-1 border rounded text-xs" /></div>
+        </div>
+        <button onClick={addElement} disabled={!elemStart || !elemEnd}
+          className="w-full px-3 py-1 bg-indigo-600 text-white rounded text-xs hover:bg-indigo-700 disabled:opacity-50">添加单元</button>
       </div>
 
       {/* 添加荷载 */}
@@ -348,6 +431,39 @@ export const ModelingPanel = ({
                 <option value="roller">滚动支座</option>
                 <option value="fixed">固定端</option>
               </select>
+            </div>
+          )}
+          {selectedElement && (
+            <div className="space-y-2">
+              <div className="text-[10px] text-amber-700">单元 {selectedElement.id} ({selectedElement.type === 'beam' ? '梁' : '桁架'})</div>
+              <div className="grid grid-cols-2 gap-2">
+                <div><label className="text-[10px] text-slate-500">A (mm²)</label>
+                  <input type="number" value={Math.round(selectedElement.section.A)}
+                    onChange={(e) => onChange({ elements: state.elements.map(el => el.id === selectedElement.id ? { ...el, section: { ...el.section, A: parseFloat(e.target.value) || 0 } } : el) })}
+                    className="w-full px-2 py-1 border rounded text-xs" /></div>
+                <div><label className="text-[10px] text-slate-500">I (mm⁴)</label>
+                  <input type="number" value={Math.round(selectedElement.section.I)}
+                    onChange={(e) => onChange({ elements: state.elements.map(el => el.id === selectedElement.id ? { ...el, section: { ...el.section, I: parseFloat(e.target.value) || 0 } } : el) })}
+                    className="w-full px-2 py-1 border rounded text-xs" /></div>
+                <div><label className="text-[10px] text-slate-500">宽 (mm)</label>
+                  <input type="number" value={Math.round(selectedElement.section.width)}
+                    onChange={(e) => onChange({ elements: state.elements.map(el => el.id === selectedElement.id ? { ...el, section: { ...el.section, width: parseFloat(e.target.value) || 0 } } : el) })}
+                    className="w-full px-2 py-1 border rounded text-xs" /></div>
+                <div><label className="text-[10px] text-slate-500">高 (mm)</label>
+                  <input type="number" value={Math.round(selectedElement.section.height)}
+                    onChange={(e) => onChange({ elements: state.elements.map(el => el.id === selectedElement.id ? { ...el, section: { ...el.section, height: parseFloat(e.target.value) || 0 } } : el) })}
+                    className="w-full px-2 py-1 border rounded text-xs" /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div><label className="text-[10px] text-slate-500">E (MPa)</label>
+                  <input type="number" value={selectedElement.material.E}
+                    onChange={(e) => onChange({ elements: state.elements.map(el => el.id === selectedElement.id ? { ...el, material: { ...el.material, E: parseFloat(e.target.value) || 200000 } } : el) })}
+                    className="w-full px-2 py-1 border rounded text-xs" /></div>
+                <div><label className="text-[10px] text-slate-500">屈服 (MPa)</label>
+                  <input type="number" value={selectedElement.material.yield}
+                    onChange={(e) => onChange({ elements: state.elements.map(el => el.id === selectedElement.id ? { ...el, material: { ...el.material, yield: parseFloat(e.target.value) || 250 } } : el) })}
+                    className="w-full px-2 py-1 border rounded text-xs" /></div>
+              </div>
             </div>
           )}
           {selectedLoad && (

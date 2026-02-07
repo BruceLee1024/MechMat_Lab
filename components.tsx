@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import {
   ArrowRight, MoveVertical, RotateCw, Minimize2, MoveDiagonal,
   BookOpen, Lightbulb, X, Layers, Beaker, GraduationCap, Calculator, Home, Settings, Library, Shapes,
-  MessageCircle, Lock
+  MessageCircle, Lock, Scissors, Shield
 } from "lucide-react";
 import katex from "katex";
 import { ModuleType, THEORY_INFO } from "./types";
@@ -1026,6 +1026,8 @@ export const Sidebar = ({
     { id: "buckling", label: "压杆稳定", icon: <Minimize2 className="w-5 h-5" /> },
     { id: "combined", label: "组合变形", icon: <Layers className="w-5 h-5" /> },
     { id: "stress", label: "应力状态", icon: <MoveDiagonal className="w-5 h-5" /> },
+    { id: "shear", label: "梁的剪应力", icon: <Scissors className="w-5 h-5" /> },
+    { id: "strength", label: "强度理论", icon: <Shield className="w-5 h-5" /> },
     { id: "solver", label: "结构求解器", icon: <Calculator className="w-5 h-5" /> },
     { id: "section", label: "截面计算", icon: <Shapes className="w-5 h-5" /> },
     { id: "formulas", label: "常用公式", icon: <BookOpen className="w-5 h-5" /> },
