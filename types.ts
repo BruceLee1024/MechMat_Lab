@@ -86,6 +86,14 @@ export interface SimulationState {
   combinedHeight: number; // mm
   combinedLength: number; // m
   combinedSection: SectionProperties; // 截面属性
+
+  // Combined Loading - Bending + Torsion (弯扭组合)
+  bendTorque: number; // N·m 扭矩
+  bendTorqueLength: number; // m 扭矩作用位置
+  bendTorqueSection: SectionProperties; // 截面属性
+  bendTorqueBendLoad: number; // N 弯矩载荷
+  bendTorqueBendPos: number; // m 弯矩载荷位置
+  bendTorqueModulus: number; // GPa 弹性模量
 }
 
 export const DEFAULT_STATE: SimulationState = {
@@ -131,6 +139,13 @@ export const DEFAULT_STATE: SimulationState = {
   combinedHeight: 100,
   combinedLength: 1.0,
   combinedSection: { type: 'rectangle', width: 50, height: 100 },
+  // Combined - Bending + Torsion
+  bendTorque: 500,
+  bendTorqueLength: 1.0,
+  bendTorqueSection: { type: 'circle', radius: 30 },
+  bendTorqueBendLoad: 5000,
+  bendTorqueBendPos: 0.5,
+  bendTorqueModulus: 200,
 };
 
 export const THEORY_INFO = {
@@ -209,9 +224,13 @@ export const THEORY_INFO = {
     formulas: [
       { label: "叠加原理 (Superposition)", latex: "\\sigma = \\sigma_{axial} \\pm \\sigma_{bending}", desc: "在线性弹性范围内，各载荷引起的应力可以代数相加。" },
       { label: "偏心拉伸应力", latex: "\\sigma = \\frac{F}{A} \\pm \\frac{M \\cdot y}{I_z}", desc: "轴向力 F 产生的均匀应力与弯矩 M=F·e 产生的线性分布应力叠加。" },
-      { label: "截面核心 (Kern)", latex: "e < \\frac{W}{A}", desc: "如果偏心距过大，截面上可能会出现反向应力（例如受压构件出现拉应力）。" }
+      { label: "截面核心 (Kern)", latex: "e < \\frac{W}{A}", desc: "如果偏心距过大，截面上可能会出现反向应力（例如受压构件出现拉应力）。" },
+      { label: "弯扭组合正应力", latex: "\\sigma = \\frac{M}{W}", desc: "弯矩 M 在危险点产生的最大正应力。" },
+      { label: "弯扭组合切应力", latex: "\\tau = \\frac{T}{W_t}", desc: "扭矩 T 在危险点产生的最大切应力。" },
+      { label: "第三强度理论 (最大切应力)", latex: "\\sigma_{eq3} = \\sqrt{\\sigma^2 + 4\\tau^2}", desc: "适用于塑性材料（如低碳钢）。" },
+      { label: "第四强度理论 (畸变能)", latex: "\\sigma_{eq4} = \\sqrt{\\sigma^2 + 3\\tau^2}", desc: "适用于塑性材料，结果偏安全。" }
     ],
-    insight: "应力的叠加可能会导致截面的一侧应力急剧增大，而另一侧可能减小甚至改变符号。这是设计偏心受力构件（如压力机立柱）时必须考虑的。"
+    insight: "弯扭组合变形常见于传动轴。当轴同时传递弯矩和扭矩时，危险点同时存在正应力和切应力，需要用强度理论进行合成校核。"
   },
   solver: {
     title: "结构求解器 (Structural Solver)",

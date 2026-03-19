@@ -236,39 +236,33 @@ export interface SectionProperties {
 }
 
 // 计算截面属性
-export const calculateSectionProperties = (section: SectionProperties): { area: number; Iz: number; Iy: number; yMax: number; zMax: number } => {
+export const calculateSectionProperties = (section: SectionProperties): { area: number; Iz: number; Iy: number; yMax: number; zMax: number; Ip: number; Wp: number } => {
   switch (section.type) {
     case 'rectangle': {
       const b = section.width || 100;
       const h = section.height || 150;
-      return {
-        area: b * h,
-        Iz: (b * Math.pow(h, 3)) / 12,
-        Iy: (h * Math.pow(b, 3)) / 12,
-        yMax: h / 2,
-        zMax: b / 2,
-      };
+      const area = b * h;
+      const Iz = (b * Math.pow(h, 3)) / 12;
+      const Ip = (b * h * (Math.pow(b, 2) + Math.pow(h, 2))) / 12; // 矩形极惯性矩
+      return { area, Iz, Iy: (h * Math.pow(b, 3)) / 12, yMax: h / 2, zMax: b / 2, Ip, Wp: Ip / Math.max(b, h) / 2 };
     }
     case 'circle': {
       const r = section.radius || 50;
-      return {
-        area: Math.PI * r * r,
-        Iz: (Math.PI * Math.pow(r, 4)) / 4,
-        Iy: (Math.PI * Math.pow(r, 4)) / 4,
-        yMax: r,
-        zMax: r,
-      };
+      const d = r * 2;
+      const area = Math.PI * r * r;
+      const Iz = (Math.PI * Math.pow(d, 4)) / 64;
+      const Ip = (Math.PI * Math.pow(d, 4)) / 32; // 实心圆 Ip = πd⁴/32
+      return { area, Iz, Iy: (Math.PI * Math.pow(d, 4)) / 64, yMax: r, zMax: r, Ip, Wp: Ip / r };
     }
     case 'hollow_circle': {
       const ro = section.outerRadius || 50;
       const ri = section.innerRadius || 40;
-      return {
-        area: Math.PI * (ro * ro - ri * ri),
-        Iz: (Math.PI * (Math.pow(ro, 4) - Math.pow(ri, 4))) / 4,
-        Iy: (Math.PI * (Math.pow(ro, 4) - Math.pow(ri, 4))) / 4,
-        yMax: ro,
-        zMax: ro,
-      };
+      const do_ = ro * 2;
+      const di = ri * 2;
+      const area = Math.PI * (Math.pow(ro, 2) - Math.pow(ri, 2));
+      const Iz = (Math.PI / 64) * (Math.pow(do_, 4) - Math.pow(di, 4));
+      const Ip = (Math.PI / 32) * (Math.pow(do_, 4) - Math.pow(di, 4)); // 空心圆 Ip
+      return { area, Iz, Iy: (Math.PI / 64) * (Math.pow(do_, 4) - Math.pow(di, 4)), yMax: ro, zMax: ro, Ip, Wp: Ip / ro };
     }
     case 'i_beam': {
       const bf = section.flangeWidth || 100;
@@ -276,28 +270,24 @@ export const calculateSectionProperties = (section: SectionProperties): { area: 
       const hw = section.webHeight || 100;
       const tw = section.webThickness || 6;
       const h = hw + 2 * tf;
-      // 工字钢惯性矩 = 外矩形 - 两侧空白矩形
       const Iz = (bf * Math.pow(h, 3)) / 12 - 2 * ((bf - tw) / 2 * Math.pow(hw, 3)) / 12;
       const Iy = 2 * (tf * Math.pow(bf, 3)) / 12 + (hw * Math.pow(tw, 3)) / 12;
       const area = 2 * bf * tf + hw * tw;
-      return { area, Iz, Iy, yMax: h / 2, zMax: bf / 2 };
+      return { area, Iz, Iy, yMax: h / 2, zMax: bf / 2, Ip: Iz + Iy, Wp: (Iz + Iy) / Math.max(h, bf) / 2 };
     }
     case 't_beam': {
-      // T型截面: 翼缘在上，腹板在下
       const bf = section.tFlangeWidth || 100;
       const tf = section.tFlangeThickness || 10;
       const hw = section.tWebHeight || 80;
       const tw = section.tWebThickness || 8;
       const h = tf + hw;
       const area = bf * tf + hw * tw;
-      // 计算形心位置 (从底部算起)
       const yc = (bf * tf * (hw + tf / 2) + hw * tw * (hw / 2)) / area;
-      // 平行轴定理计算Iz
       const Iz_flange = (bf * Math.pow(tf, 3)) / 12 + bf * tf * Math.pow((hw + tf / 2) - yc, 2);
       const Iz_web = (tw * Math.pow(hw, 3)) / 12 + hw * tw * Math.pow((hw / 2) - yc, 2);
       const Iz = Iz_flange + Iz_web;
       const Iy = (tf * Math.pow(bf, 3)) / 12 + (hw * Math.pow(tw, 3)) / 12;
-      return { area, Iz, Iy, yMax: Math.max(yc, h - yc), zMax: bf / 2 };
+      return { area, Iz, Iy, yMax: Math.max(yc, h - yc), zMax: bf / 2, Ip: Iz + Iy, Wp: (Iz + Iy) / Math.max(h, bf) / 2 };
     }
     case 'channel': {
       const b = section.channelWidth || 50;
@@ -307,10 +297,9 @@ export const calculateSectionProperties = (section: SectionProperties): { area: 
       const area = 2 * b * tf + (h - 2 * tf) * tw;
       const Iz = (tw * Math.pow(h, 3)) / 12 + 2 * (b * Math.pow(tf, 3) / 12 + b * tf * Math.pow((h - tf) / 2, 2));
       const Iy = 2 * (tf * Math.pow(b, 3)) / 12 + ((h - 2 * tf) * Math.pow(tw, 3)) / 12;
-      return { area, Iz, Iy, yMax: h / 2, zMax: b };
+      return { area, Iz, Iy, yMax: h / 2, zMax: b, Ip: Iz + Iy, Wp: (Iz + Iy) / Math.max(h, b) / 2 };
     }
     case 'composite': {
-      // 组合截面: 两个矩形上下排列
       const b1 = section.comp1Width || 100;
       const h1 = section.comp1Height || 20;
       const b2 = section.comp2Width || 40;
@@ -318,26 +307,22 @@ export const calculateSectionProperties = (section: SectionProperties): { area: 
       const spacing = section.compSpacing || 0;
       const totalH = h1 + spacing + h2;
       const area = b1 * h1 + b2 * h2;
-      // 形心位置 (从底部算起)
       const yc = (b1 * h1 * (h2 + spacing + h1 / 2) + b2 * h2 * (h2 / 2)) / area;
-      // 平行轴定理
       const Iz1 = (b1 * Math.pow(h1, 3)) / 12 + b1 * h1 * Math.pow((h2 + spacing + h1 / 2) - yc, 2);
       const Iz2 = (b2 * Math.pow(h2, 3)) / 12 + b2 * h2 * Math.pow((h2 / 2) - yc, 2);
       const Iz = Iz1 + Iz2;
       const Iy = (h1 * Math.pow(b1, 3)) / 12 + (h2 * Math.pow(b2, 3)) / 12;
-      return { area, Iz, Iy, yMax: Math.max(yc, totalH - yc), zMax: Math.max(b1, b2) / 2 };
+      return { area, Iz, Iy, yMax: Math.max(yc, totalH - yc), zMax: Math.max(b1, b2) / 2, Ip: Iz + Iy, Wp: (Iz + Iy) / Math.max(totalH, Math.max(b1, b2)) / 2 };
     }
     case 'custom': {
-      return {
-        area: section.customArea || 1000,
-        Iz: section.customIz || 1e6,
-        Iy: section.customIy || 1e6,
-        yMax: 50,
-        zMax: 50,
-      };
+      const Iz = section.customIz || 1e6;
+      const Iy = section.customIy || 1e6;
+      return { area: section.customArea || 1000, Iz, Iy, yMax: 50, zMax: 50, Ip: Iz + Iy, Wp: (Iz + Iy) / 50 };
     }
-    default:
-      return { area: 1000, Iz: 1e6, Iy: 1e6, yMax: 50, zMax: 50 };
+    default: {
+      const area = 1000, Iz = 1e6, Iy = 1e6;
+      return { area, Iz, Iy, yMax: 50, zMax: 50, Ip: Iz + Iy, Wp: (Iz + Iy) / 50 };
+    }
   }
 };
 
