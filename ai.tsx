@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { Bot, Loader2, Send, Lightbulb, RefreshCw, Settings } from "lucide-react";
 import { MarkdownRenderer } from "./components";
 import { ModuleType, SimulationState, THEORY_INFO } from "./types";
-import { getStoredApiKey, getStoredApiBaseUrl } from "./modules/SettingsModule";
+import { getStoredApiKey, getStoredModelEndpoint, getStoredModelName } from "./modules/SettingsModule";
 
 interface Message {
   role: "user" | "assistant" | "system";
@@ -59,7 +59,9 @@ const getGuidingQuestions = (module: ModuleType): string[] => {
         "叠加原理什么时候适用？",
         "偏心拉伸为什么危险？",
         "截面核心是什么概念？",
-        "如何分析组合变形？"
+        "弯扭组合变形如何校核？",
+        "第三和第四强度理论有什么区别？",
+        "传动轴设计应该用哪个强度理论？"
       ];
     case "solver":
       return [
@@ -104,7 +106,9 @@ const getSystemPrompt = (module: ModuleType, state: SimulationState): string => 
       contextInfo = `应力张量: σx=${state.stressSigX}, σy=${state.stressSigY}, σz=${state.stressSigZ}, τxy=${state.stressTauXY}, τyz=${state.stressTauYZ}, τzx=${state.stressTauZX} MPa。`;
       break;
     case "combined":
-      contextInfo = `当前参数: 轴向力 F=${state.combinedLoad}N, 偏心距 e=${state.combinedEccentricity}mm, 截面 ${state.combinedWidth}×${state.combinedHeight}mm。`;
+      contextInfo = `当前偏心受压参数: 轴向力 F=${state.combinedLoad}N, 偏心距 e=${state.combinedEccentricity}mm, 截面 ${state.combinedWidth}×${state.combinedHeight}mm。
+弯扭组合参数: 弯矩载荷 P=${state.bendTorqueBendLoad}N, 载荷位置 a=${state.bendTorqueBendPos}m, 扭矩 T=${state.bendTorque}N·m。
+截面类型: ${state.bendTorqueSection.type}, 弹性模量 E=${state.bendTorqueModulus}GPa。`;
       break;
     default:
       contextInfo = "";
@@ -148,7 +152,7 @@ const getWelcomeMessage = (module: ModuleType, hasApiKey: boolean): string => {
     case "stress":
       return `👋 欢迎来到应力状态分析模块！\n\n这里我们研究一个点上的三维应力状态。调整应力分量，观察主应力和莫尔圆的变化。\n\n**核心问题**：为什么我们要找主应力？${apiHint}`;
     case "combined":
-      return `👋 欢迎来到组合变形模块！\n\n实际工程中，构件往往同时承受多种载荷。这里我们分析偏心拉伸。\n\n**思考**：偏心距为什么这么重要？${apiHint}`;
+      return `👋 欢迎来到组合变形模块！\n\n实际工程中，构件往往同时承受多种载荷。这里有两个子模块：\n- **偏心受压**：轴向力 + 弯矩的组合\n- **弯扭组合**：弯曲 + 扭转的组合（传动轴典型工况）\n\n**思考**：弯扭组合变形为什么要用强度理论，而不是直接叠加应力？${apiHint}`;
     case "solver":
       return `👋 欢迎使用结构求解器！\n\n这是一个强大的工具，可以分析各种梁结构。试着添加节点、单元和载荷，然后求解。\n\n**提示**：从简单的简支梁开始，逐步增加复杂度。${apiHint}`;
     default:
@@ -169,32 +173,27 @@ export const AITutor = ({ activeModule, state, onNavigateToSettings }: AITutorPr
   const [inputValue, setInputValue] = useState("");
   const [lastModule, setLastModule] = useState<ModuleType>(activeModule);
   const [apiKey, setApiKey] = useState<string>("");
-  const [apiBaseUrl, setApiBaseUrl] = useState<string>("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // 加载存储的 API Key 和 Base URL
+  // 加载存储的 API Key
   useEffect(() => {
-    setApiKey(getStoredApiKey());
-    setApiBaseUrl(getStoredApiBaseUrl());
+    const stored = getStoredApiKey();
+    setApiKey(stored);
   }, []);
 
-  // 定期检查 API Key 和 Base URL 是否更新
+  // 定期检查 API Key 是否更新
   useEffect(() => {
-    const checkApiSettings = () => {
-      const storedKey = getStoredApiKey();
-      const storedUrl = getStoredApiBaseUrl();
-      if (storedKey !== apiKey) {
-        setApiKey(storedKey);
-      }
-      if (storedUrl !== apiBaseUrl) {
-        setApiBaseUrl(storedUrl);
+    const checkApiKey = () => {
+      const stored = getStoredApiKey();
+      if (stored !== apiKey) {
+        setApiKey(stored);
       }
     };
     
-    const interval = setInterval(checkApiSettings, 1000);
+    const interval = setInterval(checkApiKey, 1000);
     return () => clearInterval(interval);
-  }, [apiKey, apiBaseUrl]);
+  }, [apiKey]);
 
   // 滚动到底部
   const scrollToBottom = () => {
@@ -256,15 +255,14 @@ export const AITutor = ({ activeModule, state, onNavigateToSettings }: AITutorPr
         ...recentMessages.map(m => ({ role: m.role, content: m.content }))
       ];
 
-      const baseUrl = (apiBaseUrl || "https://api.deepseek.com").replace(/\/$/, "");
-      const response = await fetch(`${baseUrl}/chat/completions`, {
+      const response = await fetch(`${getStoredModelEndpoint()}/chat/completions`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${apiKey}`
         },
         body: JSON.stringify({
-          model: "deepseek-chat",
+          model: getStoredModelName() || "deepseek-chat",
           messages: apiMessages,
           stream: true,
           temperature: 0.7,

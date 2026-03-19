@@ -1,21 +1,108 @@
 import React, { useState, useEffect } from "react";
-import { Key, Bot, Check, Eye, EyeOff, Trash2, Info, ExternalLink, Palette, User, MessageCircle, ChevronDown, ChevronUp, X, History, Sparkles, Wrench, Bug } from "lucide-react";
+import { Key, Bot, Check, Eye, EyeOff, Trash2, Info, ExternalLink, Palette, User, MessageCircle, ChevronDown, ChevronUp, X, History, Sparkles, Wrench, Bug, ChevronRight } from "lucide-react";
 import { ThemeName, THEMES, THEME_NAMES, getCurrentTheme, applyTheme } from "../theme";
 
-// API Key 存储的 localStorage key
-const API_KEY_STORAGE = "deepseek_api_key";
-const API_BASE_URL_STORAGE = "deepseek_api_base_url";
+// ============================================================
+// AI 模型配置
+// ============================================================
+export type AIModelProvider = "deepseek" | "zhipu" | "minimax" | " volcengine" | "doubao" | "siliconflow" | "bailian";
 
-// 默认 API 地址
-const DEFAULT_API_BASE_URL = "https://api.deepseek.com";
+export interface AIModelConfig {
+  id: AIModelProvider;
+  name: string;
+  logo: string; // 颜色类名，用于显示品牌色
+  description: string;
+  defaultEndpoint: string;
+  defaultModel: string;
+  supportsStreaming: boolean;
+  website: string;
+}
 
-// 预设的 API 地址选项
-export const API_BASE_URL_OPTIONS = [
-  { label: "DeepSeek 官方", value: "https://api.deepseek.com" },
-  { label: "自定义", value: "custom" },
+export const AI_MODELS: AIModelConfig[] = [
+  {
+    id: "deepseek",
+    name: "DeepSeek",
+    logo: "bg-blue-500",
+    description: "深度求索自主研发的大语言模型，性价比高，支持超长上下文",
+    defaultEndpoint: "https://api.deepseek.com/v1",
+    defaultModel: "deepseek-chat",
+    supportsStreaming: true,
+    website: "https://platform.deepseek.com",
+  },
+  {
+    id: "zhipu",
+    name: "智谱 AI",
+    logo: "bg-blue-600",
+    description: "清华大学 KEG 实验室研发，中文理解能力强",
+    defaultEndpoint: "https://open.bigmodel.cn/api/paas/v4",
+    defaultModel: "glm-4-flash",
+    supportsStreaming: true,
+    website: "https://bigmodel.cn",
+  },
+  {
+    id: "minimax",
+    name: "MiniMax",
+    logo: "bg-purple-500",
+    description: "稀宇科技研发，支持多模态，内容生成能力强",
+    defaultEndpoint: "https://api.minimax.chat/v1",
+    defaultModel: "MiniMax-Text-01",
+    supportsStreaming: true,
+    website: "https://www.minimax.io",
+  },
+  {
+    id: " volcengine",
+    name: "火山引擎",
+    logo: "bg-orange-500",
+    description: "字节跳动云服务平台，豆包大模型，企业级服务",
+    defaultEndpoint: "https://ark.cn-beijing.volces.com/api/v3",
+    defaultModel: "doubao-pro-32k",
+    supportsStreaming: true,
+    website: "https://console.volcengine.com/ark",
+  },
+  {
+    id: "doubao",
+    name: "豆包",
+    logo: "bg-pink-500",
+    description: "字节跳动 Doubao 系列模型，支持超长上下文",
+    defaultEndpoint: "https://ark.cn-beijing.volces.com/api/v3",
+    defaultModel: "doubao-pro-4k",
+    supportsStreaming: true,
+    website: "https://console.volcengine.com/ark",
+  },
+  {
+    id: "siliconflow",
+    name: "硅基流动",
+    logo: "bg-cyan-500",
+    description: "汇聚多款优质开源模型，高性价比，支持 Flowith",
+    defaultEndpoint: "https://api.siliconflow.cn/v1",
+    defaultModel: "Qwen/Qwen2.5-72B-Instruct",
+    supportsStreaming: true,
+    website: "https://siliconflow.cn",
+  },
+  {
+    id: "bailian",
+    name: "阿里云百炼",
+    logo: "bg-orange-600",
+    description: "阿里云通义千问系列，企业级 AI 服务",
+    defaultEndpoint: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    defaultModel: "qwen-plus",
+    supportsStreaming: true,
+    website: "https://bailian.console.aliyun.com",
+  },
 ];
 
-// 导出获取和设置 API Key 的函数
+// 获取默认模型
+export const getDefaultModel = () => AI_MODELS[0];
+
+// ============================================================
+// API Key 存储
+// ============================================================
+const API_KEY_STORAGE = "deepseek_api_key";
+const MODEL_SELECTION_STORAGE = "ai_model_provider";
+const MODEL_ENDPOINT_STORAGE = "ai_model_endpoint";
+const MODEL_NAME_STORAGE = "ai_model_name";
+
+// 导出获取和设置函数
 export const getStoredApiKey = (): string => {
   if (typeof window !== "undefined") {
     return localStorage.getItem(API_KEY_STORAGE) || "";
@@ -33,20 +120,52 @@ export const setStoredApiKey = (key: string): void => {
   }
 };
 
-// 导出获取和设置 API Base URL 的函数
-export const getStoredApiBaseUrl = (): string => {
+export const getStoredModelProvider = (): AIModelProvider => {
   if (typeof window !== "undefined") {
-    return localStorage.getItem(API_BASE_URL_STORAGE) || DEFAULT_API_BASE_URL;
+    const stored = localStorage.getItem(MODEL_SELECTION_STORAGE);
+    if (stored && AI_MODELS.find(m => m.id === stored)) {
+      return stored as AIModelProvider;
+    }
   }
-  return DEFAULT_API_BASE_URL;
+  return "deepseek";
 };
 
-export const setStoredApiBaseUrl = (url: string): void => {
+export const setStoredModelProvider = (provider: AIModelProvider): void => {
   if (typeof window !== "undefined") {
-    if (url) {
-      localStorage.setItem(API_BASE_URL_STORAGE, url);
+    localStorage.setItem(MODEL_SELECTION_STORAGE, provider);
+  }
+};
+
+export const getStoredModelEndpoint = (): string => {
+  if (typeof window !== "undefined") {
+    return localStorage.getItem(MODEL_ENDPOINT_STORAGE) || "";
+  }
+  return "";
+};
+
+export const setStoredModelEndpoint = (endpoint: string): void => {
+  if (typeof window !== "undefined") {
+    if (endpoint) {
+      localStorage.setItem(MODEL_ENDPOINT_STORAGE, endpoint);
     } else {
-      localStorage.removeItem(API_BASE_URL_STORAGE);
+      localStorage.removeItem(MODEL_ENDPOINT_STORAGE);
+    }
+  }
+};
+
+export const getStoredModelName = (): string => {
+  if (typeof window !== "undefined") {
+    return localStorage.getItem(MODEL_NAME_STORAGE) || "";
+  }
+  return "";
+};
+
+export const setStoredModelName = (name: string): void => {
+  if (typeof window !== "undefined") {
+    if (name) {
+      localStorage.setItem(MODEL_NAME_STORAGE, name);
+    } else {
+      localStorage.removeItem(MODEL_NAME_STORAGE);
     }
   }
 };
@@ -58,26 +177,30 @@ interface SettingsModuleProps {
 
 export const SettingsModule = ({ currentTheme: propTheme, onThemeChange }: SettingsModuleProps) => {
   const [apiKey, setApiKey] = useState("");
-  const [apiBaseUrl, setApiBaseUrl] = useState(DEFAULT_API_BASE_URL);
-  const [useCustomUrl, setUseCustomUrl] = useState(false);
   const [showKey, setShowKey] = useState(false);
   const [saved, setSaved] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [currentTheme, setCurrentTheme] = useState<ThemeName>(propTheme || getCurrentTheme());
+  const [selectedProvider, setSelectedProvider] = useState<AIModelProvider>(getStoredModelProvider());
+  const [customEndpoint, setCustomEndpoint] = useState(getStoredModelEndpoint());
+  const [customModel, setCustomModel] = useState(getStoredModelName());
+  const [showModelPanel, setShowModelPanel] = useState(false);
 
-  // 加载已保存的 API Key 和 Base URL
+  // 加载已保存的设置
   useEffect(() => {
-    const storedKey = getStoredApiKey();
-    if (storedKey) {
-      setApiKey(storedKey);
+    const stored = getStoredApiKey();
+    if (stored) {
+      setApiKey(stored);
     }
-    const storedUrl = getStoredApiBaseUrl();
-    if (storedUrl) {
-      setApiBaseUrl(storedUrl);
-      // 检查是否是预设选项
-      const isPreset = API_BASE_URL_OPTIONS.some(opt => opt.value === storedUrl && opt.value !== "custom");
-      setUseCustomUrl(!isPreset);
+    const storedProvider = getStoredModelProvider();
+    setSelectedProvider(storedProvider);
+    const providerConfig = AI_MODELS.find(m => m.id === storedProvider);
+    if (providerConfig) {
+      const storedEndpoint = getStoredModelEndpoint();
+      const storedModel = getStoredModelName();
+      setCustomEndpoint(storedEndpoint || providerConfig.defaultEndpoint);
+      setCustomModel(storedModel || providerConfig.defaultModel);
     }
   }, []);
 
@@ -88,6 +211,30 @@ export const SettingsModule = ({ currentTheme: propTheme, onThemeChange }: Setti
     }
   }, [propTheme]);
 
+  // 处理模型选择
+  const handleModelSelect = (provider: AIModelProvider) => {
+    setSelectedProvider(provider);
+    setStoredModelProvider(provider);
+    const config = AI_MODELS.find(m => m.id === provider);
+    if (config) {
+      setCustomEndpoint(config.defaultEndpoint);
+      setCustomModel(config.defaultModel);
+      setStoredModelEndpoint(config.defaultEndpoint);
+      setStoredModelName(config.defaultModel);
+    }
+    setShowModelPanel(false);
+  };
+
+  const handleEndpointChange = (endpoint: string) => {
+    setCustomEndpoint(endpoint);
+    setStoredModelEndpoint(endpoint);
+  };
+
+  const handleModelNameChange = (model: string) => {
+    setCustomModel(model);
+    setStoredModelName(model);
+  };
+
   const handleThemeChange = (theme: ThemeName) => {
     setCurrentTheme(theme);
     applyTheme(theme);
@@ -96,7 +243,9 @@ export const SettingsModule = ({ currentTheme: propTheme, onThemeChange }: Setti
 
   const handleSave = () => {
     setStoredApiKey(apiKey);
-    setStoredApiBaseUrl(apiBaseUrl);
+    setStoredModelProvider(selectedProvider);
+    setStoredModelEndpoint(customEndpoint);
+    setStoredModelName(customModel);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
@@ -107,24 +256,9 @@ export const SettingsModule = ({ currentTheme: propTheme, onThemeChange }: Setti
     setTestResult(null);
   };
 
-  const handleUrlChange = (value: string) => {
-    if (value === "custom") {
-      setUseCustomUrl(true);
-      setApiBaseUrl("");
-    } else {
-      setUseCustomUrl(false);
-      setApiBaseUrl(value);
-    }
-  };
-
   const handleTest = async () => {
     if (!apiKey.trim()) {
       setTestResult({ success: false, message: "请先输入 API Key" });
-      return;
-    }
-
-    if (!apiBaseUrl.trim()) {
-      setTestResult({ success: false, message: "请先输入 API 地址" });
       return;
     }
 
@@ -132,15 +266,14 @@ export const SettingsModule = ({ currentTheme: propTheme, onThemeChange }: Setti
     setTestResult(null);
 
     try {
-      const baseUrl = apiBaseUrl.replace(/\/$/, ""); // 移除末尾斜杠
-      const response = await fetch(`${baseUrl}/chat/completions`, {
+      const response = await fetch(customEndpoint || "https://api.deepseek.com/v1/chat/completions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${apiKey}`
         },
         body: JSON.stringify({
-          model: "deepseek-chat",
+          model: customModel || "deepseek-chat",
           messages: [{ role: "user", content: "Hi" }],
           max_tokens: 5
         })
@@ -150,18 +283,20 @@ export const SettingsModule = ({ currentTheme: propTheme, onThemeChange }: Setti
         setTestResult({ success: true, message: "连接成功！API Key 有效" });
         // 测试成功后自动保存
         setStoredApiKey(apiKey);
-        setStoredApiBaseUrl(apiBaseUrl);
+        setStoredModelProvider(selectedProvider);
+        setStoredModelEndpoint(customEndpoint);
+        setStoredModelName(customModel);
       } else {
         const errData = await response.json();
-        setTestResult({ 
-          success: false, 
-          message: errData.error?.message || "API Key 无效或已过期" 
+        setTestResult({
+          success: false,
+          message: errData.error?.message || "API Key 无效或已过期"
         });
       }
     } catch (err: any) {
-      setTestResult({ 
-        success: false, 
-        message: `连接失败: ${err.message}` 
+      setTestResult({
+        success: false,
+        message: `连接失败: ${err.message}`
       });
     } finally {
       setTesting(false);
@@ -169,10 +304,11 @@ export const SettingsModule = ({ currentTheme: propTheme, onThemeChange }: Setti
   };
 
   const maskedKey = apiKey ? `${apiKey.slice(0, 8)}${"•".repeat(20)}${apiKey.slice(-4)}` : "";
+  const currentModelConfig = AI_MODELS.find(m => m.id === selectedProvider);
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      {/* API 设置卡片 */}
+      {/* AI 助手设置卡片 */}
       <div className="bg-white rounded-xl shadow-sm border p-6" style={{ borderColor: "var(--color-3)" }}>
         <div className="flex items-center gap-3 mb-6">
           <div className="p-2 rounded-lg" style={{ backgroundColor: "var(--color-4)" }}>
@@ -180,52 +316,97 @@ export const SettingsModule = ({ currentTheme: propTheme, onThemeChange }: Setti
           </div>
           <div>
             <h3 className="font-bold text-lg" style={{ color: "var(--color-1)" }}>AI 助教设置</h3>
-            <p className="text-sm text-slate-500">配置 DeepSeek API 以启用 AI 助教功能</p>
+            <p className="text-sm text-slate-500">选择 AI 模型并配置 API</p>
           </div>
         </div>
 
-        {/* API 配置 */}
+        {/* 模型选择器 */}
+        <div className="mb-6">
+          <label className="block text-sm font-medium mb-2" style={{ color: "var(--color-1)" }}>
+            选择模型提供商
+          </label>
+          <button
+            onClick={() => setShowModelPanel(!showModelPanel)}
+            className="w-full flex items-center justify-between p-4 rounded-lg border bg-slate-50 hover:bg-slate-100 transition-colors"
+            style={{ borderColor: "var(--color-3)" }}
+          >
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-lg ${currentModelConfig?.logo || 'bg-blue-500'} flex items-center justify-center text-white font-bold text-sm`}>
+                {currentModelConfig?.name.charAt(0) || 'D'}
+              </div>
+              <div className="text-left">
+                <div className="font-medium text-slate-800">{currentModelConfig?.name || '选择模型'}</div>
+                <div className="text-xs text-slate-500">{customModel || currentModelConfig?.defaultModel}</div>
+              </div>
+            </div>
+            <ChevronRight className={`w-5 h-5 text-slate-400 transition-transform ${showModelPanel ? 'rotate-90' : ''}`} />
+          </button>
+
+          {/* 模型选择面板 */}
+          {showModelPanel && (
+            <div className="mt-2 p-2 bg-white rounded-lg border shadow-lg" style={{ borderColor: "var(--color-3)" }}>
+              {AI_MODELS.map((model) => (
+                <button
+                  key={model.id}
+                  onClick={() => handleModelSelect(model.id)}
+                  className={`w-full flex items-center gap-3 p-3 rounded-lg transition-colors ${
+                    selectedProvider === model.id ? 'bg-indigo-50' : 'hover:bg-slate-50'
+                  }`}
+                >
+                  <div className={`w-10 h-10 rounded-lg ${model.logo} flex items-center justify-center text-white font-bold text-sm`}>
+                    {model.name.charAt(0)}
+                  </div>
+                  <div className="flex-1 text-left">
+                    <div className="font-medium text-slate-800">{model.name}</div>
+                    <div className="text-xs text-slate-500">{model.defaultModel}</div>
+                  </div>
+                  {selectedProvider === model.id && (
+                    <Check className="w-5 h-5 text-indigo-500" />
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* 模型配置 */}
         <div className="space-y-4">
-          {/* API 地址选择 */}
+          {/* 模型名称 */}
           <div>
             <label className="block text-sm font-medium mb-2" style={{ color: "var(--color-1)" }}>
-              API 地址
+              模型名称
             </label>
-            <div className="space-y-2">
-              <select
-                value={useCustomUrl ? "custom" : apiBaseUrl}
-                onChange={(e) => handleUrlChange(e.target.value)}
-                className="block w-full px-3 py-3 border rounded-lg bg-slate-50 focus:outline-none focus:ring-2 focus:bg-white transition-colors"
-                style={{ borderColor: "var(--color-3)" }}
-              >
-                {API_BASE_URL_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-              {useCustomUrl && (
-                <input
-                  type="text"
-                  value={apiBaseUrl}
-                  onChange={(e) => setApiBaseUrl(e.target.value)}
-                  placeholder="https://your-proxy.com"
-                  className="block w-full px-3 py-3 border rounded-lg bg-slate-50 focus:outline-none focus:ring-2 focus:bg-white transition-colors"
-                  style={{ borderColor: "var(--color-3)" }}
-                />
-              )}
-              <p className="text-xs text-slate-500">
-                {useCustomUrl 
-                  ? "输入兼容 OpenAI 格式的 API 地址（如代理服务）" 
-                  : "使用 DeepSeek 官方 API 地址"}
-              </p>
-            </div>
+            <input
+              type="text"
+              value={customModel}
+              onChange={(e) => handleModelNameChange(e.target.value)}
+              placeholder="输入模型名称，如 deepseek-chat"
+              className="block w-full px-4 py-3 border rounded-lg bg-slate-50 focus:outline-none focus:ring-2 focus:bg-white transition-colors"
+              style={{ borderColor: "var(--color-3)" }}
+            />
+            <p className="mt-1 text-xs text-slate-500">不同提供商的模型名称可能不同，请参考各平台文档</p>
+          </div>
+
+          {/* API 端点 */}
+          <div>
+            <label className="block text-sm font-medium mb-2" style={{ color: "var(--color-1)" }}>
+              API 端点
+            </label>
+            <input
+              type="text"
+              value={customEndpoint}
+              onChange={(e) => handleEndpointChange(e.target.value)}
+              placeholder="https://api.deepseek.com/v1"
+              className="block w-full px-4 py-3 border rounded-lg bg-slate-50 focus:outline-none focus:ring-2 focus:bg-white transition-colors font-mono text-sm"
+              style={{ borderColor: "var(--color-3)" }}
+            />
+            <p className="mt-1 text-xs text-slate-500">API 请求的基础 URL，通常格式为 https://api.xxx.com/v1</p>
           </div>
 
           {/* API Key 输入 */}
           <div>
             <label className="block text-sm font-medium mb-2" style={{ color: "var(--color-1)" }}>
-              DeepSeek API Key
+              API Key
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -313,28 +494,34 @@ export const SettingsModule = ({ currentTheme: propTheme, onThemeChange }: Setti
         </div>
       </div>
 
-      {/* 说明卡片 */}
+      {/* 模型说明卡片 */}
       <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl border p-6" style={{ borderColor: "var(--color-3)" }}>
         <div className="flex items-start gap-3">
           <Info className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: "var(--color-2)" }} />
           <div className="space-y-3">
             <h4 className="font-medium" style={{ color: "var(--color-1)" }}>如何获取 API Key？</h4>
             <ol className="text-sm text-slate-600 space-y-2 list-decimal list-inside">
-              <li>访问 DeepSeek 开放平台</li>
+              <li>选择您想使用的模型提供商</li>
+              <li>访问对应的开放平台网站</li>
               <li>注册或登录您的账户</li>
               <li>在控制台创建新的 API Key</li>
               <li>复制 Key 并粘贴到上方输入框</li>
             </ol>
-            <a
-              href="https://platform.deepseek.com/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-sm font-medium hover:underline"
-              style={{ color: "var(--color-2)" }}
-            >
-              前往 DeepSeek 平台
-              <ExternalLink className="w-3.5 h-3.5" />
-            </a>
+            <div className="flex flex-wrap gap-2 pt-2">
+              {AI_MODELS.map((model) => (
+                <a
+                  key={model.id}
+                  href={model.website}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium bg-white hover:bg-slate-50 border border-slate-200 transition-colors"
+                  style={{ color: "var(--color-2)" }}
+                >
+                  {model.name}
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -415,6 +602,21 @@ export const SettingsModule = ({ currentTheme: propTheme, onThemeChange }: Setti
 
 // 更新日志数据
 const CHANGELOG = [
+  {
+    version: "1.3.0",
+    date: "2026-03-19",
+    type: "feature" as const,
+    changes: [
+      "组合变形模块新增「弯扭组合」子标签页，支持传动轴弯曲+扭转同时分析",
+      "弯扭组合模块包含扭矩图、弯矩图可视化，以及第三/四强度理论等效应力计算",
+      "AI 助教模块新增支持多款国产大模型：火山引擎、豆包、硅基流动、智谱AI、MiniMax、阿里云百炼",
+      "AI 设置界面重构，支持模型选择、API Key管理、自定义API端点",
+      "圆轴扭转模块重构为三标签结构：传动轴模型、应力分析、强度校核",
+      "扭转模块新增截面切应力分布可视化、扭转角沿轴长分布图",
+      "扭转模块新增强度校核和刚度校核功能，带安全系数计算和超限警告",
+      "扭转模块新增工程设计建议卡片（轴径选择、空心轴优势、材料选择、危险截面）",
+    ],
+  },
   {
     version: "1.2.0",
     date: "2024-12-08",

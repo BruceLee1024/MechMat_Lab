@@ -109,11 +109,6 @@ export interface ElementResult {
     V: number;         // 剪力 (N)
     M: number;         // 弯矩 (Nm)
   }[];
-  // 挠度分布 (沿单元长度)
-  deflectionCurve: {
-    position: number;  // 0-1
-    dy: number;        // 挠度 (mm)，向下为正
-  }[];
   // 应力分布
   stressDistribution: StressPoint[];
   // 应力极值
@@ -496,78 +491,6 @@ export const INCLINED_TRUSS: SolverTemplate = {
   ],
 };
 
-// 门架模板
-export const PORTAL_FRAME: SolverTemplate = {
-  name: '门架结构',
-  description: '两柱一梁的刚架结构，柱底固定，梁上均布荷载',
-  nodes: [
-    {
-      id: 'A',
-      x: 150,
-      y: 450,
-      support: 'fixed',
-      fixedDOF: { dx: true, dy: true, rz: true },
-    },
-    {
-      id: 'B',
-      x: 150,
-      y: 150,
-      support: 'none',
-      fixedDOF: { dx: false, dy: false, rz: false },
-    },
-    {
-      id: 'C',
-      x: 550,
-      y: 150,
-      support: 'none',
-      fixedDOF: { dx: false, dy: false, rz: false },
-    },
-    {
-      id: 'D',
-      x: 550,
-      y: 450,
-      support: 'fixed',
-      fixedDOF: { dx: true, dy: true, rz: true },
-    },
-  ],
-  elements: [
-    {
-      id: 'AB',
-      type: 'beam',
-      nodeStart: 'A',
-      nodeEnd: 'B',
-      section: { A: 10000, I: 833333, width: 100, height: 100 },
-      material: { E: 200000, G: 77000, yield: 250 },
-    },
-    {
-      id: 'BC',
-      type: 'beam',
-      nodeStart: 'B',
-      nodeEnd: 'C',
-      section: { A: 10000, I: 833333, width: 100, height: 100 },
-      material: { E: 200000, G: 77000, yield: 250 },
-    },
-    {
-      id: 'CD',
-      type: 'beam',
-      nodeStart: 'C',
-      nodeEnd: 'D',
-      section: { A: 10000, I: 833333, width: 100, height: 100 },
-      material: { E: 200000, G: 77000, yield: 250 },
-    },
-  ],
-  loads: [
-    {
-      id: 'q1',
-      type: 'distributed',
-      targetType: 'element',
-      targetId: 'BC',
-      value: 5000,
-      angle: 90,
-    },
-  ],
-};
-
 export const SOLVER_TEMPLATES = [
   SIMPLY_SUPPORTED_BEAM,
   CANTILEVER_BEAM,
@@ -575,5 +498,4 @@ export const SOLVER_TEMPLATES = [
   CONTINUOUS_BEAM,
   SIMPLE_TRUSS,
   INCLINED_TRUSS,
-  PORTAL_FRAME,
 ];

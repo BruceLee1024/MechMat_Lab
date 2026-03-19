@@ -7,5 +7,3 @@ export * from "./modules/TorsionModule";
 export * from "./modules/BucklingModule";
 export * from "./modules/CombinedModule";
 export * from "./modules/StressModule";
-export * from "./modules/ShearStressModule";
-export * from "./modules/StrengthTheoryModule";

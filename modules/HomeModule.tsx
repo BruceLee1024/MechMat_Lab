@@ -16,8 +16,6 @@ import {
   Award,
   Shapes,
   Library,
-  Scissors,
-  Shield,
 } from "lucide-react";
 import { ModuleType } from "../types";
 
@@ -86,22 +84,6 @@ const modules: ModuleCard[] = [
     icon: Layers,
     gradient: "from-orange-500 to-red-500",
     shadowColor: "shadow-orange-500/30",
-  },
-  {
-    id: "shear",
-    title: "梁的剪应力",
-    description: "分析梁横截面上的剪应力分布，理解τ=VQ/(Ib)公式",
-    icon: Scissors,
-    gradient: "from-lime-500 to-green-500",
-    shadowColor: "shadow-lime-500/30",
-  },
-  {
-    id: "strength",
-    title: "强度理论",
-    description: "比较四大强度理论的屈服准则与安全判据",
-    icon: Shield,
-    gradient: "from-sky-500 to-blue-500",
-    shadowColor: "shadow-sky-500/30",
   },
   {
     id: "solver",

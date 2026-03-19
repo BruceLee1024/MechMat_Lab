@@ -1,20 +1,19 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { createRoot } from "react-dom/client";
-import { Menu, Lock, Key, X, CheckCircle, AlertCircle, Download, Loader2 } from "lucide-react";
+import { Menu, Lock, Key, X, CheckCircle, AlertCircle } from "lucide-react";
 
 import { ModuleType, SimulationState, DEFAULT_STATE, THEORY_INFO } from "./types";
 import { Sidebar, TheoryPanel } from "./components";
-import { AxialModule, BendingModule, TorsionModule, BucklingModule, StressModule, CombinedModule, FundamentalsModule, ShearStressModule, StrengthTheoryModule } from "./modules";
+import { AxialModule, BendingModule, TorsionModule, BucklingModule, StressModule, CombinedModule, FundamentalsModule } from "./modules";
 import { HomeModule } from "./modules/HomeModule";
 import { SettingsModule } from "./modules/SettingsModule";
 import { ResourcesModule } from "./modules/ResourcesModule";
 import { SectionModule } from "./modules/SectionModule";
-import { FormulasModule } from "./modules/formulas/FormulasModule";
+import { FormulasModule } from "./modules/FormulasModule";
 import { SolverModule } from "./solver/SolverModule";
 import { AITutor } from "./ai";
 import { ThemeName, getCurrentTheme, applyTheme } from "./theme";
 import { isActivated, activateApp, isModuleAvailable, FREE_MODULES } from "./activation";
-import { exportModuleToPdf } from "./utils/exportPdf";
 
 // 添加全局动画样式
 const animationStyles = `
@@ -380,7 +379,6 @@ const App = () => {
   const [isDragging, setIsDragging] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [isExporting, setIsExporting] = useState(false);
 
   // 注入动画样式
   useEffect(() => {
@@ -466,33 +464,6 @@ const App = () => {
 
   const currentTheory = THEORY_INFO[activeModule];
 
-  // 可导出的模块
-  const EXPORTABLE_MODULES: ModuleType[] = [
-    "fundamentals", "axial", "bending", "torsion", "buckling",
-    "stress", "combined", "shear", "strength",
-    "solver", "section", "formulas",
-  ];
-  const canExport = EXPORTABLE_MODULES.includes(activeModule);
-
-  // PDF 导出
-  const handleExport = async () => {
-    if (isExporting) return;
-    const target = document.querySelector('[data-export-target]') as HTMLElement | null;
-    if (!target) return;
-    setIsExporting(true);
-    try {
-      await exportModuleToPdf(
-        target,
-        currentTheory.title,
-        currentTheory.definition
-      );
-    } catch (err) {
-      console.error("PDF export failed:", err);
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
   // 检查当前模块是否被锁定
   const isCurrentModuleLocked = !activated && !isModuleAvailable(displayModule);
 
@@ -507,8 +478,6 @@ const App = () => {
         case "buckling": return <BucklingModule state={simState} onChange={handleStateChange} />;
         case "stress": return <StressModule state={simState} onChange={handleStateChange} />;
         case "combined": return <CombinedModule state={simState} onChange={handleStateChange} />;
-        case "shear": return <ShearStressModule state={simState} onChange={handleStateChange} />;
-        case "strength": return <StrengthTheoryModule state={simState} onChange={handleStateChange} />;
         case "solver": return <SolverModule />;
         case "section": return <SectionModule />;
         case "formulas": return <FormulasModule />;
@@ -576,26 +545,8 @@ const App = () => {
                 zIndex: 5
               }}
             >
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-2xl font-bold" style={{ color: 'var(--color-1)' }}>{currentTheory.title}</h2>
-                  <p className="text-slate-500 mt-1 text-sm">{currentTheory.definition}</p>
-                </div>
-                {canExport && (
-                  <button
-                    onClick={handleExport}
-                    disabled={isExporting}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors border border-slate-300 hover:border-slate-400 text-slate-600 hover:text-slate-800 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed shrink-0 ml-4"
-                  >
-                    {isExporting ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Download className="w-4 h-4" />
-                    )}
-                    {isExporting ? "导出中..." : "导出PDF"}
-                  </button>
-                )}
-              </div>
+              <h2 className="text-2xl font-bold" style={{ color: 'var(--color-1)' }}>{currentTheory.title}</h2>
+              <p className="text-slate-500 mt-1 text-sm">{currentTheory.definition}</p>
             </div>
           )}
 
@@ -613,7 +564,7 @@ const App = () => {
                   {renderModule()}
                 </div>
               ) : activeModule === "solver" || activeModule === "settings" || activeModule === "resources" || activeModule === "section" || activeModule === "formulas" ? (
-                <div className="h-full overflow-y-auto py-6" data-export-target>
+                <div className="h-full overflow-y-auto py-6">
                   {renderModule()}
                 </div>
               ) : (
@@ -624,7 +575,7 @@ const App = () => {
                     className="overflow-y-auto pr-2"
                     style={{ width: `${leftPanelWidth}%` }}
                   >
-                    <div className="space-y-4" data-export-target>
+                    <div className="space-y-4">
                       {renderModule()}
                     </div>
                   </div>

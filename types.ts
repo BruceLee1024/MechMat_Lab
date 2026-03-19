@@ -1,4 +1,4 @@
-export type ModuleType = "home" | "fundamentals" | "axial" | "bending" | "torsion" | "buckling" | "stress" | "shear" | "strength" | "combined" | "solver" | "section" | "formulas" | "resources" | "settings";
+export type ModuleType = "home" | "fundamentals" | "axial" | "bending" | "torsion" | "buckling" | "stress" | "combined" | "solver" | "section" | "formulas" | "resources" | "settings";
 
 // 截面类型
 export type SectionType = 'rectangle' | 'circle' | 'hollow_circle' | 'i_beam' | 't_beam' | 'channel' | 'composite' | 'custom';
@@ -86,6 +86,14 @@ export interface SimulationState {
   combinedHeight: number; // mm
   combinedLength: number; // m
   combinedSection: SectionProperties; // 截面属性
+
+  // Combined Loading - Bending + Torsion (弯扭组合)
+  bendTorque: number; // N·m 扭矩
+  bendTorqueLength: number; // m 扭矩作用位置
+  bendTorqueSection: SectionProperties; // 截面属性
+  bendTorqueBendLoad: number; // N 弯矩载荷
+  bendTorqueBendPos: number; // m 弯矩载荷位置
+  bendTorqueModulus: number; // GPa 弹性模量
 }
 
 export const DEFAULT_STATE: SimulationState = {
@@ -131,6 +139,13 @@ export const DEFAULT_STATE: SimulationState = {
   combinedHeight: 100,
   combinedLength: 1.0,
   combinedSection: { type: 'rectangle', width: 50, height: 100 },
+  // Combined - Bending + Torsion
+  bendTorque: 500,
+  bendTorqueLength: 1.0,
+  bendTorqueSection: { type: 'circle', radius: 30 },
+  bendTorqueBendLoad: 5000,
+  bendTorqueBendPos: 0.5,
+  bendTorqueModulus: 200,
 };
 
 export const THEORY_INFO = {
@@ -203,35 +218,19 @@ export const THEORY_INFO = {
     ],
     insight: "无论外部载荷多么复杂，在某一个特定的坐标系下（主轴），切应力分量全部为零，此时的正应力即为主应力。这是强度理论的基础。"
   },
-  shear: {
-    title: "梁的剪应力 (Shear Stress in Beams)",
-    definition: "梁在横向载荷作用下，截面上除了弯曲正应力外还存在剪应力。剪应力沿截面高度呈抛物线分布，中性轴处最大。",
-    formulas: [
-      { label: "剪应力公式", latex: "\\tau = \\frac{V \\cdot Q}{I \\cdot b}", desc: "V为剪力，Q为面积静矩，I为惯性矩，b为截面宽度。" },
-      { label: "矩形截面最大剪应力", latex: "\\tau_{max} = \\frac{3V}{2A}", desc: "矩形截面中性轴处的剪应力为平均值的1.5倍。" },
-      { label: "面积静矩", latex: "Q = \\int_{y}^{y_{max}} y \\cdot b \\, dy", desc: "截面上从y到边缘的面积对中性轴的静矩。" }
-    ],
-    insight: "剪应力在中性轴处最大，在截面上下边缘为零——恰好与弯曲正应力分布相反。工字钢腹板承担了大部分剪力，这是工字钢设计的关键。"
-  },
-  strength: {
-    title: "强度理论 (Strength Theories)",
-    definition: "当构件处于复杂应力状态时，需要用强度理论将多轴应力转化为等效单轴应力，与材料的单轴拉伸强度进行比较来判断是否破坏。",
-    formulas: [
-      { label: "第一强度理论", latex: "\\sigma_1 \\le [\\sigma]", desc: "最大拉应力理论，适用于脆性材料。" },
-      { label: "第三强度理论 (Tresca)", latex: "\\sigma_1 - \\sigma_3 \\le [\\sigma]", desc: "最大剪应力理论，偏安全。" },
-      { label: "第四强度理论 (von Mises)", latex: "\\sqrt{\\frac{1}{2}[(\\sigma_1-\\sigma_2)^2+(\\sigma_2-\\sigma_3)^2+(\\sigma_3-\\sigma_1)^2]} \\le [\\sigma]", desc: "形状改变比能理论，最常用。" }
-    ],
-    insight: "第三和第四强度理论适用于塑性材料（如钢材），第一和第二强度理论适用于脆性材料（如铸铁、混凝土）。von Mises准则是工程中最广泛使用的。"
-  },
   combined: {
     title: "组合变形 (Combined Loading)",
     definition: "构件同时发生两种或两种以上的基本变形。常见的如偏心拉伸（拉伸+弯曲）或弯扭组合（弯曲+扭转）。",
     formulas: [
       { label: "叠加原理 (Superposition)", latex: "\\sigma = \\sigma_{axial} \\pm \\sigma_{bending}", desc: "在线性弹性范围内，各载荷引起的应力可以代数相加。" },
       { label: "偏心拉伸应力", latex: "\\sigma = \\frac{F}{A} \\pm \\frac{M \\cdot y}{I_z}", desc: "轴向力 F 产生的均匀应力与弯矩 M=F·e 产生的线性分布应力叠加。" },
-      { label: "截面核心 (Kern)", latex: "e < \\frac{W}{A}", desc: "如果偏心距过大，截面上可能会出现反向应力（例如受压构件出现拉应力）。" }
+      { label: "截面核心 (Kern)", latex: "e < \\frac{W}{A}", desc: "如果偏心距过大，截面上可能会出现反向应力（例如受压构件出现拉应力）。" },
+      { label: "弯扭组合正应力", latex: "\\sigma = \\frac{M}{W}", desc: "弯矩 M 在危险点产生的最大正应力。" },
+      { label: "弯扭组合切应力", latex: "\\tau = \\frac{T}{W_t}", desc: "扭矩 T 在危险点产生的最大切应力。" },
+      { label: "第三强度理论 (最大切应力)", latex: "\\sigma_{eq3} = \\sqrt{\\sigma^2 + 4\\tau^2}", desc: "适用于塑性材料（如低碳钢）。" },
+      { label: "第四强度理论 (畸变能)", latex: "\\sigma_{eq4} = \\sqrt{\\sigma^2 + 3\\tau^2}", desc: "适用于塑性材料，结果偏安全。" }
     ],
-    insight: "应力的叠加可能会导致截面的一侧应力急剧增大，而另一侧可能减小甚至改变符号。这是设计偏心受力构件（如压力机立柱）时必须考虑的。"
+    insight: "弯扭组合变形常见于传动轴。当轴同时传递弯矩和扭矩时，危险点同时存在正应力和切应力，需要用强度理论进行合成校核。"
   },
   solver: {
     title: "结构求解器 (Structural Solver)",
