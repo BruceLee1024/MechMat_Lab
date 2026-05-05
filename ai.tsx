@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { Bot, Loader2, Send, Lightbulb, RefreshCw, Settings } from "lucide-react";
 import { MarkdownRenderer } from "./components";
 import { ModuleType, SimulationState, THEORY_INFO } from "./types";
-import { getStoredApiKey, getStoredModelEndpoint, getStoredModelName } from "./modules/SettingsModule";
+import { getStoredApiKey, getStoredModelEndpoint, getStoredModelName, getStoredModelProvider, AI_MODELS } from "./modules/SettingsModule";
 
 interface Message {
   role: "user" | "assistant" | "system";
@@ -255,14 +255,15 @@ export const AITutor = ({ activeModule, state, onNavigateToSettings }: AITutorPr
         ...recentMessages.map(m => ({ role: m.role, content: m.content }))
       ];
 
-      const response = await fetch(`${getStoredModelEndpoint()}/chat/completions`, {
+      const endpoint = getStoredModelEndpoint() || (AI_MODELS.find(m => m.id === getStoredModelProvider()) || AI_MODELS[0]).defaultEndpoint;
+      const response = await fetch(`${endpoint}/chat/completions`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${apiKey}`
         },
         body: JSON.stringify({
-          model: getStoredModelName() || "deepseek-chat",
+          model: getStoredModelName() || (AI_MODELS.find(m => m.id === getStoredModelProvider()) || AI_MODELS[0]).defaultModel,
           messages: apiMessages,
           stream: true,
           temperature: 0.7,
@@ -271,8 +272,15 @@ export const AITutor = ({ activeModule, state, onNavigateToSettings }: AITutorPr
       });
 
       if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error?.message || "请求失败");
+        let errMsg = `请求失败 (${response.status})`;
+        try {
+          const errText = await response.text();
+          const errData = JSON.parse(errText);
+          errMsg = errData.error?.message || errMsg;
+        } catch {
+          // 错误响应体不是有效 JSON，使用默认错误信息
+        }
+        throw new Error(errMsg);
       }
 
       // 流式读取响应

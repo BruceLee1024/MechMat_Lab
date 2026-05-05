@@ -23,9 +23,9 @@ export const AI_MODELS: AIModelConfig[] = [
     id: "deepseek",
     name: "DeepSeek",
     logo: "bg-blue-500",
-    description: "深度求索自主研发的大语言模型，性价比高，支持超长上下文",
-    defaultEndpoint: "https://api.deepseek.com/v1",
-    defaultModel: "deepseek-chat",
+    description: "深度求索 V4 系列，支持 1M 上下文，性价比极高",
+    defaultEndpoint: "https://api.deepseek.com",
+    defaultModel: "deepseek-v4-flash",
     supportsStreaming: true,
     website: "https://platform.deepseek.com",
   },
@@ -266,14 +266,15 @@ export const SettingsModule = ({ currentTheme: propTheme, onThemeChange }: Setti
     setTestResult(null);
 
     try {
-      const response = await fetch(customEndpoint || "https://api.deepseek.com/v1/chat/completions", {
+      const testEndpoint = customEndpoint || (AI_MODELS.find(m => m.id === selectedProvider) || AI_MODELS[0]).defaultEndpoint;
+      const response = await fetch(`${testEndpoint}/chat/completions`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${apiKey}`
         },
         body: JSON.stringify({
-          model: customModel || "deepseek-chat",
+          model: customModel || (AI_MODELS.find(m => m.id === selectedProvider) || AI_MODELS[0]).defaultModel,
           messages: [{ role: "user", content: "Hi" }],
           max_tokens: 5
         })
@@ -287,10 +288,17 @@ export const SettingsModule = ({ currentTheme: propTheme, onThemeChange }: Setti
         setStoredModelEndpoint(customEndpoint);
         setStoredModelName(customModel);
       } else {
-        const errData = await response.json();
+        let errMsg = `API Key 无效或已过期 (${response.status})`;
+        try {
+          const errText = await response.text();
+          const errData = JSON.parse(errText);
+          errMsg = errData.error?.message || errMsg;
+        } catch {
+          // 错误响应体不是有效 JSON
+        }
         setTestResult({
           success: false,
-          message: errData.error?.message || "API Key 无效或已过期"
+          message: errMsg
         });
       }
     } catch (err: any) {
