@@ -1,0 +1,29 @@
+{
+  "format": "mechmat-experiment",
+  "schemaVersion": 1,
+  "calculationVersion": 1,
+  "id": "72392d5b-c15e-4af1-9df1-7cdb8d8bdb43",
+  "name": "加高梁",
+  "module": "bending",
+  "createdAt": "2026-10-04T07:22:39.460Z",
+  "updatedAt": "2026-10-04T07:22:39.460Z",
+  "model": {
+    "kind": "simulation",
+    "parameters": {
+      "materialName": "结构钢 (Structural Steel)",
+      "materialYield": 250,
+      "poissonRatio": 0.3,
+      "bendLoad": 1000,
+      "bendLength": 2,
+      "bendLoadPos": 1,
+      "bendModulus": 200,
+      "bendWidth": 100,
+      "bendHeight": 200,
+      "bendSection": {
+        "type": "rectangle",
+        "width": 100,
+        "height": 400
+      }
+    }
+  }
+}

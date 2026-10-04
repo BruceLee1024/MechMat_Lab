@@ -1,3 +1,4 @@
+import { calculateElementStress } from './StressCalculator';
 // ==========================================
 // 材料力学经典求解器 - 基于平衡方程和叠加法
 // ==========================================
@@ -440,8 +441,7 @@ export function solveClassic(
     elementResults.push({
       elementId: element.id,
       internalForces,
-      maxStress,
-      minStress: -maxStress,
+      ...calculateElementStress(internalForces, element.section.A, I, element.section.width, h, element.material.yield),
       strainEnergy: solution.strainEnergy,
     });
     

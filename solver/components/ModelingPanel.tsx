@@ -1,7 +1,8 @@
+import { SECTION_FIELDS, validateSection } from "../../mechanics/sections";
 import React, { useState, useEffect } from "react";
 import { Circle, Minus, ArrowDown } from "lucide-react";
 import { SolverState, SolverNode, SolverElement, SolverLoad, SupportType, ElementType } from "../SolverTypes";
-import { SectionProperties, SectionType, calculateSectionProperties } from "../../components";
+import { SectionProperties, SectionType, calculateSectionProperties, NumericInput } from "../../components";
 
 const SECTION_TYPES: { type: SectionType; label: string; icon: string }[] = [
   { type: 'rectangle', label: '矩形', icon: '▭' },
@@ -23,14 +24,14 @@ export const ModelingPanel = ({
   const [nodeX, setNodeX] = useState(0);
   const [nodeY, setNodeY] = useState(300);
   const [nodeSupport, setNodeSupport] = useState<SupportType>('none');
-  
+
   const [elemStart, setElemStart] = useState('');
   const [elemEnd, setElemEnd] = useState('');
   const [elemType, setElemType] = useState<ElementType>('beam');
   const [elemSection, setElemSection] = useState<SectionProperties>({ type: 'rectangle', width: 100, height: 100 });
   const [elemE, setElemE] = useState(200000);
   const [elemYield, setElemYield] = useState(250);
-  
+
   const [loadTarget, setLoadTarget] = useState('');
   const [loadType, setLoadType] = useState<'point' | 'distributed' | 'triangular' | 'moment'>('point');
   const [loadValue, setLoadValue] = useState(10000);
@@ -46,7 +47,7 @@ export const ModelingPanel = ({
       roller: { dx: false, dy: true, rz: false },
       none: { dx: false, dy: false, rz: false },
     }[nodeSupport];
-    
+
     onChange({
       nodes: [...state.nodes, {
         id,
@@ -72,7 +73,7 @@ export const ModelingPanel = ({
     const sec = elemType === 'truss'
       ? { A: computeSolverSection(elemSection).A, I: 0, width: 0, height: 0 }
       : computeSolverSection(elemSection);
-    
+
     onChange({
       elements: [...state.elements, {
         id,
@@ -92,7 +93,7 @@ export const ModelingPanel = ({
     if (!loadTarget) return;
     const id = `L${state.loads.length + 1}`;
     const isElement = state.elements.some(e => e.id === loadTarget);
-    
+
     onChange({
       loads: [...state.loads, {
         id,
@@ -133,7 +134,7 @@ export const ModelingPanel = ({
       setEditSection({
         type: 'custom',
         customArea: selectedElement.section.A,
-        customIz: selectedElement.section.I,
+        customIz: selectedElement.section.I > 0 ? selectedElement.section.I : undefined,
       });
     }
   }, [state.selectedId]);
@@ -160,21 +161,11 @@ export const ModelingPanel = ({
         <div className="grid grid-cols-2 gap-2 mb-2">
           <div>
             <label className="text-[10px] text-slate-500">X (mm)</label>
-            <input
-              type="number"
-              value={nodeX}
-              onChange={(e) => setNodeX(parseFloat(e.target.value) || 0)}
-              className="w-full px-2 py-1 border rounded text-xs"
-            />
+            <NumericInput label="X (mm)" value={nodeX} onChange={setNodeX} domain="signed" />
           </div>
           <div>
             <label className="text-[10px] text-slate-500">Y (mm)</label>
-            <input
-              type="number"
-              value={nodeY}
-              onChange={(e) => setNodeY(parseFloat(e.target.value) || 0)}
-              className="w-full px-2 py-1 border rounded text-xs"
-            />
+            <NumericInput label="Y (mm)" value={nodeY} onChange={setNodeY} domain="signed" />
           </div>
         </div>
         <div className="flex gap-2 mb-2">
@@ -243,72 +234,11 @@ export const ModelingPanel = ({
             ))}
           </div>
         </div>
-        {/* 截面参数 */}
-        <div className="mb-2">
-          {elemSection.type === 'rectangle' && (
-            <div className="grid grid-cols-2 gap-2">
-              <div><label className="text-[10px] text-slate-500">宽 b (mm)</label>
-                <input type="number" value={elemSection.width || 100} onChange={(e) => setElemSection({ ...elemSection, width: parseFloat(e.target.value) || 100 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
-              <div><label className="text-[10px] text-slate-500">高 h (mm)</label>
-                <input type="number" value={elemSection.height || 100} onChange={(e) => setElemSection({ ...elemSection, height: parseFloat(e.target.value) || 100 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
-            </div>
-          )}
-          {elemSection.type === 'circle' && (
-            <div><label className="text-[10px] text-slate-500">半径 r (mm)</label>
-              <input type="number" value={elemSection.radius || 50} onChange={(e) => setElemSection({ ...elemSection, radius: parseFloat(e.target.value) || 50 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
-          )}
-          {elemSection.type === 'hollow_circle' && (
-            <div className="grid grid-cols-2 gap-2">
-              <div><label className="text-[10px] text-slate-500">外径 R (mm)</label>
-                <input type="number" value={elemSection.outerRadius || 50} onChange={(e) => setElemSection({ ...elemSection, outerRadius: parseFloat(e.target.value) || 50 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
-              <div><label className="text-[10px] text-slate-500">内径 r (mm)</label>
-                <input type="number" value={elemSection.innerRadius || 40} onChange={(e) => setElemSection({ ...elemSection, innerRadius: parseFloat(e.target.value) || 40 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
-            </div>
-          )}
-          {elemSection.type === 'i_beam' && (
-            <div className="grid grid-cols-2 gap-2">
-              <div><label className="text-[10px] text-slate-500">翼缘宽 bf</label>
-                <input type="number" value={elemSection.flangeWidth || 100} onChange={(e) => setElemSection({ ...elemSection, flangeWidth: parseFloat(e.target.value) || 100 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
-              <div><label className="text-[10px] text-slate-500">翼缘厚 tf</label>
-                <input type="number" value={elemSection.flangeThickness || 10} onChange={(e) => setElemSection({ ...elemSection, flangeThickness: parseFloat(e.target.value) || 10 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
-              <div><label className="text-[10px] text-slate-500">腹板高 hw</label>
-                <input type="number" value={elemSection.webHeight || 100} onChange={(e) => setElemSection({ ...elemSection, webHeight: parseFloat(e.target.value) || 100 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
-              <div><label className="text-[10px] text-slate-500">腹板厚 tw</label>
-                <input type="number" value={elemSection.webThickness || 6} onChange={(e) => setElemSection({ ...elemSection, webThickness: parseFloat(e.target.value) || 6 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
-            </div>
-          )}
-          {elemSection.type === 't_beam' && (
-            <div className="grid grid-cols-2 gap-2">
-              <div><label className="text-[10px] text-slate-500">翼缘宽 bf</label>
-                <input type="number" value={elemSection.tFlangeWidth || 100} onChange={(e) => setElemSection({ ...elemSection, tFlangeWidth: parseFloat(e.target.value) || 100 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
-              <div><label className="text-[10px] text-slate-500">翼缘厚 tf</label>
-                <input type="number" value={elemSection.tFlangeThickness || 10} onChange={(e) => setElemSection({ ...elemSection, tFlangeThickness: parseFloat(e.target.value) || 10 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
-              <div><label className="text-[10px] text-slate-500">腹板高 hw</label>
-                <input type="number" value={elemSection.tWebHeight || 80} onChange={(e) => setElemSection({ ...elemSection, tWebHeight: parseFloat(e.target.value) || 80 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
-              <div><label className="text-[10px] text-slate-500">腹板厚 tw</label>
-                <input type="number" value={elemSection.tWebThickness || 8} onChange={(e) => setElemSection({ ...elemSection, tWebThickness: parseFloat(e.target.value) || 8 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
-            </div>
-          )}
-          {elemSection.type === 'channel' && (
-            <div className="grid grid-cols-2 gap-2">
-              <div><label className="text-[10px] text-slate-500">宽 b</label>
-                <input type="number" value={elemSection.channelWidth || 50} onChange={(e) => setElemSection({ ...elemSection, channelWidth: parseFloat(e.target.value) || 50 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
-              <div><label className="text-[10px] text-slate-500">高 h</label>
-                <input type="number" value={elemSection.channelHeight || 100} onChange={(e) => setElemSection({ ...elemSection, channelHeight: parseFloat(e.target.value) || 100 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
-              <div><label className="text-[10px] text-slate-500">翼缘厚 tf</label>
-                <input type="number" value={elemSection.channelFlange || 8} onChange={(e) => setElemSection({ ...elemSection, channelFlange: parseFloat(e.target.value) || 8 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
-              <div><label className="text-[10px] text-slate-500">腹板厚 tw</label>
-                <input type="number" value={elemSection.channelWeb || 5} onChange={(e) => setElemSection({ ...elemSection, channelWeb: parseFloat(e.target.value) || 5 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
-            </div>
-          )}
-          {elemSection.type === 'custom' && (
-            <div className="grid grid-cols-2 gap-2">
-              <div><label className="text-[10px] text-slate-500">A (mm²)</label>
-                <input type="number" value={elemSection.customArea || 1000} onChange={(e) => setElemSection({ ...elemSection, customArea: parseFloat(e.target.value) || 1000 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
-              <div><label className="text-[10px] text-slate-500">Iz (mm⁴)</label>
-                <input type="number" value={elemSection.customIz || 1e6} onChange={(e) => setElemSection({ ...elemSection, customIz: parseFloat(e.target.value) || 1e6 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
-            </div>
-          )}
+        <div className="space-y-2 mb-2">
+          {SECTION_FIELDS[elemSection.type].map(field => <NumericInput key={field.key} label={field.label}
+            value={elemSection[field.key] ?? field.defaultValue} domain={field.allowZero ? 'nonnegative' : 'positive'}
+            validate={value => validateSection({ ...elemSection, [field.key]: value })}
+            onChange={value => setElemSection({ ...elemSection, [field.key]: value })} />)}
         </div>
         {/* 截面属性显示 */}
         <div className="mb-2 px-2 py-1 bg-white rounded border text-[10px] text-slate-500 font-mono flex gap-3">
@@ -318,9 +248,9 @@ export const ModelingPanel = ({
         {/* 材料 */}
         <div className="grid grid-cols-2 gap-2 mb-2">
           <div><label className="text-[10px] text-slate-500">E (MPa)</label>
-            <input type="number" value={elemE} onChange={(e) => setElemE(parseFloat(e.target.value) || 200000)} className="w-full px-2 py-1 border rounded text-xs" /></div>
+            <NumericInput label="E (MPa)" value={elemE} onChange={setElemE} domain="positive" /></div>
           <div><label className="text-[10px] text-slate-500">屈服强度 (MPa)</label>
-            <input type="number" value={elemYield} onChange={(e) => setElemYield(parseFloat(e.target.value) || 250)} className="w-full px-2 py-1 border rounded text-xs" /></div>
+            <NumericInput label="屈服强度 (MPa)" value={elemYield} onChange={setElemYield} domain="positive" /></div>
         </div>
         <button onClick={addElement} disabled={!elemStart || !elemEnd}
           className="w-full px-3 py-1 bg-indigo-600 text-white rounded text-xs hover:bg-indigo-700 disabled:opacity-50">添加单元</button>
@@ -367,36 +297,18 @@ export const ModelingPanel = ({
             <label className="text-[10px] text-slate-500">
               {loadType === 'distributed' || loadType === 'triangular' ? '起点强度 (N/m)' : loadType === 'moment' ? '力矩 (Nm)' : '大小 (N)'}
             </label>
-            <input
-              type="number"
-              value={loadValue}
-              onChange={(e) => setLoadValue(parseFloat(e.target.value) || 0)}
-              className="w-full px-2 py-1 border rounded text-xs"
-            />
+            <NumericInput label="荷载大小" value={loadValue} onChange={setLoadValue} domain="signed" />
           </div>
           {loadType === 'triangular' && (
             <div>
               <label className="text-[10px] text-slate-500">终点强度 (N/m)</label>
-              <input
-                type="number"
-                value={loadValueEnd}
-                onChange={(e) => setLoadValueEnd(parseFloat(e.target.value) || 0)}
-                className="w-full px-2 py-1 border rounded text-xs"
-              />
+              <NumericInput label="终点强度 (N/m)" value={loadValueEnd} onChange={setLoadValueEnd} domain="signed" />
             </div>
           )}
           {loadType === 'point' && state.elements.some(e => e.id === loadTarget) && (
             <div>
               <label className="text-[10px] text-slate-500">位置 (0-1)</label>
-              <input
-                type="number"
-                min={0}
-                max={1}
-                step={0.1}
-                value={loadPosition}
-                onChange={(e) => setLoadPosition(parseFloat(e.target.value) || 0.5)}
-                className="w-full px-2 py-1 border rounded text-xs"
-              />
+              <NumericInput label="位置 (0-1)" value={loadPosition} onChange={setLoadPosition} domain="nonnegative" maximum={1} />
             </div>
           )}
         </div>
@@ -477,70 +389,10 @@ export const ModelingPanel = ({
                 </div>
               </div>
               {/* 截面参数 */}
-              {editSection.type === 'rectangle' && (
-                <div className="grid grid-cols-2 gap-2">
-                  <div><label className="text-[10px] text-slate-500">宽 b (mm)</label>
-                    <input type="number" value={editSection.width || 100} onChange={(e) => updateSelectedSection({ ...editSection, width: parseFloat(e.target.value) || 100 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
-                  <div><label className="text-[10px] text-slate-500">高 h (mm)</label>
-                    <input type="number" value={editSection.height || 100} onChange={(e) => updateSelectedSection({ ...editSection, height: parseFloat(e.target.value) || 100 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
-                </div>
-              )}
-              {editSection.type === 'circle' && (
-                <div><label className="text-[10px] text-slate-500">半径 r (mm)</label>
-                  <input type="number" value={editSection.radius || 50} onChange={(e) => updateSelectedSection({ ...editSection, radius: parseFloat(e.target.value) || 50 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
-              )}
-              {editSection.type === 'hollow_circle' && (
-                <div className="grid grid-cols-2 gap-2">
-                  <div><label className="text-[10px] text-slate-500">外径 R (mm)</label>
-                    <input type="number" value={editSection.outerRadius || 50} onChange={(e) => updateSelectedSection({ ...editSection, outerRadius: parseFloat(e.target.value) || 50 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
-                  <div><label className="text-[10px] text-slate-500">内径 r (mm)</label>
-                    <input type="number" value={editSection.innerRadius || 40} onChange={(e) => updateSelectedSection({ ...editSection, innerRadius: parseFloat(e.target.value) || 40 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
-                </div>
-              )}
-              {editSection.type === 'i_beam' && (
-                <div className="grid grid-cols-2 gap-2">
-                  <div><label className="text-[10px] text-slate-500">翼缘宽 bf</label>
-                    <input type="number" value={editSection.flangeWidth || 100} onChange={(e) => updateSelectedSection({ ...editSection, flangeWidth: parseFloat(e.target.value) || 100 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
-                  <div><label className="text-[10px] text-slate-500">翼缘厚 tf</label>
-                    <input type="number" value={editSection.flangeThickness || 10} onChange={(e) => updateSelectedSection({ ...editSection, flangeThickness: parseFloat(e.target.value) || 10 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
-                  <div><label className="text-[10px] text-slate-500">腹板高 hw</label>
-                    <input type="number" value={editSection.webHeight || 100} onChange={(e) => updateSelectedSection({ ...editSection, webHeight: parseFloat(e.target.value) || 100 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
-                  <div><label className="text-[10px] text-slate-500">腹板厚 tw</label>
-                    <input type="number" value={editSection.webThickness || 6} onChange={(e) => updateSelectedSection({ ...editSection, webThickness: parseFloat(e.target.value) || 6 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
-                </div>
-              )}
-              {editSection.type === 't_beam' && (
-                <div className="grid grid-cols-2 gap-2">
-                  <div><label className="text-[10px] text-slate-500">翼缘宽 bf</label>
-                    <input type="number" value={editSection.tFlangeWidth || 100} onChange={(e) => updateSelectedSection({ ...editSection, tFlangeWidth: parseFloat(e.target.value) || 100 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
-                  <div><label className="text-[10px] text-slate-500">翼缘厚 tf</label>
-                    <input type="number" value={editSection.tFlangeThickness || 10} onChange={(e) => updateSelectedSection({ ...editSection, tFlangeThickness: parseFloat(e.target.value) || 10 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
-                  <div><label className="text-[10px] text-slate-500">腹板高 hw</label>
-                    <input type="number" value={editSection.tWebHeight || 80} onChange={(e) => updateSelectedSection({ ...editSection, tWebHeight: parseFloat(e.target.value) || 80 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
-                  <div><label className="text-[10px] text-slate-500">腹板厚 tw</label>
-                    <input type="number" value={editSection.tWebThickness || 8} onChange={(e) => updateSelectedSection({ ...editSection, tWebThickness: parseFloat(e.target.value) || 8 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
-                </div>
-              )}
-              {editSection.type === 'channel' && (
-                <div className="grid grid-cols-2 gap-2">
-                  <div><label className="text-[10px] text-slate-500">宽 b</label>
-                    <input type="number" value={editSection.channelWidth || 50} onChange={(e) => updateSelectedSection({ ...editSection, channelWidth: parseFloat(e.target.value) || 50 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
-                  <div><label className="text-[10px] text-slate-500">高 h</label>
-                    <input type="number" value={editSection.channelHeight || 100} onChange={(e) => updateSelectedSection({ ...editSection, channelHeight: parseFloat(e.target.value) || 100 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
-                  <div><label className="text-[10px] text-slate-500">翼缘厚 tf</label>
-                    <input type="number" value={editSection.channelFlange || 8} onChange={(e) => updateSelectedSection({ ...editSection, channelFlange: parseFloat(e.target.value) || 8 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
-                  <div><label className="text-[10px] text-slate-500">腹板厚 tw</label>
-                    <input type="number" value={editSection.channelWeb || 5} onChange={(e) => updateSelectedSection({ ...editSection, channelWeb: parseFloat(e.target.value) || 5 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
-                </div>
-              )}
-              {editSection.type === 'custom' && (
-                <div className="grid grid-cols-2 gap-2">
-                  <div><label className="text-[10px] text-slate-500">A (mm²)</label>
-                    <input type="number" value={editSection.customArea || Math.round(selectedElement.section.A)} onChange={(e) => updateSelectedSection({ ...editSection, customArea: parseFloat(e.target.value) || 1000 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
-                  <div><label className="text-[10px] text-slate-500">Iz (mm⁴)</label>
-                    <input type="number" value={editSection.customIz || Math.round(selectedElement.section.I)} onChange={(e) => updateSelectedSection({ ...editSection, customIz: parseFloat(e.target.value) || 1e6 })} className="w-full px-2 py-1 border rounded text-xs" /></div>
-                </div>
-              )}
+              {SECTION_FIELDS[editSection.type].map(field => <NumericInput key={field.key} label={field.label}
+                value={editSection[field.key] ?? field.defaultValue} domain={field.allowZero ? 'nonnegative' : 'positive'}
+                validate={value => validateSection({ ...editSection, [field.key]: value })}
+                onChange={value => updateSelectedSection({ ...editSection, [field.key]: value })} />)}
               {/* 计算后的截面属性 */}
               <div className="px-2 py-1 bg-white rounded border text-[10px] text-slate-500 font-mono flex gap-3">
                 <span>A={Math.round(selectedElement.section.A)}</span>
@@ -549,9 +401,8 @@ export const ModelingPanel = ({
               {/* 材料 */}
               <div className="grid grid-cols-2 gap-2">
                 <div><label className="text-[10px] text-slate-500">E (MPa)</label>
-                  <input type="number" value={selectedElement.material.E}
-                    onChange={(e) => onChange({ elements: state.elements.map(el => el.id === selectedElement.id ? { ...el, material: { ...el.material, E: parseFloat(e.target.value) || 200000 } } : el) })}
-                    className="w-full px-2 py-1 border rounded text-xs" /></div>
+                  <NumericInput label="选中单元 E (MPa)" domain="positive"  value={selectedElement.material.E}
+                    onChange={(value) => onChange({ elements: state.elements.map(el => el.id === selectedElement.id ? { ...el, material: { ...el.material, E: value } } : el) })} /></div>
                 <div><label className="text-[10px] text-slate-500">屈服 (MPa)</label>
                   <input type="number" value={selectedElement.material.yield}
                     onChange={(e) => onChange({ elements: state.elements.map(el => el.id === selectedElement.id ? { ...el, material: { ...el.material, yield: parseFloat(e.target.value) || 250 } } : el) })}
@@ -562,14 +413,12 @@ export const ModelingPanel = ({
           {selectedLoad && (
             <div className="space-y-2">
               <div className="text-[10px] text-amber-700">荷载 {selectedLoad.id}</div>
-              <input
-                type="number"
+              <NumericInput label="选中荷载大小" domain="signed"
+
                 value={selectedLoad.value}
-                onChange={(e) => onChange({
-                  loads: state.loads.map(l => l.id === selectedLoad.id ? { ...l, value: parseFloat(e.target.value) || 0 } : l)
+                onChange={(value) => onChange({
+                  loads: state.loads.map(l => l.id === selectedLoad.id ? { ...l, value: value } : l)
                 })}
-                className="w-full px-2 py-1 border rounded text-xs"
-                placeholder="荷载值"
               />
             </div>
           )}

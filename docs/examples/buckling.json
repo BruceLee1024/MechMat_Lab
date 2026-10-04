@@ -1,0 +1,27 @@
+{
+  "format": "mechmat-experiment",
+  "schemaVersion": 1,
+  "calculationVersion": 1,
+  "id": "example-buckling-v1",
+  "name": "铰支圆压杆",
+  "module": "buckling",
+  "createdAt": "2026-10-04T00:00:00.000Z",
+  "updatedAt": "2026-10-04T00:00:00.000Z",
+  "model": {
+    "kind": "simulation",
+    "parameters": {
+      "materialName": "结构钢 (Structural Steel)",
+      "materialYield": 250,
+      "poissonRatio": 0.3,
+      "buckleLoad": 1000,
+      "buckleLength": 1,
+      "buckleModulus": 200,
+      "buckleWidth": 40,
+      "buckleHeight": 40,
+      "buckleSection": {
+        "type": "circle",
+        "radius": 10
+      }
+    }
+  }
+}

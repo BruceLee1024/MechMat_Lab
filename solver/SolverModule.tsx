@@ -1,3 +1,5 @@
+import { ModelingPanel as DetailedModelingPanel } from "./components/ModelingPanel";
+import type { SolverModel } from "../experiments/schema";
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import {
   Play,
@@ -63,6 +65,7 @@ const IconButton = ({
     <button
       onClick={onClick}
       disabled={disabled}
+      aria-label={label}
       className={`${baseClass} ${variantClass} ${disabledClass}`}
     >
       <Icon className="w-4 h-4" />
@@ -469,7 +472,7 @@ const PropertyPanel = ({
   state: SolverState;
   onChange: (s: Partial<SolverState>) => void;
 }) => {
-  return <ModelingPanel state={state} onChange={onChange} />;
+  return <DetailedModelingPanel state={state} onChange={onChange} />;
 };
 
 // 占位，不再使用旧的属性面板
@@ -1405,8 +1408,20 @@ const DiagramPanel = ({ state, diagramType }: { state: SolverState; diagramType:
 // ==========================================
 // 主求解器模块
 // ==========================================
-export const SolverModule = () => {
-  const [state, setState] = useState<SolverState>(DEFAULT_SOLVER_STATE);
+export const SolverModule = ({ model, onModelChange }: { model: SolverModel; onModelChange: (model: SolverModel) => void }) => {
+  const [ui, setUI] = useState<Omit<SolverState, 'nodes' | 'elements' | 'loads'>>(DEFAULT_SOLVER_STATE);
+  const resultModel = useRef<SolverModel | null>(null);
+  const state: SolverState = { ...ui, nodes: model.nodes, elements: model.elements, loads: model.loads, result: resultModel.current === model ? ui.result : null };
+  const latestState = useRef(state); latestState.current = state;
+  const setState = (update: React.SetStateAction<SolverState>) => {
+    const previous = latestState.current;
+    const next = typeof update === 'function' ? update(previous) : update;
+    latestState.current = next;
+    if (next.result && next.result !== previous.result) resultModel.current = model;
+    const { nodes, elements, loads, ...nextUI } = next;
+    setUI(nextUI);
+    if (nodes !== model.nodes || elements !== model.elements || loads !== model.loads) onModelChange({ kind: 'solver', coordinateUnit: 'mm', nodes, elements, loads });
+  };
   const svgRef = useRef<SVGSVGElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragTarget, setDragTarget] = useState<{ type: string; id: string } | null>(null);
@@ -1449,7 +1464,7 @@ export const SolverModule = () => {
     };
   }, [isResizing]);
 
-  const onChange = useCallback((updates: Partial<SolverState>) => {
+  const onChange = (updates: Partial<SolverState>) => {
     setState((prev) => {
       // 如果修改了节点、单元或荷载，清除之前的结果
       const modelChanged = updates.nodes || updates.elements || updates.loads;
@@ -1460,7 +1475,7 @@ export const SolverModule = () => {
         ...(modelChanged ? { result: null } : {})
       };
     });
-  }, []);
+  };
 
   // 加载模板
   const loadTemplate = (template: SolverTemplate) => {
@@ -2014,9 +2029,9 @@ export const SolverModule = () => {
       </div>
 
       {/* 主内容区 - 三栏布局 */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="solver-body flex-1 flex overflow-hidden">
         {/* 左栏：结构建模 */}
-        <div className="w-72 bg-white border-r border-slate-200 flex flex-col overflow-hidden">
+        <div className="solver-model-panel w-72 bg-white border-r border-slate-200 flex flex-col overflow-hidden">
           <div className="p-3 border-b border-slate-100 bg-slate-50">
             <h3 className="font-semibold text-indigo-900 text-sm flex items-center gap-2">
               <Settings className="w-4 h-4 text-indigo-500" /> 结构建模
@@ -2028,7 +2043,7 @@ export const SolverModule = () => {
         </div>
 
         {/* 中栏：结构图 + 内力图 */}
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className="solver-canvas-panel flex-1 flex flex-col min-w-0">
           {/* 结构图 */}
           <div className="flex-1 bg-slate-100 relative overflow-hidden">
             <svg
@@ -2220,7 +2235,7 @@ export const SolverModule = () => {
         </div>
 
         {/* 右栏：计算结果 */}
-        <div className="w-72 bg-white border-l border-slate-200 flex flex-col overflow-hidden">
+        <div className="solver-results-panel w-72 bg-white border-l border-slate-200 flex flex-col overflow-hidden">
           <div className="p-3 border-b border-slate-100 bg-slate-50">
             <h3 className="font-semibold text-indigo-900 text-sm flex items-center gap-2">
               <Calculator className="w-4 h-4 text-indigo-500" /> 计算结果

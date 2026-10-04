@@ -86,8 +86,8 @@ const EccentricModule = ({ state, onChange }: { state: SimulationState; onChange
               section={state.combinedSection}
               onChange={(s) => onChange({ combinedSection: s })}
             />
-            <SliderInputControl label="偏心距 (e)" value={state.combinedEccentricity} min={0} max={200} step={1} unit="mm" onChange={(v) => onChange({ combinedEccentricity: v })} />
-            <SliderInputControl label="轴向拉力 (F)" value={state.combinedLoad} min={100} max={100000} step={100} unit="N" onChange={(v) => onChange({ combinedLoad: v })} />
+            <SliderInputControl label="偏心距 (e)" value={state.combinedEccentricity} min={-200} max={200} domain="signed" step={1} unit="mm" onChange={(v) => onChange({ combinedEccentricity: v })} />
+            <SliderInputControl label="轴向拉力 (F)" value={state.combinedLoad} min={0} max={100000} step={100} unit="N" onChange={(v) => onChange({ combinedLoad: v })} />
           </div>
         </div>
 
@@ -252,9 +252,9 @@ const BendTorqueModule = ({ state, onChange }: { state: SimulationState; onChang
               section={state.bendTorqueSection}
               onChange={(s) => onChange({ bendTorqueSection: s })}
             />
-            <SliderInputControl label="弯矩载荷 (P)" value={state.bendTorqueBendLoad} min={100} max={50000} step={100} unit="N" onChange={(v) => onChange({ bendTorqueBendLoad: v })} />
-            <SliderInputControl label="载荷位置 (a)" value={state.bendTorqueBendPos} min={0.1} max={L} step={0.05} unit="m" onChange={(v) => onChange({ bendTorqueBendPos: v })} />
-            <SliderInputControl label="扭矩 (T)" value={state.bendTorque} min={10} max={5000} step={10} unit="N·m" onChange={(v) => onChange({ bendTorque: v })} />
+            <SliderInputControl label="弯矩载荷 (P)" value={state.bendTorqueBendLoad} min={0} max={50000} step={100} unit="N" onChange={(v) => onChange({ bendTorqueBendLoad: v })} />
+            <SliderInputControl label="载荷位置 (a)" value={state.bendTorqueBendPos} min={0} max={L} minimum={0} maximum={L} step={0.05} unit="m" onChange={(v) => onChange({ bendTorqueBendPos: v })} />
+            <SliderInputControl label="扭矩 (T)" value={state.bendTorque} min={0} max={5000} step={10} unit="N·m" onChange={(v) => onChange({ bendTorque: v })} />
             <SliderInputControl label="轴长 (L)" value={state.bendTorqueLength} min={0.5} max={5} step={0.1} unit="m" onChange={(v) => onChange({ bendTorqueLength: v })} />
             <SliderInputControl label="弹性模量 (E)" value={state.bendTorqueModulus} min={50} max={300} step={5} unit="GPa" onChange={(v) => onChange({ bendTorqueModulus: v })} />
           </div>

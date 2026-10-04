@@ -1,3 +1,4 @@
+import { calculateElementStress } from './StressCalculator';
 // ==========================================
 // 材料力学求解器 - 计算引擎
 // ==========================================
@@ -512,8 +513,7 @@ export function solve(
     return {
       elementId: element.id,
       internalForces,
-      maxStress,
-      minStress,
+      ...calculateElementStress(internalForces, A, isBeam ? I : 0, element.section.width, isBeam ? h : 0, element.material.yield),
       strainEnergy,
     };
   });

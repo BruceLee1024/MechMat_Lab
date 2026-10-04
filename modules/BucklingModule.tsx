@@ -1,25 +1,15 @@
+import { calculateBuckling } from "../mechanics/calculations";
+import { InvalidCalculation, CalculationNotice } from "../components/CalculationNotice";
 import React from "react";
 import { Calculator, Sigma, Activity } from "lucide-react";
-import { SliderInputControl, LatexRenderer, MaterialSelector, SectionSelector, calculateSectionProperties } from "../components";
-import { SimulationState } from "../types";
+import { SliderInputControl, LatexRenderer, MaterialSelector, SectionSelector } from "../components";
+import { SimulationState, DEFAULT_STATE } from "../types";
 import { CommonDefs } from "./CommonDefs";
 
 export const BucklingModule = ({ state, onChange }: { state: SimulationState; onChange: (s: Partial<SimulationState>) => void }) => {
-  const E = state.buckleModulus * 1000; 
-  const L_mm = state.buckleLength * 1000;
-  
-  // 使用截面选择器计算属性
-  const sectionProps = calculateSectionProperties(state.buckleSection);
-  const I_min = Math.min(sectionProps.Iz, sectionProps.Iy); // 取最小惯性矩
-  const Area = sectionProps.area;
-  const radiusOfGyration = Math.sqrt(I_min / Area); 
-  
-  const lambda = L_mm / radiusOfGyration;
-  const Pcr = (Math.pow(Math.PI, 2) * E * I_min) / Math.pow(L_mm, 2); 
-
-  const isBuckled = state.buckleLoad > Pcr;
-  const ratio = Math.min(state.buckleLoad / Pcr, 1.5);
-  const bowAmount = isBuckled ? (ratio - 1) * 100 : 0; 
+  const result = calculateBuckling({ load: state.buckleLoad, length: state.buckleLength, modulus: state.buckleModulus, section: state.buckleSection, yieldStrength: state.materialYield });
+  if (result.ok === false) return <InvalidCalculation diagnostics={result.diagnostics} onReset={() => { onChange({ buckleLoad: DEFAULT_STATE.buckleLoad, buckleLength: DEFAULT_STATE.buckleLength, buckleModulus: DEFAULT_STATE.buckleModulus, buckleWidth: DEFAULT_STATE.buckleWidth, buckleHeight: DEFAULT_STATE.buckleHeight, buckleSection: DEFAULT_STATE.buckleSection, materialYield: DEFAULT_STATE.materialYield }); }} />;
+  const { E, L_mm, I_min, Area, radiusOfGyration, lambda, Pcr, isBuckled, ratio, bowAmount } = result.values;
 
   // 根据截面类型生成惯性矩公式
   const getInertiaFormula = () => {
@@ -50,6 +40,7 @@ export const BucklingModule = ({ state, onChange }: { state: SimulationState; on
 
   return (
     <div className="flex flex-col h-full space-y-6">
+      <CalculationNotice assumptions={result.assumptions} warnings={result.warnings} />
        {/* TOP: Visualization */}
        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex items-center justify-center relative h-[320px]">
         <div className="absolute top-4 left-4 text-xs font-bold text-slate-400 uppercase flex items-center gap-2">
@@ -114,7 +105,7 @@ export const BucklingModule = ({ state, onChange }: { state: SimulationState; on
                    section={state.buckleSection}
                    onChange={(s) => onChange({ buckleSection: s })}
                  />
-                 <SliderInputControl label="压力 (Load)" value={state.buckleLoad} min={10} max={100000} step={10} unit="N" onChange={(v) => onChange({ buckleLoad: v })} />
+                 <SliderInputControl label="压力 (Load)" value={state.buckleLoad} min={0} max={100000} step={10} unit="N" onChange={(v) => onChange({ buckleLoad: v })} />
                  <SliderInputControl label="杆长 (Length)" value={state.buckleLength} min={0.1} max={10} step={0.1} unit="m" onChange={(v) => onChange({ buckleLength: v })} />
                  <SliderInputControl label="弹性模量 (E)" value={state.buckleModulus} min={1} max={500} step={1} unit="GPa" onChange={(v) => onChange({ buckleModulus: v })} />
            </div>

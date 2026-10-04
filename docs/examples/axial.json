@@ -1,0 +1,23 @@
+{
+  "format": "mechmat-experiment",
+  "schemaVersion": 1,
+  "calculationVersion": 1,
+  "id": "example-axial-v1",
+  "name": "5 kN 直杆拉伸",
+  "module": "axial",
+  "createdAt": "2026-10-04T00:00:00.000Z",
+  "updatedAt": "2026-10-04T00:00:00.000Z",
+  "model": {
+    "kind": "simulation",
+    "parameters": {
+      "materialName": "结构钢 (Structural Steel)",
+      "materialYield": 250,
+      "poissonRatio": 0.3,
+      "axialForce": 5000,
+      "axialArea": 100,
+      "axialLength": 1,
+      "axialObliqueAngle": 30,
+      "bendModulus": 200
+    }
+  }
+}

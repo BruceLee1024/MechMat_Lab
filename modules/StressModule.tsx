@@ -1,32 +1,18 @@
+import { calculatePlaneStress } from "../mechanics/calculations";
+import { InvalidCalculation, CalculationNotice } from "../components/CalculationNotice";
 import React from "react";
 import { Calculator, Sigma, Rotate3d, Circle } from "lucide-react";
 import { SliderControl, LatexRenderer } from "../components";
-import { SimulationState } from "../types";
+import { SimulationState, DEFAULT_STATE } from "../types";
 import { CommonDefs } from "./CommonDefs";
 
 export const StressModule = ({ state, onChange }: { state: SimulationState; onChange: (s: Partial<SimulationState>) => void }) => {
   const { stressSigX, stressSigY, stressTauXY, stressAngle } = state;
   
-  // Calculations
-  // Convert angle to radians (Input is in degrees)
-  const thetaRad = (stressAngle * Math.PI) / 180;
-  const cos2 = Math.cos(2 * thetaRad);
-  const sin2 = Math.sin(2 * thetaRad);
-  
-  const avg = (stressSigX + stressSigY) / 2;
-  const diff = (stressSigX - stressSigY) / 2;
-  
-  // Transformed Stresses
-  const sigX_prime = avg + diff * cos2 + stressTauXY * sin2;
-  const sigY_prime = avg - diff * cos2 - stressTauXY * sin2; // stress on face perpendicular to X'
-  const tauXY_prime = -diff * sin2 + stressTauXY * cos2;
-  
-  // Principal Stresses
-  const R = Math.sqrt(diff * diff + stressTauXY * stressTauXY);
-  const sig1 = avg + R;
-  const sig2 = avg - R;
-  const maxShear = R;
-  
+  const result = calculatePlaneStress({ sigmaX: stressSigX, sigmaY: stressSigY, tauXY: stressTauXY, angle: stressAngle });
+  if (result.ok === false) return <InvalidCalculation diagnostics={result.diagnostics} onReset={() => { onChange({ stressSigX: DEFAULT_STATE.stressSigX, stressSigY: DEFAULT_STATE.stressSigY, stressSigZ: DEFAULT_STATE.stressSigZ, stressTauXY: DEFAULT_STATE.stressTauXY, stressTauYZ: DEFAULT_STATE.stressTauYZ, stressTauZX: DEFAULT_STATE.stressTauZX, stressAngle: DEFAULT_STATE.stressAngle }); }} />;
+  const { thetaRad, cos2, sin2, avg, diff, sigX_prime, sigY_prime, tauXY_prime, R, sig1, sig2, maxShear } = result.values;
+
   // --- Visual Constants ---
   const boxSize = 120;
   const center = 200; // SVG center coordinate (200, 200) for 400x400 view
@@ -71,6 +57,7 @@ export const StressModule = ({ state, onChange }: { state: SimulationState; onCh
 
   return (
     <div className="flex flex-col h-full space-y-6">
+      <CalculationNotice assumptions={result.assumptions} warnings={result.warnings} />
       {/* TOP: Visualization */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         

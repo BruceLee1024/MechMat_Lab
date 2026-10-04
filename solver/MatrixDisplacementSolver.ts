@@ -471,7 +471,7 @@ export function solveByMatrixMethod(
     
     return {
       elementId: elem.id,
-      internalForces: forces.map(f => ({ ...f, M: f.M / 1000 })),
+      internalForces: forces,
       deflectionCurve,
       stressDistribution: stressResult.stressDistribution,
       maxStress: stressResult.maxStress,

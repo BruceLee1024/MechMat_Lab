@@ -1,37 +1,15 @@
+import { calculateBending } from "../mechanics/calculations";
+import { InvalidCalculation, CalculationNotice } from "../components/CalculationNotice";
 import React from "react";
 import { Calculator, Sigma, Activity } from "lucide-react";
-import { SliderInputControl, LatexRenderer, MaterialSelector, SectionSelector, calculateSectionProperties } from "../components";
-import { SimulationState } from "../types";
+import { SliderInputControl, LatexRenderer, MaterialSelector, SectionSelector } from "../components";
+import { SimulationState, DEFAULT_STATE } from "../types";
 import { CommonDefs } from "./CommonDefs";
 
 export const BendingModule = ({ state, onChange }: { state: SimulationState; onChange: (s: Partial<SimulationState>) => void }) => {
-  const L_mm = state.bendLength * 1000;
-  const a_mm = state.bendLoadPos * 1000;
-  const b_mm = L_mm - a_mm;
-  const E_MPa = state.bendModulus * 1000;
-  
-  // 使用截面选择器计算惯性矩
-  const sectionProps = calculateSectionProperties(state.bendSection);
-  const inertia = sectionProps.Iz;
-  const yMax = sectionProps.yMax; 
-  
-  // Reactions
-  const R1 = (state.bendLoad * b_mm) / L_mm;
-  const R2 = (state.bendLoad * a_mm) / L_mm;
-
-  // Max Moment (at load point)
-  const maxMoment = (state.bendLoad * (a_mm/1000) * (b_mm/1000)) / state.bendLength;
-  
-  // Deflection at load point (for display)
-  const deflectionAtLoad = (state.bendLoad * Math.pow(a_mm, 2) * Math.pow(b_mm, 2)) / (3 * E_MPa * inertia * L_mm);
-  
-  const maxStress = ((maxMoment * 1000) * yMax) / inertia;
-
-  // Strain Energy: U = ∫M²/(2EI)dx = P²a²b²/(6EIL)
-  // Units: P in N, a,b,L in mm, E in MPa (N/mm²), I in mm⁴ → U in N·mm = mJ
-  const strainEnergy = (Math.pow(state.bendLoad, 2) * Math.pow(a_mm, 2) * Math.pow(b_mm, 2)) / (6 * E_MPa * inertia * L_mm);
-  // Max strain energy density: u_max = σ²/(2E)
-  const maxStrainEnergyDensity = Math.pow(maxStress, 2) / (2 * E_MPa); // mJ/mm³
+  const result = calculateBending({ load: state.bendLoad, length: state.bendLength, position: state.bendLoadPos, modulus: state.bendModulus, section: state.bendSection });
+  if (result.ok === false) return <InvalidCalculation diagnostics={result.diagnostics} onReset={() => { onChange({ bendLoad: DEFAULT_STATE.bendLoad, bendLength: DEFAULT_STATE.bendLength, bendLoadPos: DEFAULT_STATE.bendLoadPos, bendModulus: DEFAULT_STATE.bendModulus, bendWidth: DEFAULT_STATE.bendWidth, bendHeight: DEFAULT_STATE.bendHeight, bendSection: DEFAULT_STATE.bendSection }); }} />;
+  const { L_mm, a_mm, b_mm, E_MPa, inertia, yMax, R1, R2, maxMoment, deflectionAtLoad, maxStress, strainEnergy, maxStrainEnergyDensity } = result.values;
 
   const visualSag = Math.min(deflectionAtLoad * 2, 100); 
   const startX = 60;
@@ -74,16 +52,17 @@ export const BendingModule = ({ state, onChange }: { state: SimulationState; onC
   const formulaStress = `\\sigma_{max} = \\frac{M_{max} \\cdot y_{max}}{I_z} = \\frac{${(maxMoment*1000).toFixed(0)} \\times ${yMax.toFixed(0)}}{${inertia.toFixed(0)}} = ${maxStress.toFixed(2)} \\text{ MPa}`;
   const formulaStrainEnergy = `U = \\frac{P^2 a^2 b^2}{6 E I L} = \\frac{${state.bendLoad}^2 \\times ${a_mm.toFixed(0)}^2 \\times ${b_mm.toFixed(0)}^2}{6 \\times ${E_MPa} \\times ${inertia.toFixed(0)} \\times ${L_mm.toFixed(0)}} = ${strainEnergy.toFixed(2)} \\text{ mJ}`;
 
-  const beamThick = Math.max(10, state.bendHeight / 5);
+  const beamThick = Math.max(10, Math.min(100, 2 * yMax / 5));
 
   return (
     <div className="flex flex-col h-full space-y-6">
+      <CalculationNotice assumptions={result.assumptions} warnings={result.warnings} />
       {/* TOP: Visualization */}
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex items-center justify-center relative h-[320px]">
+      <div className="bending-figure bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex items-center justify-center relative">
          <div className="absolute top-4 left-4 text-xs font-bold text-slate-400 uppercase flex items-center gap-2">
-             <Activity className="w-4 h-4"/> 梁变形与内力图 (Deformation & Internal Forces)
+             <Activity className="w-4 h-4"/> 梁变形、剪力与弯矩
          </div>
-         <svg width="100%" height="100%" viewBox="0 0 600 550" preserveAspectRatio="xMidYMid meet">
+         <svg width="100%" height="100%" viewBox="0 65 600 490" preserveAspectRatio="xMidYMid meet">
             <CommonDefs />
             
             {/* --- 1. Physical Beam --- */}
@@ -107,7 +86,7 @@ export const BendingModule = ({ state, onChange }: { state: SimulationState; onC
                  <circle cx="8" cy="-4" r="3" fill="#cbd5e1" />
                  {/* Reaction Arrow */}
                  <line x1="25" y1="0" x2="25" y2={`-${supportHeight}`} stroke="#4f46e5" strokeWidth="2" markerEnd="url(#arrowForce)" />
-                 <text x="30" y="-15" fontSize="10" fill="#4f46e5">{Math.round(R2)} N</text>
+                 <text x="30" y="-15" fontSize="10" textAnchor="end" fill="#4f46e5">{Math.round(R2)} N</text>
             </g>
 
             {/* Original Beam (Dashed Outline) */}
@@ -156,7 +135,7 @@ export const BendingModule = ({ state, onChange }: { state: SimulationState; onC
             {/* Force Arrow (Rose) */}
             <g transform={`translate(${loadX}, ${sagY - beamThick/2 - 2})`} style={{ transition: "transform 0.3s ease-out" }}>
                 <line x1="0" y1="-60" x2="0" y2="-12" stroke="#e11d48" strokeWidth="2" markerEnd="url(#arrowForce)" />
-                <text x="10" y="-35" fill="#e11d48" fontWeight="bold" fontSize="14">F = {state.bendLoad} N</text>
+                <text x={state.bendLoadPos > state.bendLength / 2 ? -10 : 10} y="-35" textAnchor={state.bendLoadPos > state.bendLength / 2 ? 'end' : 'start'} fill="#e11d48" fontWeight="bold" fontSize="14">F = {state.bendLoad} N</text>
             </g>
             
             {/* Deflection Measurement (Indigo) */}
@@ -173,12 +152,11 @@ export const BendingModule = ({ state, onChange }: { state: SimulationState; onC
             {/* --- 2. Shear Force Diagram (SFD) --- */}
             <g transform="translate(0, 320)">
                 <line x1="20" y1="0" x2="580" y2="0" stroke="#94a3b8" strokeWidth="1" />
-                <text x="20" y="-5" fontSize="12" fill="#64748b" fontWeight="bold">F_s (V)</text>
+                <text x="20" y="-60" fontSize="12" fill="#64748b" fontWeight="bold">剪力 V / N</text>
                 
                 {/* Left Positive Shear (+R1) */}
                 <rect x={startX} y="-40" width={loadX - startX} height="40" fill="rgba(79, 70, 229, 0.1)" stroke="#4f46e5" />
                 <text x={startX + 10} y="-20" fontSize="11" fill="#4f46e5">+{Math.round(R1)}</text>
-                <text x={startX + 10} y="-5" fontSize="9" fill="#4f46e5" opacity="0.7">SFD</text>
 
                 {/* Right Negative Shear (-R2) */}
                 {/* Scale height? For simplicity keeping consistent height but could scale */}
@@ -189,14 +167,13 @@ export const BendingModule = ({ state, onChange }: { state: SimulationState; onC
             {/* --- 3. Bending Moment Diagram (BMD) --- */}
             <g transform="translate(0, 450)">
                 <line x1="20" y1="0" x2="580" y2="0" stroke="#94a3b8" strokeWidth="1" />
-                <text x="20" y="-5" fontSize="12" fill="#64748b" fontWeight="bold">M</text>
+                <text x="20" y="-20" fontSize="12" fill="#64748b" fontWeight="bold">弯矩 M / N·m</text>
                 
                 {/* Triangle (Positive Downwards) */}
                 <path d={`M ${startX},0 L ${loadX},60 L ${endX},0 Z`} fill="rgba(79, 70, 229, 0.1)" stroke="#4f46e5" strokeWidth="2" />
                 
                 <line x1={loadX} y1="0" x2={loadX} y2="60" stroke="#4f46e5" strokeDasharray="2 2" />
-                <text x={loadX + 10} y="30" fontSize="11" fill="#4f46e5" fontWeight="bold">{maxMoment.toFixed(0)} Nm</text>
-                <text x={startX + 10} y="-5" fontSize="9" fill="#4f46e5" opacity="0.7">BMD</text>
+                <text x={loadX + (state.bendLoadPos > state.bendLength / 2 ? -10 : 10)} y="30" textAnchor={state.bendLoadPos > state.bendLength / 2 ? 'end' : 'start'} fontSize="11" fill="#4f46e5" fontWeight="bold">{maxMoment.toFixed(0)} Nm</text>
             </g>
 
          </svg>
@@ -219,10 +196,10 @@ export const BendingModule = ({ state, onChange }: { state: SimulationState; onC
                   section={state.bendSection}
                   onChange={(s) => onChange({ bendSection: s })}
                 />
-                <SliderInputControl label="载荷 (Load)" value={state.bendLoad} min={100} max={50000} step={100} unit="N" onChange={(v) => onChange({ bendLoad: v })} />
+                <SliderInputControl label="载荷 (Load)" value={state.bendLoad} min={0} max={50000} step={100} unit="N" onChange={(v) => onChange({ bendLoad: v })} />
                 <div className="grid grid-cols-2 gap-4">
                     <SliderInputControl label="梁跨度 (Length)" value={state.bendLength} min={0.1} max={20} step={0.1} unit="m" onChange={(v) => onChange({ bendLength: v })} />
-                    <SliderInputControl label="载荷位置 (a)" value={state.bendLoadPos} min={0.01} max={state.bendLength - 0.01} step={0.01} unit="m" onChange={(v) => onChange({ bendLoadPos: Math.min(v, state.bendLength - 0.01) })} />
+                    <SliderInputControl label="载荷位置 (a)" value={state.bendLoadPos} min={0} max={state.bendLength} minimum={0} maximum={state.bendLength} step={0.01} unit="m" onChange={(v) => onChange({ bendLoadPos: v })} />
                 </div>
                 <SliderInputControl label="弹性模量 (E)" value={state.bendModulus} min={1} max={500} step={1} unit="GPa" onChange={(v) => onChange({ bendModulus: v })} />
            </div>

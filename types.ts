@@ -46,6 +46,7 @@ export interface SimulationState {
   axialForce: number; // N
   axialArea: number; // mm^2
   axialLength: number; // m
+  axialObliqueAngle: number; // °，斜截面角度
   
   // Bending (弯曲)
   bendLoad: number; // N
@@ -61,6 +62,7 @@ export interface SimulationState {
   torqRadius: number; // mm
   torqLength: number; // m
   torqModulus: number; // GPa (Shear Modulus G)
+  torqLoadRatio: number; // 中间齿轮输出扭矩占比，0–1
   
   // Buckling (压杆稳定)
   buckleLoad: number; // N
@@ -104,6 +106,7 @@ export const DEFAULT_STATE: SimulationState = {
   axialForce: 5000,
   axialArea: 100,
   axialLength: 1.0,
+  axialObliqueAngle: 30,
   // Bending
   bendLoad: 2000,
   bendLength: 2.0,
@@ -117,6 +120,7 @@ export const DEFAULT_STATE: SimulationState = {
   torqRadius: 20,
   torqLength: 1.0,
   torqModulus: 77, 
+  torqLoadRatio: 0.6,
   // Buckling
   buckleLoad: 1000,
   buckleLength: 2.0,
