@@ -1,42 +1,22 @@
-import React, { useState } from "react";
+import { calculateAxialTeaching } from "../mechanics/calculations";
+import { InvalidCalculation, CalculationNotice } from "../components/CalculationNotice";
+import React from "react";
 import { Calculator, Sigma, Activity, Rotate3d } from "lucide-react";
 import { SliderControl, LatexRenderer, MaterialSelector } from "../components";
-import { SimulationState } from "../types";
+import { SimulationState, DEFAULT_STATE } from "../types";
 import { CommonDefs } from "./CommonDefs";
 
 export const AxialModule = ({ state, onChange }: { state: SimulationState; onChange: (s: Partial<SimulationState>) => void }) => {
-  const stress = state.axialForce / state.axialArea; 
-  const E_MPa = state.bendModulus * 1000; 
+  const obliqueAngle = state.axialObliqueAngle;
+  const setObliqueAngle = (value: number) => onChange({ axialObliqueAngle: value });
+  const result = calculateAxialTeaching({ force: state.axialForce, area: state.axialArea, length: state.axialLength, modulus: state.bendModulus, yieldStrength: state.materialYield });
+  if (result.ok === false) return <InvalidCalculation diagnostics={result.diagnostics} onReset={() => { onChange({ axialForce: DEFAULT_STATE.axialForce, axialArea: DEFAULT_STATE.axialArea, axialLength: DEFAULT_STATE.axialLength, bendModulus: DEFAULT_STATE.bendModulus, materialYield: DEFAULT_STATE.materialYield }); }} />;
+  const { stress, strain, deformation, strainAtYield, strainAtUTS, strainAtFailure, utsStrength, failureStrength, isPlastic, isFailure, strainEnergyDensityKJ, totalStrainEnergyJ } = result.values;
+  const E_MPa = result.values.modulusMPa;
   const yieldStrength = state.materialYield;
-  
-  let strain = 0;
-  let isPlastic = false;
-  let isFailure = false;
-  
-  const strainAtYield = yieldStrength / E_MPa;
-  const utsStrength = yieldStrength * 1.5; 
-  const failureStrength = yieldStrength * 1.4; 
-  const strainAtUTS = strainAtYield * 10; 
-  const strainAtFailure = strainAtYield * 15;
+  const originalLength = result.values.lengthMm;
+  const visualDeformation = Math.min(deformation * 100, 150);
 
-  if (stress <= yieldStrength) {
-      strain = stress / E_MPa;
-  } else {
-      isPlastic = true;
-      if (stress > utsStrength) {
-         isFailure = true;
-         strain = strainAtFailure; 
-      } else {
-         const ratio = (stress - yieldStrength) / (utsStrength - yieldStrength);
-         strain = strainAtYield + (strainAtUTS - strainAtYield) * Math.pow(ratio, 2); 
-      }
-  }
-  
-  const deformation = strain * state.axialLength * 1000; 
-  const originalLength = state.axialLength * 1000; 
-
-  const visualDeformation = Math.min(deformation * 100, 150); 
-  
   // Color Logic for Transparent/Solid
   let strokeColor = "#4f46e5"; // Indigo
   let fillColor = "rgba(79, 70, 229, 0.1)";
@@ -73,7 +53,6 @@ export const AxialModule = ({ state, onChange }: { state: SimulationState; onCha
   const barHeight = Math.sqrt(state.axialArea) * 4;
 
   // --- Oblique Section State ---
-  const [obliqueAngle, setObliqueAngle] = useState(30); // degrees
   const alphaRad = (obliqueAngle * Math.PI) / 180;
   const sigmaAlpha = stress * Math.pow(Math.cos(alphaRad), 2);
   const tauAlpha = (stress / 2) * Math.sin(2 * alphaRad);
@@ -102,22 +81,11 @@ export const AxialModule = ({ state, onChange }: { state: SimulationState; onCha
   const formulaSigAlpha = `\\sigma_{\\alpha} = \\sigma \\cos^2 \\alpha = ${stress.toFixed(1)} \\cdot \\cos^2(${obliqueAngle}^\\circ) = ${sigmaAlpha.toFixed(1)} \\text{ MPa}`;
   const formulaTauAlpha = `\\tau_{\\alpha} = \\frac{\\sigma}{2} \\sin 2\\alpha = \\frac{${stress.toFixed(1)}}{2} \\sin(${2*obliqueAngle}^\\circ) = ${tauAlpha.toFixed(1)} \\text{ MPa}`;
 
-  // --- Strain Energy Calculations ---
-  // Strain Energy Density u = sigma^2 / 2E  (MPa * MPa / MPa = MPa = MJ/m^3)
-  // 1 MPa = 10^6 Pa = 10^6 J/m^3 = 1000 kJ/m^3
-  const strainEnergyDensity = (stress * stress) / (2 * E_MPa); // MPa
-  const strainEnergyDensityKJ = strainEnergyDensity * 1000; // kJ/m^3
-  
-  // Total Strain Energy U = u * Volume = (sigma^2 / 2E) * (Area * Length)
-  // Or U = 1/2 * P * deltaL (Elastic assumption)
-  // Volume in m^3 = (Area mm^2 * 10^-6) * Length m
-  const volumeM3 = (state.axialArea * 1e-6) * state.axialLength;
-  const totalStrainEnergyJ = strainEnergyDensity * 1e6 * volumeM3; // Pa * m^3 = Joules
-
   const formulaStrainEnergy = `U = \\frac{P^2 L}{2 E A} = \\frac{${state.axialForce}^2 \\cdot ${(state.axialLength*1000).toFixed(0)}}{2 \\cdot ${E_MPa} \\cdot ${state.axialArea}} = ${totalStrainEnergyJ.toFixed(2)} \\text{ J}`;
 
   return (
     <div className="flex flex-col h-full space-y-6">
+      <CalculationNotice assumptions={result.assumptions} warnings={result.warnings} />
       {/* TOP: Visualization */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
           {/* Visualizer */}
@@ -219,7 +187,7 @@ export const AxialModule = ({ state, onChange }: { state: SimulationState; onCha
                   currentPoisson={state.poissonRatio}
                   onSelect={(mat) => onChange({ bendModulus: mat.E, materialYield: mat.yield, poissonRatio: mat.poisson })} 
                 />
-               <SliderControl label="轴向拉力 (Force)" value={state.axialForce} min={1000} max={50000} step={1000} unit="N" onChange={(v) => onChange({ axialForce: v })} />
+               <SliderControl label="轴向拉力 (Force)" value={state.axialForce} min={0} max={50000} step={1000} unit="N" onChange={(v) => onChange({ axialForce: v })} />
                <SliderControl label="横截面积 (Area)" value={state.axialArea} min={10} max={500} step={10} unit="mm²" onChange={(v) => onChange({ axialArea: v })} />
                <SliderControl label="原长 (Length)" value={state.axialLength} min={0.1} max={5.0} step={0.1} unit="m" onChange={(v) => onChange({ axialLength: v })} />
            </div>
@@ -250,8 +218,8 @@ export const AxialModule = ({ state, onChange }: { state: SimulationState; onCha
                 <div className="flex justify-between items-center p-3 bg-white rounded border border-slate-200">
                   <span className="text-sm text-slate-600">弹性应变能 (U)</span>
                   <div className="text-right">
-                      <span className="font-mono font-bold text-indigo-600 block">{totalStrainEnergyJ.toFixed(2)} J</span>
-                      <span className="text-xs text-slate-400">({strainEnergyDensityKJ.toFixed(0)} kJ/m³)</span>
+                      <span className="font-mono font-bold text-indigo-600 block">{isPlastic ? "不适用" : `${totalStrainEnergyJ.toFixed(2)} J`}</span>
+                      <span className="text-xs text-slate-400">{isPlastic ? "线弹性公式不适用于当前状态" : `(${strainEnergyDensityKJ.toFixed(0)} kJ/m³)`}</span>
                   </div>
                 </div>
                 
@@ -383,7 +351,7 @@ export const AxialModule = ({ state, onChange }: { state: SimulationState; onCha
                 </div>
                 <div className="p-3 bg-white rounded border border-slate-200">
                     <div className="text-xs text-slate-500 mb-1">④ 应变能计算 (Strain Energy)</div>
-                    <LatexRenderer formula={formulaStrainEnergy} />
+                    {isPlastic ? <p className="text-sm text-amber-700">屈服后的教学曲线不能用于计算真实塑性应变能。</p> : <LatexRenderer formula={formulaStrainEnergy} />}
                 </div>
             </div>
          </div>

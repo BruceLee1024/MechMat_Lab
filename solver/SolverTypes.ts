@@ -76,7 +76,7 @@ export interface NodeResult {
   reaction?: {
     Fx: number;  // N
     Fy: number;  // N
-    Mz: number;  // Nm
+    Mz: number;  // N·mm（显示时转换为 N·m）
   };
 }
 
@@ -107,8 +107,10 @@ export interface ElementResult {
     position: number;  // 0-1
     N: number;         // 轴力 (N)
     V: number;         // 剪力 (N)
-    M: number;         // 弯矩 (Nm)
+    M: number;         // 弯矩 (N·mm，显示时转换为 N·m)
   }[];
+  // 详细挠度曲线仅由具备此计算能力的求解路径提供；缺省不能代表零挠度。
+  deflectionCurve?: { position: number; dy: number }[]; // 位置 0–1，位移 mm
   // 应力分布
   stressDistribution: StressPoint[];
   // 应力极值

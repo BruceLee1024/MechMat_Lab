@@ -55,11 +55,12 @@ export const DiagramPanel = ({ state, diagramType }: { state: SolverState; diagr
   for (let i = 0; i < state.elements.length; i++) {
     const L = elemLengths[i];
     const elemResult = result.elements.find(er => er.elementId === state.elements[i].id);
-    if (elemResult && elemResult.deflectionCurve.length > 0) {
-      for (let j = 0; j < elemResult.deflectionCurve.length; j++) {
+    const curve = elemResult?.deflectionCurve ?? [];
+    if (curve.length > 0) {
+      for (let j = 0; j < curve.length; j++) {
         // 跳过单元边界重复点
         if (j === 0 && allDeflections.length > 0) continue;
-        const d = elemResult.deflectionCurve[j];
+        const d = curve[j];
         allDeflections.push({
           x: deflOffset + d.position * L,
           dy: d.dy,
@@ -67,6 +68,10 @@ export const DiagramPanel = ({ state, diagramType }: { state: SolverState; diagr
       }
     }
     deflOffset += L;
+  }
+
+  if (diagramType === 'deflection' && allDeflections.length === 0) {
+    return <div className="p-4 text-sm text-slate-500">当前求解路径未提供详细挠度曲线，节点位移请查看结果表。</div>;
   }
 
   // 找最大值用于缩放

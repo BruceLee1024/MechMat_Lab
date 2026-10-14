@@ -1,3 +1,4 @@
+import { calculateElementStress } from './StressCalculator';
 // ==========================================
 // 高级材料力学求解器 - 支持复杂结构和多种荷载
 // ==========================================
@@ -707,8 +708,11 @@ export function solveAdvanced(
         V: f.V,
         M: f.M,
       })),
-      maxStress,
-      minStress: -maxStress,
+      ...calculateElementStress(
+        forces.map(f => ({ position: f.x / L, N: f.N, V: f.V, M: f.M })),
+        elem.section.A, elem.type === 'truss' ? 0 : I,
+        elem.section.width, elem.type === 'truss' ? 0 : h, elem.material.yield
+      ),
       strainEnergy,
     });
     

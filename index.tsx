@@ -1,3 +1,10 @@
+import "./workbench.css";
+import { useWorkspace } from "./experiments/useWorkspace";
+import { getSimulation } from "./experiments/schema";
+import type { SolverModel, SectionModel } from "./experiments/schema";
+import { Workbench } from "./components/Workbench";
+import { ExperimentToolbar } from "./components/ExperimentToolbar";
+import { updateSimulationState } from "./mechanics/simulationState";
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { createRoot } from "react-dom/client";
 import { Menu, Lock, Key, X, CheckCircle, AlertCircle } from "lucide-react";
@@ -367,264 +374,67 @@ const LockedModuleOverlay = ({ onActivate }: { onActivate: () => void }) => {
 };
 
 const App = () => {
-  const [activeModule, setActiveModule] = useState<ModuleType>("home");
-  const [simState, setSimState] = useState<SimulationState>(DEFAULT_STATE);
+  const store = useWorkspace();
+  const activeModule = store.workspace.activeModule;
+  const current = store.current;
+  const simState = current ? getSimulation(current) : DEFAULT_STATE;
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [focus, setFocus] = useState(false);
   const [currentTheme, setCurrentTheme] = useState<ThemeName>(getCurrentTheme());
   const [activated, setActivated] = useState(isActivated());
   const [showActivationModal, setShowActivationModal] = useState(false);
-  const [isTransitioning, setIsTransitioning] = useState(false);
-  const [displayModule, setDisplayModule] = useState<ModuleType>("home");
-  const [leftPanelWidth, setLeftPanelWidth] = useState(65); // 百分比
-  const [isDragging, setIsDragging] = useState(false);
-  const contentRef = useRef<HTMLDivElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  // 注入动画样式
+  useEffect(() => { applyTheme(currentTheme); }, [currentTheme]);
   useEffect(() => {
-    const styleEl = document.createElement("style");
-    styleEl.textContent = animationStyles;
-    document.head.appendChild(styleEl);
-    return () => {
-      document.head.removeChild(styleEl);
-    };
+    const style = document.createElement('style'); style.textContent = animationStyles; document.head.appendChild(style);
+    return () => style.remove();
   }, []);
-
-  // 初始化主题
   useEffect(() => {
-    applyTheme(currentTheme);
-  }, [currentTheme]);
-
-  // 拖拽处理
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
+    const close = (event: KeyboardEvent) => { if (event.key === 'Escape') setIsMenuOpen(false); };
+    window.addEventListener('keydown', close); return () => window.removeEventListener('keydown', close);
   }, []);
-
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (!isDragging || !containerRef.current) return;
-    
-    const container = containerRef.current;
-    const rect = container.getBoundingClientRect();
-    const newWidth = ((e.clientX - rect.left) / rect.width) * 100;
-    
-    // 限制范围 30% - 80%
-    setLeftPanelWidth(Math.min(80, Math.max(30, newWidth)));
-  }, [isDragging]);
-
-  const handleMouseUp = useCallback(() => {
-    setIsDragging(false);
-  }, []);
-
-  useEffect(() => {
-    if (isDragging) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      document.body.style.cursor = 'col-resize';
-      document.body.style.userSelect = 'none';
-    } else {
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
+  const handleModuleChange = (module: ModuleType) => {
+    if (current) store.end(current.module);
+    store.navigate(module); setIsMenuOpen(false); setFocus(false);
+  };
+  const handleStateChange = (changes: Partial<SimulationState>) => { if (current) store.editSimulation(current.module, changes); };
+  const handleThemeChange = (theme: ThemeName) => { setCurrentTheme(theme); applyTheme(theme); };
+  const locked = !activated && !isModuleAvailable(activeModule);
+  const content = (() => {
+    switch (activeModule) {
+      case 'home': return <HomeModule onNavigate={handleModuleChange} />;
+      case 'fundamentals': return <FundamentalsModule state={simState} onChange={handleStateChange} />;
+      case 'axial': return <AxialModule state={simState} onChange={handleStateChange} />;
+      case 'bending': return <BendingModule state={simState} onChange={handleStateChange} />;
+      case 'torsion': return <TorsionModule state={simState} onChange={handleStateChange} />;
+      case 'buckling': return <BucklingModule state={simState} onChange={handleStateChange} />;
+      case 'stress': return <StressModule state={simState} onChange={handleStateChange} />;
+      case 'combined': return <CombinedModule state={simState} onChange={handleStateChange} />;
+      case 'solver': return <SolverModule model={store.workspace.documents.solver.model as SolverModel} onModelChange={model => store.editModel('solver', model)} />;
+      case 'section': return <SectionModule model={store.workspace.documents.section.model as SectionModel} onModelChange={model => store.editModel('section', model)} />;
+      case 'formulas': return <FormulasModule />;
+      case 'resources': return <ResourcesModule />;
+      case 'settings': return <SettingsModule currentTheme={currentTheme} onThemeChange={handleThemeChange} />;
     }
-    
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isDragging, handleMouseMove, handleMouseUp]);
-
-  // 模块切换动画
-  const handleModuleChange = (newModule: ModuleType) => {
-    if (newModule === activeModule) return;
-    
-    setIsTransitioning(true);
-    
-    setTimeout(() => {
-      setActiveModule(newModule);
-      setDisplayModule(newModule);
-      
-      if (contentRef.current) {
-        contentRef.current.scrollTop = 0;
-      }
-      
-      setTimeout(() => {
-        setIsTransitioning(false);
-      }, 50);
-    }, 200);
-  };
-
-  const handleThemeChange = (theme: ThemeName) => {
-    setCurrentTheme(theme);
-    applyTheme(theme);
-  };
-
-  const handleStateChange = (changes: Partial<SimulationState>) => {
-    setSimState((prev) => ({ ...prev, ...changes }));
-  };
-
-  const currentTheory = THEORY_INFO[activeModule];
-
-  // 检查当前模块是否被锁定
-  const isCurrentModuleLocked = !activated && !isModuleAvailable(displayModule);
-
-  const renderModule = () => {
-    const moduleContent = (() => {
-      switch (displayModule) {
-        case "home": return <HomeModule onNavigate={handleModuleChange} />;
-        case "fundamentals": return <FundamentalsModule state={simState} onChange={handleStateChange} />;
-        case "axial": return <AxialModule state={simState} onChange={handleStateChange} />;
-        case "bending": return <BendingModule state={simState} onChange={handleStateChange} />;
-        case "torsion": return <TorsionModule state={simState} onChange={handleStateChange} />;
-        case "buckling": return <BucklingModule state={simState} onChange={handleStateChange} />;
-        case "stress": return <StressModule state={simState} onChange={handleStateChange} />;
-        case "combined": return <CombinedModule state={simState} onChange={handleStateChange} />;
-        case "solver": return <SolverModule />;
-        case "section": return <SectionModule />;
-        case "formulas": return <FormulasModule />;
-        case "resources": return <ResourcesModule />;
-        case "settings": return <SettingsModule currentTheme={currentTheme} onThemeChange={handleThemeChange} />;
-        default: return null;
-      }
-    })();
-
-    // 如果模块被锁定，显示锁定覆盖层
-    if (isCurrentModuleLocked) {
-      return (
-        <div className="relative h-full">
-          <div className="opacity-30 pointer-events-none h-full overflow-hidden">
-            {moduleContent}
-          </div>
-          <LockedModuleOverlay onActivate={() => setShowActivationModal(true)} />
-        </div>
-      );
-    }
-
-    return moduleContent;
-  };
-
-  // 判断是否显示侧边栏（主页时隐藏）
-  const showSidebar = activeModule !== "home";
-
-  return (
-    <div className="min-h-screen flex flex-col md:flex-row text-slate-900 font-sans bg-slate-50">
-      {/* Sidebar Component - 主页时隐藏 */}
-      {showSidebar && (
-        <Sidebar 
-          activeModule={activeModule} 
-          setActiveModule={handleModuleChange} 
-          isMenuOpen={isMenuOpen} 
-          setIsMenuOpen={setIsMenuOpen}
-          currentTheme={currentTheme}
-          onThemeChange={handleThemeChange}
-        />
-      )}
-
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col h-screen overflow-hidden">
-        {/* Header (Mobile) - 主页时也隐藏 */}
-        {showSidebar && (
-          <header className="bg-white border-b border-slate-200 p-4 flex items-center justify-between md:hidden">
-              <h1 className="font-bold text-lg">材料力学可视化实验室</h1>
-              <button onClick={() => setIsMenuOpen(true)} className="text-slate-600">
-                  <Menu className="w-6 h-6" />
-              </button>
-          </header>
-        )}
-
-        {/* Scrollable Area */}
-        <main className="flex-1 flex flex-col overflow-hidden">
-          {/* Sticky Header - 隐藏首页的标题栏 */}
-          {activeModule !== "home" && (
-            <div 
-              className="bg-slate-50 border-b border-slate-200 shadow-sm animate-slide-in flex-shrink-0" 
-              style={{ 
-                paddingLeft: "1rem",
-                paddingRight: "1rem",
-                paddingTop: "1rem",
-                paddingBottom: "1rem",
-                zIndex: 5
-              }}
-            >
-              <h2 className="text-2xl font-bold" style={{ color: 'var(--color-1)' }}>{currentTheory.title}</h2>
-              <p className="text-slate-500 mt-1 text-sm">{currentTheory.definition}</p>
-            </div>
-          )}
-
-          {/* Content Area */}
-          <div 
-            ref={contentRef}
-            className={`flex-1 overflow-hidden ${activeModule === "home" ? "" : "p-4"}`}
-          >
-            <div 
-              className={`module-transition h-full ${isTransitioning ? 'module-enter' : 'module-enter-active'}`}
-            >
-              {/* Layout Container */}
-              {activeModule === "home" ? (
-                <div className="h-full overflow-y-auto">
-                  {renderModule()}
-                </div>
-              ) : activeModule === "solver" || activeModule === "settings" || activeModule === "resources" || activeModule === "section" || activeModule === "formulas" ? (
-                <div className="h-full overflow-y-auto py-6">
-                  {renderModule()}
-                </div>
-              ) : (
-                /* 可调整大小的分栏布局 */
-                <div ref={containerRef} className="flex h-full gap-0">
-                  {/* Left Column: Visualization & Controls */}
-                  <div 
-                    className="overflow-y-auto pr-2"
-                    style={{ width: `${leftPanelWidth}%` }}
-                  >
-                    <div className="space-y-4">
-                      {renderModule()}
-                    </div>
-                  </div>
-
-                  {/* Resizer */}
-                  <div 
-                    className={`resizer flex-shrink-0 w-3 flex items-center justify-center rounded transition-colors ${isDragging ? 'dragging' : ''}`}
-                    onMouseDown={handleMouseDown}
-                  >
-                    <div className="resizer-handle w-1 h-12 bg-slate-300 rounded-full transition-colors" />
-                  </div>
-
-                  {/* Right Column: AI & Theory */}
-                  <div 
-                    className="overflow-y-auto pl-2"
-                    style={{ width: `${100 - leftPanelWidth}%` }}
-                  >
-                    <div className="flex flex-col gap-4 h-full">
-                      {/* AI Tutor Panel */}
-                      <div style={{ height: '55%', minHeight: '350px' }}>
-                        <AITutor 
-                          activeModule={activeModule} 
-                          state={simState} 
-                          onNavigateToSettings={() => handleModuleChange("settings")}
-                        />
-                      </div>
-
-                      {/* Theory Guide Panel */}
-                      <div style={{ height: '45%', minHeight: '250px' }}>
-                        <TheoryPanel activeModule={activeModule} className="h-full" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </main>
-      </div>
-
-      {/* 激活弹窗 */}
-      {showActivationModal && (
-        <ActivationModal
-          onClose={() => setShowActivationModal(false)}
-          onActivated={() => setActivated(true)}
-        />
-      )}
+  })();
+  const showSidebar = activeModule !== 'home';
+  const hasPanels = current && !['solver', 'section'].includes(activeModule);
+  return <div className="app-shell font-sans">
+    {showSidebar ? <>
+      {isMenuOpen ? <button className="sidebar-backdrop" aria-label="关闭导航遮罩" onClick={() => setIsMenuOpen(false)} /> : null}
+      <Sidebar activeModule={activeModule} setActiveModule={handleModuleChange} isMenuOpen={isMenuOpen} setIsMenuOpen={setIsMenuOpen} currentTheme={currentTheme} onThemeChange={handleThemeChange} />
+    </> : null}
+    <div className="app-main">
+      {showSidebar ? <header className="app-header"><button className="menu-toggle" aria-label="打开导航菜单" aria-expanded={isMenuOpen} onClick={() => setIsMenuOpen(true)}><Menu size={20} /></button><div className="min-w-0"><h2>{THEORY_INFO[activeModule].title}</h2><p>{THEORY_INFO[activeModule].definition}</p></div></header> : null}
+      {current && !locked ? <ExperimentToolbar key={activeModule} store={store} focus={focus} onFocus={() => setFocus(!focus)} /> : null}
+      {store.message ? <div className="workspace-alert" role="alert"><span>{store.message}</span><button className="tool-button" onClick={store.retryStorage}>{store.blocked ? '重新启用自动恢复' : '重试保存'}</button></div> : null}
+      <main className={`app-content ${activeModule === 'home' ? '!p-0' : ''}`}>
+        {locked ? <div className="relative h-full"><div inert aria-hidden="true" className="opacity-30 h-full overflow-hidden">{content}</div><LockedModuleOverlay onActivate={() => setShowActivationModal(true)} /></div> : hasPanels ?
+          <Workbench module={activeModule} state={simState} focus={focus} onSettings={() => handleModuleChange('settings')} onBegin={() => { if (current) store.begin(current.module); }} onEnd={() => { if (current) store.end(current.module); }}>{content}</Workbench> :
+          <div key={activeModule} className="single-module module-content">{content}</div>}
+      </main>
     </div>
-  );
+    {showActivationModal ? <ActivationModal onClose={() => setShowActivationModal(false)} onActivated={() => setActivated(true)} /> : null}
+  </div>;
 };
 
 const root = createRoot(document.getElementById("root")!);

@@ -1,68 +1,25 @@
-import React, { useState } from "react";
+import { calculateTorsion } from "../mechanics/calculations";
+import { InvalidCalculation, CalculationNotice } from "../components/CalculationNotice";
+import React from "react";
 import { Calculator, Sigma, Activity } from "lucide-react";
 import { SliderControl, LatexRenderer, MaterialSelector } from "../components";
-import { SimulationState } from "../types";
+import { SimulationState, DEFAULT_STATE } from "../types";
 import { CommonDefs } from "./CommonDefs";
 
 export const TorsionModule = ({ state, onChange }: { state: SimulationState; onChange: (s: Partial<SimulationState>) => void }) => {
-  // Local state for load distribution (Ratio of Torque at Gear B vs Total Input)
-  const [loadRatio, setLoadRatio] = useState(0.6); 
+  // 分流比例与实验参数共用状态，确保视图和 AI 读取同一工况。
+  const loadRatio = state.torqLoadRatio;
+  const setLoadRatio = (value: number) => onChange({ torqLoadRatio: value });
 
-  const Ip = (Math.PI * Math.pow(state.torqRadius, 4)) / 2;
-  
-  // Transmission Shaft Model
-  // Gear A (Left, Input): T_in = state.torqTorque
-  // Gear B (Middle, Output 1): T_out1 = loadRatio * T_in
-  // Gear C (Right, Output 2): T_out2 = (1 - loadRatio) * T_in
-  // Internal Torque:
-  // Section AB: T_1 = T_in
-  // Section BC: T_2 = T_in - T_out1 = T_out2
-  
-  const T_in_Nm = state.torqTorque;
-  const T_out1_Nm = T_in_Nm * loadRatio;
-  const T_out2_Nm = T_in_Nm * (1 - loadRatio);
-  
-  const T_AB_Nm = T_in_Nm;
-  const T_BC_Nm = T_out2_Nm;
-  
-  // Max Shear Stress (Always in Section AB as T_AB > T_BC)
-  const maxShear = (T_AB_Nm * 1000 * state.torqRadius) / Ip;
-  const G_MPa = state.torqModulus * 1000;
-  
-  // Twist Angles
-  // Lengths assumed: L_AB = 0.5 * L, L_BC = 0.5 * L
-  const L_total_mm = state.torqLength * 1000;
-  const L_AB_mm = L_total_mm * 0.5;
-  const L_BC_mm = L_total_mm * 0.5;
-  
-  const phi_AB_rad = (T_AB_Nm * 1000 * L_AB_mm) / (G_MPa * Ip);
-  const phi_BC_rad = (T_BC_Nm * 1000 * L_BC_mm) / (G_MPa * Ip);
-  
-  const phi_total_rad = phi_AB_rad + phi_BC_rad;
-  const phi_total_deg = phi_total_rad * (180 / Math.PI);
+  const result = calculateTorsion({ torque: state.torqTorque, radius: state.torqRadius, length: state.torqLength, modulus: state.torqModulus, loadRatio });
+  if (result.ok === false) return <InvalidCalculation diagnostics={result.diagnostics} onReset={() => { onChange({ torqTorque: DEFAULT_STATE.torqTorque, torqRadius: DEFAULT_STATE.torqRadius, torqLength: DEFAULT_STATE.torqLength, torqModulus: DEFAULT_STATE.torqModulus, torqLoadRatio: DEFAULT_STATE.torqLoadRatio }); }} />;
+  const { Ip, T_in_Nm, T_out1_Nm, T_out2_Nm, T_AB_Nm, T_BC_Nm, maxShear, G_MPa, L_total_mm, L_AB_mm, L_BC_mm, phi_AB_rad, phi_BC_rad, phi_total_rad, phi_total_deg, stiffnessGIp, U_AB_J, U_BC_J, U_total_J, u_max_density } = result.values;
 
   const formulaIp = `I_p = \\frac{\\pi r^4}{2} = \\frac{\\pi \\times ${state.torqRadius}^4}{2} = ${(Ip/10000).toFixed(2)} \\times 10^4 \\text{ mm}^4`;
   const formulaShear = `\\tau_{max} = \\frac{T_{AB} \\cdot r}{I_p} = \\frac{${T_AB_Nm} \\times 10^3 \\times ${state.torqRadius}}{${Ip.toFixed(0)}} = ${maxShear.toFixed(2)} \\text{ MPa}`;
   const formulaAngleAB = `\\varphi_{AB} = \\frac{T_{AB} \\cdot L_{AB}}{G \\cdot I_p} = \\frac{${T_AB_Nm} \\times 10^3 \\times ${L_AB_mm.toFixed(0)}}{${G_MPa} \\times ${Ip.toFixed(0)}} = ${(phi_AB_rad * 180 / Math.PI).toFixed(3)}^\\circ`;
   const formulaAngleBC = `\\varphi_{BC} = \\frac{T_{BC} \\cdot L_{BC}}{G \\cdot I_p} = \\frac{${T_BC_Nm.toFixed(0)} \\times 10^3 \\times ${L_BC_mm.toFixed(0)}}{${G_MPa} \\times ${Ip.toFixed(0)}} = ${(phi_BC_rad * 180 / Math.PI).toFixed(3)}^\\circ`;
   const formulaAngle = `\\varphi_{total} = \\varphi_{AB} + \\varphi_{BC} = ${(phi_AB_rad * 180 / Math.PI).toFixed(3)}^\\circ + ${(phi_BC_rad * 180 / Math.PI).toFixed(3)}^\\circ = ${phi_total_deg.toFixed(2)}^\\circ`;
-
-  // --- Strain Energy Calculations ---
-  // Stiffness GIp in Nm^2
-  // G in GPa = 10^9 Pa, Ip in mm^4 = 10^-12 m^4
-  // GIp = (G * 1e9) * (Ip * 1e-12) = G * Ip * 1e-3
-  const stiffnessGIp = state.torqModulus * Ip * 0.001; 
-  
-  // U = T^2 * L / (2 * G * Ip)
-  // L_AB_mm to meters -> L_AB_mm / 1000
-  const U_AB_J = (Math.pow(T_AB_Nm, 2) * (L_AB_mm / 1000)) / (2 * stiffnessGIp);
-  const U_BC_J = (Math.pow(T_BC_Nm, 2) * (L_BC_mm / 1000)) / (2 * stiffnessGIp);
-  const U_total_J = U_AB_J + U_BC_J;
-  
-  // Strain Energy Density u_max = tau_max^2 / 2G
-  // tau in MPa, G in MPa
-  // Result in MJ/m^3 = 1000 kJ/m^3
-  const u_max_density = (Math.pow(maxShear, 2) / (2 * state.torqModulus * 1000)) * 1000; // kJ/m^3
 
   const formulaEnergy = `U = \\sum \\frac{T_i^2 L_i}{2 G I_p} = \\frac{${T_AB_Nm}^2 \\times ${(L_AB_mm/1000).toFixed(2)}}{2 \\times ${stiffnessGIp.toFixed(1)}} + \\frac{${T_BC_Nm.toFixed(0)}^2 \\times ${(L_BC_mm/1000).toFixed(2)}}{2 \\times ${stiffnessGIp.toFixed(1)}} = ${U_total_J.toFixed(2)} \\text{ J}`;
 
@@ -75,6 +32,7 @@ export const TorsionModule = ({ state, onChange }: { state: SimulationState; onC
 
   return (
     <div className="flex flex-col h-full space-y-6">
+      <CalculationNotice assumptions={result.assumptions} warnings={result.warnings} />
       {/* TOP: Visualization */}
       <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex items-center justify-center relative h-[320px]">
         <div className="absolute top-4 left-4 text-xs font-bold text-slate-400 uppercase flex items-center gap-2">
@@ -189,7 +147,7 @@ export const TorsionModule = ({ state, onChange }: { state: SimulationState; onC
                     currentG={state.torqModulus} 
                     onSelect={(mat) => onChange({ torqModulus: mat.G })} 
                   />
-                  <SliderControl label="输入扭矩 T_in" value={state.torqTorque} min={100} max={2000} step={50} unit="Nm" onChange={(v) => onChange({ torqTorque: v })} />
+                  <SliderControl label="输入扭矩 T_in" value={state.torqTorque} min={0} max={2000} step={50} unit="Nm" onChange={(v) => onChange({ torqTorque: v })} />
                   <div className="pt-2 pb-2">
                       <div className="flex justify-between text-sm mb-2">
                         <span className="text-slate-600">负载分配 (Load Ratio B:C)</span>

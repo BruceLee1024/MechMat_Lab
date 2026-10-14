@@ -1,0 +1,2 @@
+# CSV 导出采用 CRLF；将回车识别为行尾，仍检查多余空格。
+*.csv whitespace=trailing-space,space-before-tab,cr-at-eol

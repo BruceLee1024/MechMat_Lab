@@ -1,5 +1,7 @@
+import { getCalculationContext } from "./mechanics/aiContext";
+import { requestChat } from "./services/ai/client";
 import React, { useState, useRef, useEffect } from "react";
-import { Bot, Loader2, Send, Lightbulb, RefreshCw, Settings } from "lucide-react";
+import { Bot, Loader2, Send, Lightbulb, RefreshCw, Settings, Square } from "lucide-react";
 import { MarkdownRenderer } from "./components";
 import { ModuleType, SimulationState, THEORY_INFO } from "./types";
 import { getStoredApiKey, getStoredModelEndpoint, getStoredModelName, getStoredModelProvider, AI_MODELS } from "./modules/SettingsModule";
@@ -83,7 +85,7 @@ const getGuidingQuestions = (module: ModuleType): string[] => {
 // 根据模块生成系统提示
 const getSystemPrompt = (module: ModuleType, state: SimulationState): string => {
   const theoryInfo = THEORY_INFO[module] || THEORY_INFO.home;
-  const materialInfo = `当前材料: ${state.materialName}, 弹性模量 E=${state.bendModulus}GPa, 屈服强度 σ_y=${state.materialYield}MPa`;
+  const materialInfo = `当前材料标签: ${state.materialName}, 参考屈服强度 σ_y=${state.materialYield}MPa。具体模量与适用范围以当前本地计算为准。`;
   
   let contextInfo = "";
   switch (module) {
@@ -91,19 +93,19 @@ const getSystemPrompt = (module: ModuleType, state: SimulationState): string => 
       contextInfo = `泊松比 ν=${state.poissonRatio}。用户正在学习应力应变基础，观察泊松效应和真应力vs工程应力。`;
       break;
     case "axial":
-      contextInfo = `当前参数: 力 F=${state.axialForce}N, 面积 A=${state.axialArea}mm², 长度 L=${state.axialLength}m。计算应力约 ${(state.axialForce/state.axialArea).toFixed(1)} MPa。`;
+      contextInfo = getCalculationContext(module, state) || "";
       break;
     case "bending":
-      contextInfo = `当前参数: 载荷 P=${state.bendLoad}N, 跨度 L=${state.bendLength}m, 截面 ${state.bendWidth}×${state.bendHeight}mm。`;
+      contextInfo = getCalculationContext(module, state) || "";
       break;
     case "torsion":
-      contextInfo = `当前参数: 扭矩 T=${state.torqTorque}Nm, 半径 r=${state.torqRadius}mm, 长度 L=${state.torqLength}m, 剪切模量 G=${state.torqModulus}GPa。`;
+      contextInfo = getCalculationContext(module, state) || "";
       break;
     case "buckling":
-      contextInfo = `当前参数: 压力 P=${state.buckleLoad}N, 长度 L=${state.buckleLength}m, 截面 ${state.buckleWidth}×${state.buckleHeight}mm。`;
+      contextInfo = getCalculationContext(module, state) || "";
       break;
     case "stress":
-      contextInfo = `应力张量: σx=${state.stressSigX}, σy=${state.stressSigY}, σz=${state.stressSigZ}, τxy=${state.stressTauXY}, τyz=${state.stressTauYZ}, τzx=${state.stressTauZX} MPa。`;
+      contextInfo = getCalculationContext(module, state) || "";
       break;
     case "combined":
       contextInfo = `当前偏心受压参数: 轴向力 F=${state.combinedLoad}N, 偏心距 e=${state.combinedEccentricity}mm, 截面 ${state.combinedWidth}×${state.combinedHeight}mm。
@@ -130,6 +132,7 @@ ${contextInfo}
 6. 回答要简洁有力，控制在200字以内，除非学生要求详细解释
 7. 使用 Markdown 格式，适当使用加粗、列表等增强可读性
 8. 每次回答结束时，可以抛出一个相关的思考问题，引导进一步学习
+9. 优先使用本地计算结果及其单位，遵守假设和警告；不将教学示意当成实测结果
 
 记住：你是一个引导者，帮助学生建立直觉和理解，而不是一个答案机器。`;
 };
@@ -150,7 +153,7 @@ const getWelcomeMessage = (module: ModuleType, hasApiKey: boolean): string => {
     case "buckling":
       return `👋 欢迎来到压杆稳定模块！\n\n这是一个很有趣的现象——细长杆受压时会突然弯曲！\n\n**关键概念**：失稳和强度破坏有什么本质区别？${apiHint}`;
     case "stress":
-      return `👋 欢迎来到应力状态分析模块！\n\n这里我们研究一个点上的三维应力状态。调整应力分量，观察主应力和莫尔圆的变化。\n\n**核心问题**：为什么我们要找主应力？${apiHint}`;
+      return `👋 欢迎来到应力状态分析模块！\n\n当前视图研究二维平面应力变换，尚未计算三维主应力。调整应力分量，观察主应力和莫尔圆的变化。\n\n**核心问题**：为什么我们要找主应力？${apiHint}`;
     case "combined":
       return `👋 欢迎来到组合变形模块！\n\n实际工程中，构件往往同时承受多种载荷。这里有两个子模块：\n- **偏心受压**：轴向力 + 弯矩的组合\n- **弯扭组合**：弯曲 + 扭转的组合（传动轴典型工况）\n\n**思考**：弯扭组合变形为什么要用强度理论，而不是直接叠加应力？${apiHint}`;
     case "solver":
@@ -171,10 +174,15 @@ export const AITutor = ({ activeModule, state, onNavigateToSettings }: AITutorPr
   const [error, setError] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
-  const [lastModule, setLastModule] = useState<ModuleType>(activeModule);
   const [apiKey, setApiKey] = useState<string>("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [streamingContent, setStreamingContent] = useState("");
+  const [retryConversation, setRetryConversation] = useState<Message[] | null>(null);
+  const requestRef = useRef<{ controller: AbortController; partial: string } | null>(null);
+  const moduleRef = useRef(activeModule);
+  moduleRef.current = activeModule;
+
 
   // 加载存储的 API Key
   useEffect(() => {
@@ -195,154 +203,107 @@ export const AITutor = ({ activeModule, state, onNavigateToSettings }: AITutorPr
     return () => clearInterval(interval);
   }, [apiKey]);
 
-  // 滚动到底部
+  // 自动滚动只作用于聊天区，保留工作台和辅助栏的位置。
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const container = messagesEndRef.current?.parentElement;
+    container?.scrollTo({ top: container.scrollHeight, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
   };
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, streamingContent]);
 
-  // 模块切换时重置对话并显示欢迎消息
+  // 模块切换或卸载时使旧请求失效，迟到的回复不能写入新对话。
   useEffect(() => {
-    if (activeModule !== lastModule) {
-      setLastModule(activeModule);
-      setMessages([{
-        role: "assistant",
-        content: getWelcomeMessage(activeModule, !!apiKey)
-      }]);
-      setError(null);
-    }
-  }, [activeModule, lastModule, apiKey]);
+    setMessages([{ role: "assistant", content: getWelcomeMessage(activeModule, !!getStoredApiKey()) }]);
+    setError(null);
+    setRetryConversation(null);
+    setStreamingContent("");
+    setLoading(false);
+    return () => {
+      const current = requestRef.current;
+      requestRef.current = null;
+      current?.controller.abort();
+    };
+  }, [activeModule]);
 
-  // 初始化欢迎消息
   useEffect(() => {
-    if (messages.length === 0) {
-      setMessages([{
-        role: "assistant",
-        content: getWelcomeMessage(activeModule, !!apiKey)
-      }]);
+    if (!requestRef.current && messages.length <= 1) {
+      setMessages([{ role: "assistant", content: getWelcomeMessage(activeModule, !!apiKey) }]);
     }
   }, [apiKey]);
 
   const guidingQuestions = getGuidingQuestions(activeModule);
 
-  const [streamingContent, setStreamingContent] = useState<string>("");
-
-  const sendMessage = async (content: string) => {
-    if (!content.trim()) return;
-    
-    if (!apiKey) {
-      setError("请先在「设置」中配置 API Key");
-      return;
-    }
-
-    const userMessage: Message = { role: "user", content: content.trim() };
-    const newMessages = [...messages, userMessage];
-    setMessages(newMessages);
+  const sendMessage = async (content: string, retryHistory?: Message[]) => {
+    if (requestRef.current || (!retryHistory && !content.trim())) return;
+    if (!apiKey) { setError("请先在「设置」中配置 API Key"); return; }
+    const history: Message[] = retryHistory ?? [...messages, { role: "user", content: content.trim() }];
+    const current = { controller: new AbortController(), partial: "" };
+    const requestModule = activeModule;
+    requestRef.current = current;
+    const isCurrent = () => requestRef.current === current && moduleRef.current === requestModule;
+    setMessages(history);
     setInputValue("");
     setLoading(true);
     setError(null);
+    setRetryConversation(null);
     setStreamingContent("");
-
     try {
-      const systemPrompt = getSystemPrompt(activeModule, state);
-      
-      const recentMessages = newMessages.slice(-10);
-      const apiMessages = [
-        { role: "system", content: systemPrompt },
-        ...recentMessages.map(m => ({ role: m.role, content: m.content }))
-      ];
-
-      const endpoint = getStoredModelEndpoint() || (AI_MODELS.find(m => m.id === getStoredModelProvider()) || AI_MODELS[0]).defaultEndpoint;
-      const response = await fetch(`${endpoint}/chat/completions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${apiKey}`
+      const provider = AI_MODELS.find(model => model.id === getStoredModelProvider()) || AI_MODELS[0];
+      const response = await requestChat({
+        endpoint: getStoredModelEndpoint() || provider.defaultEndpoint,
+        apiKey, model: getStoredModelName() || provider.defaultModel,
+        messages: [{ role: "system", content: getSystemPrompt(requestModule, state) }, ...history.slice(-10)],
+        signal: current.controller.signal,
+        onContent: value => {
+          if (isCurrent()) { current.partial = value; setStreamingContent(value); }
         },
-        body: JSON.stringify({
-          model: getStoredModelName() || (AI_MODELS.find(m => m.id === getStoredModelProvider()) || AI_MODELS[0]).defaultModel,
-          messages: apiMessages,
-          stream: true,
-          temperature: 0.7,
-          max_tokens: 500
-        })
       });
-
-      if (!response.ok) {
-        let errMsg = `请求失败 (${response.status})`;
-        try {
-          const errText = await response.text();
-          const errData = JSON.parse(errText);
-          errMsg = errData.error?.message || errMsg;
-        } catch {
-          // 错误响应体不是有效 JSON，使用默认错误信息
-        }
-        throw new Error(errMsg);
+      if (isCurrent()) setMessages([...history, { role: "assistant", content: response }]);
+    } catch (error) {
+      if (isCurrent() && !current.controller.signal.aborted) {
+        setError(error instanceof Error ? error.message : "网络请求失败，请重试");
+        setRetryConversation(history);
+        if (current.partial) setMessages([...history, { role: "assistant", content: `${current.partial}\n\n*回复中断，可重试。*` }]);
       }
-
-      // 流式读取响应
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-      let fullContent = "";
-
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split('\n');
-
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const data = line.slice(6);
-              if (data === '[DONE]') continue;
-              
-              try {
-                const parsed = JSON.parse(data);
-                const delta = parsed.choices?.[0]?.delta?.content;
-                if (delta) {
-                  fullContent += delta;
-                  setStreamingContent(fullContent);
-                }
-              } catch {
-                // 忽略解析错误
-              }
-            }
-          }
-        }
-      }
-
-      // 流式输出完成，添加到消息列表
-      const finalContent = fullContent || "抱歉，我没能理解你的问题，能换个方式问吗？";
-      setMessages(prev => [...prev, { role: "assistant", content: finalContent }]);
-      setStreamingContent("");
-
-    } catch (err: any) {
-      setError(`API 请求出错: ${err.message}`);
-      console.error(err);
-      setStreamingContent("");
     } finally {
-      setLoading(false);
-      inputRef.current?.focus();
+      if (isCurrent()) {
+        requestRef.current = null;
+        setStreamingContent("");
+        setLoading(false);
+        inputRef.current?.focus();
+      }
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage(inputValue);
+  const stopGeneration = () => {
+    const current = requestRef.current;
+    if (!current) return;
+    requestRef.current = null;
+    current.controller.abort();
+    if (current.partial) setMessages(previous => [...previous, { role: "assistant", content: `${current.partial}\n\n*已停止生成。*` }]);
+    setStreamingContent("");
+    setLoading(false);
+    setError(null);
+    setRetryConversation(null);
+  };
+
+  const handleKeyPress = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+      event.preventDefault();
+      void sendMessage(inputValue);
     }
   };
 
   const resetConversation = () => {
-    setMessages([{
-      role: "assistant",
-      content: getWelcomeMessage(activeModule, !!apiKey)
-    }]);
+    const current = requestRef.current;
+    requestRef.current = null;
+    current?.controller.abort();
+    setLoading(false);
+    setStreamingContent("");
+    setRetryConversation(null);
+    setMessages([{ role: "assistant", content: getWelcomeMessage(activeModule, !!apiKey) }]);
     setError(null);
   };
 
@@ -356,7 +317,7 @@ export const AITutor = ({ activeModule, state, onNavigateToSettings }: AITutorPr
           <Bot className="w-4 h-4" style={{ color: 'var(--color-2)' }} />
           <span className="font-bold text-sm" style={{ color: 'var(--color-1)' }}>AI 助教</span>
           {hasApiKey ? (
-            <span className="text-xs px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-600">已连接</span>
+            <span className="text-xs px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-600">已配置</span>
           ) : (
             <span className="text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-600">未配置</span>
           )}
@@ -431,7 +392,9 @@ export const AITutor = ({ activeModule, state, onNavigateToSettings }: AITutorPr
       {/* Error Display */}
       {error && (
         <div className="mx-3 mb-2 p-2 bg-rose-50 text-rose-700 text-xs rounded border border-rose-100">
-          {error}
+          <span role="alert">{error}</span>
+          {retryConversation ? <button onClick={() => void sendMessage("", retryConversation)} disabled={loading}
+            className="ml-2 font-semibold underline disabled:opacity-50">重试回复</button> : null}
         </div>
       )}
 
@@ -460,14 +423,17 @@ export const AITutor = ({ activeModule, state, onNavigateToSettings }: AITutorPr
             type="text"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            onKeyPress={handleKeyPress}
+            onKeyDown={handleKeyPress}
             placeholder={hasApiKey ? "输入你的问题..." : "请先在设置中配置 API Key"}
             disabled={loading || !hasApiKey}
-            className="flex-1 px-3 py-1.5 border rounded-full bg-white focus:outline-none focus:ring-2 text-sm disabled:opacity-50 disabled:bg-slate-50"
+            className="flex-1 min-w-0 px-3 py-1.5 border rounded-full bg-white focus:outline-none focus:ring-2 text-sm disabled:opacity-50 disabled:bg-slate-50"
             style={{ borderColor: 'var(--color-3)', color: 'var(--color-1)' }}
           />
-          <button
-            onClick={() => sendMessage(inputValue)}
+          {loading ? <button onClick={stopGeneration} aria-label="停止生成" className="p-2 rounded-full bg-rose-100 text-rose-700" title="停止生成">
+            <Square className="w-4 h-4" />
+          </button> : <button
+            aria-label="发送问题"
+            onClick={() => void sendMessage(inputValue)}
             disabled={loading || !inputValue.trim() || !hasApiKey}
             className="p-1.5 rounded-full text-white transition-colors disabled:opacity-50"
             style={{ backgroundColor: 'var(--color-1)' }}
@@ -477,7 +443,7 @@ export const AITutor = ({ activeModule, state, onNavigateToSettings }: AITutorPr
             ) : (
               <Send className="w-4 h-4" />
             )}
-          </button>
+          </button>}
         </div>
       </div>
     </div>

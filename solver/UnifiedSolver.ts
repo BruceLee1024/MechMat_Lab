@@ -14,135 +14,10 @@ import {
   SolverResult,
   NodeResult,
   ElementResult,
-  StressPoint,
 } from './SolverTypes';
 
-// ==========================================
-// 应力计算工具函数
-// ==========================================
-
-/**
- * 计算矩形截面的应力分布
- * @param N 轴力 (N)
- * @param V 剪力 (N)
- * @param M 弯矩 (Nmm)
- * @param A 截面积 (mm²)
- * @param I 惯性矩 (mm⁴)
- * @param b 截面宽度 (mm)
- * @param h 截面高度 (mm)
- * @param position 沿单元长度的位置 (0-1)
- */
-function calculateStressPoint(
-  N: number, V: number, M: number,
-  A: number, I: number, b: number, h: number,
-  position: number
-): StressPoint {
-  // 轴向正应力 σ = N/A
-  const sigmaN = A > 0 ? N / A : 0;
-  
-  // 对于桁架单元 (I=0, h=0 或很小)，只有轴向应力
-  const isTruss = I === 0 || h === 0;
-  
-  let sigmaMTop = 0;
-  let sigmaMBottom = 0;
-  let tauMax = 0;
-  
-  if (!isTruss && I > 0 && h > 0) {
-    const y = h / 2; // 到中性轴的距离
-    
-    // 弯曲正应力 σ = My/I
-    sigmaMTop = -M * y / I;    // 上表面
-    sigmaMBottom = M * y / I;  // 下表面
-    
-    // 剪应力 - 使用简化公式 τ_max = 1.5 * V/A (矩形截面)
-    tauMax = A > 0 ? 1.5 * Math.abs(V) / A : 0;
-  }
-  
-  // 总正应力
-  const sigmaTop = sigmaN + sigmaMTop;
-  const sigmaBottom = sigmaN + sigmaMBottom;
-  
-  // 主应力计算 - 在中性轴处（正应力为sigmaN，剪应力为tauMax）
-  // σ1,2 = σ/2 ± √((σ/2)² + τ²)
-  const sigmaAvg = sigmaN / 2;
-  const R = Math.sqrt(sigmaAvg * sigmaAvg + tauMax * tauMax);
-  const sigma1 = sigmaAvg + R;
-  const sigma2 = sigmaAvg - R;
-  
-  // 绝对最大剪应力
-  const tauAbsMax = R;
-  
-  // von Mises 等效应力
-  // 对于桁架（纯轴向应力）：σ_vm = |σ|
-  // 对于梁：取最大值
-  let sigmaVonMises: number;
-  if (isTruss) {
-    sigmaVonMises = Math.abs(sigmaN);
-  } else {
-    const vmTop = Math.abs(sigmaTop);
-    const vmBottom = Math.abs(sigmaBottom);
-    const vmNeutral = Math.sqrt(sigmaN * sigmaN + 3 * tauMax * tauMax);
-    sigmaVonMises = Math.max(vmTop, vmBottom, vmNeutral);
-  }
-  
-  return {
-    position,
-    sigmaN,
-    sigmaMTop,
-    sigmaMBottom,
-    sigmaTop,
-    sigmaBottom,
-    tauMax,
-    sigma1,
-    sigma2,
-    tauAbsMax,
-    sigmaVonMises,
-  };
-}
-
-/**
- * 计算单元的应力分布
- */
-function calculateElementStress(
-  internalForces: { position: number; N: number; V: number; M: number }[],
-  A: number, I: number, b: number, h: number, yieldStrength: number
-): {
-  stressDistribution: StressPoint[];
-  maxStress: number;
-  minStress: number;
-  maxShearStress: number;
-  maxVonMises: number;
-  safetyFactor: number;
-} {
-  const stressDistribution: StressPoint[] = [];
-  let maxStress = -Infinity;
-  let minStress = Infinity;
-  let maxShearStress = 0;
-  let maxVonMises = 0;
-  
-  for (const f of internalForces) {
-    const stress = calculateStressPoint(f.N, f.V, f.M, A, I, b, h, f.position);
-    stressDistribution.push(stress);
-    
-    // 更新极值
-    maxStress = Math.max(maxStress, stress.sigmaTop, stress.sigmaBottom);
-    minStress = Math.min(minStress, stress.sigmaTop, stress.sigmaBottom);
-    maxShearStress = Math.max(maxShearStress, stress.tauMax, stress.tauAbsMax);
-    maxVonMises = Math.max(maxVonMises, stress.sigmaVonMises);
-  }
-  
-  // 安全系数 = 屈服强度 / 最大等效应力
-  const safetyFactor = maxVonMises > 0 ? yieldStrength / maxVonMises : Infinity;
-  
-  return {
-    stressDistribution,
-    maxStress,
-    minStress,
-    maxShearStress,
-    maxVonMises,
-    safetyFactor,
-  };
-}
+import { calculateElementStress } from './StressCalculator';
+import { validateSolverModel } from './validateModel';
 
 // ==========================================
 // 结构类型识别
@@ -482,7 +357,7 @@ function solveBySectionMethod(
   // 荷载值（考虑方向，90度为向下）
   const rad = (load.angle * Math.PI) / 180;
   const Py = load.value * Math.sin(rad);
-  const P = Math.abs(Py);
+  const P = Py; // 保留荷载方向，向上载荷不能被转换成向下载荷。
   
   let result: {
     forces: { position: number; N: number; V: number; M: number }[];
@@ -570,8 +445,8 @@ function solveBySectionMethod(
   let strainEnergy = 0;
   for (let i = 1; i < result.forces.length; i++) {
     const dx = (result.forces[i].position - result.forces[i-1].position) * L;
-    const M_avg = (result.forces[i].M + result.forces[i-1].M) / 2;
-    strainEnergy += M_avg * M_avg * dx / (2 * E * I);
+    const M1 = result.forces[i-1].M, M2 = result.forces[i].M;
+    strainEnergy += (M1 * M1 + M1 * M2 + M2 * M2) * dx / (6 * E * I);
   }
   
   const elementResults: ElementResult[] = [{
@@ -623,7 +498,7 @@ function solveLinearSystem(A: number[][], b: number[]): number[] | null {
     }
     [aug[col], aug[maxRow]] = [aug[maxRow], aug[col]];
     
-    if (Math.abs(aug[col][col]) < 1e-12) continue;
+    if (!Number.isFinite(aug[col][col]) || Math.abs(aug[col][col]) < 1e-12) return null;
     
     for (let row = col + 1; row < n; row++) {
       const factor = aug[row][col] / aug[col][col];
@@ -635,10 +510,7 @@ function solveLinearSystem(A: number[][], b: number[]): number[] | null {
   
   const x = createVector(n);
   for (let i = n - 1; i >= 0; i--) {
-    if (Math.abs(aug[i][i]) < 1e-12) {
-      x[i] = 0;
-      continue;
-    }
+    if (!Number.isFinite(aug[i][i]) || Math.abs(aug[i][i]) < 1e-12) return null;
     x[i] = aug[i][n];
     for (let j = i + 1; j < n; j++) {
       x[i] -= aug[i][j] * x[j];
@@ -1098,7 +970,7 @@ function solveByMatrixMethod(
       // 注意：节点力和截面内力的符号规定不同
       // 左端：截面内力 = -节点力（因为节点力是作用在节点上的，截面内力是截面左侧对右侧的作用）
       // 这里 V1, M1 是左端截面的剪力和弯矩
-      const V1 = F_disp[1] - F_fixed[1];  // 左端剪力
+      const V1 = F_fixed[1] - F_disp[1];  // 截面剪力与左节点力方向相反
       const M1 = F_disp[2] - F_fixed[2];  // 左端弯矩
       
       // 收集所有关键位置
@@ -1206,9 +1078,9 @@ function solveByMatrixMethod(
       const N = forces[0].N;
       strainEnergy += (N * N * L) / (2 * E * A);
       for (let i = 1; i < forces.length; i++) {
-        const dx = L / (forces.length - 1);
-        const M_avg = (forces[i].M + forces[i-1].M) / 2;
-        strainEnergy += M_avg * M_avg * dx / (2 * E * I);
+        const dx = (forces[i].position - forces[i-1].position) * L;
+        const M1 = forces[i-1].M, M2 = forces[i].M;
+        strainEnergy += (M1 * M1 + M1 * M2 + M2 * M2) * dx / (6 * E * I);
       }
     } else {
       const N = forces[0].N;
@@ -1246,6 +1118,8 @@ export function solveUnified(
   elements: SolverElement[],
   loads: SolverLoad[]
 ): SolverResult {
+  const problem = validateSolverModel(nodes, elements, loads);
+  if (problem) return { success: false, message: problem, nodes: [], elements: [], totalStrainEnergy: 0 };
   // 输入验证
   if (nodes.length < 2) {
     return { success: false, message: '至少需要2个节点', nodes: [], elements: [], totalStrainEnergy: 0 };

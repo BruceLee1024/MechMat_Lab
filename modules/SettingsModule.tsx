@@ -558,8 +558,8 @@ export const SettingsModule = ({ currentTheme: propTheme, onThemeChange }: Setti
               }`}
               style={{ 
                 backgroundColor: THEMES[themeName].color4,
-                ringColor: THEMES[themeName].color1
-              }}
+                '--tw-ring-color': THEMES[themeName].color1
+              } as React.CSSProperties}
             >
               <div 
                 className="w-full h-8 rounded-lg mb-2"

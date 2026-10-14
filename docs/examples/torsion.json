@@ -1,0 +1,23 @@
+{
+  "format": "mechmat-experiment",
+  "schemaVersion": 1,
+  "calculationVersion": 1,
+  "id": "example-torsion-v1",
+  "name": "圆轴全长传动",
+  "module": "torsion",
+  "createdAt": "2026-10-04T00:00:00.000Z",
+  "updatedAt": "2026-10-04T00:00:00.000Z",
+  "model": {
+    "kind": "simulation",
+    "parameters": {
+      "materialName": "结构钢 (Structural Steel)",
+      "materialYield": 250,
+      "poissonRatio": 0.3,
+      "torqTorque": 1,
+      "torqRadius": 10,
+      "torqLength": 1,
+      "torqModulus": 80,
+      "torqLoadRatio": 0
+    }
+  }
+}
