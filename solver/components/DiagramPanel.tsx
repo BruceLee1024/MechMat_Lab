@@ -70,17 +70,17 @@ export const DiagramPanel = ({ state, diagramType }: { state: SolverState; diagr
     deflOffset += L;
   }
 
-  if (diagramType === 'deflection' && allDeflections.length === 0) {
-    return <div className="p-4 text-sm text-slate-500">当前求解路径未提供详细挠度曲线，节点位移请查看结果表。</div>;
+  if (diagramType === 'deflection' && (allDeflections.length === 0 || state.elements.some(e => !result.elements.find(r => r.elementId === e.id)?.deflectionCurve?.length))) {
+    return <div className="p-4 text-sm text-slate-500">当前结构未提供完整竖向挠曲线，节点位移请查看结果表。</div>;
   }
 
   // 找最大值用于缩放
-  const maxN = Math.max(...allForces.map(f => Math.abs(f.N)), 1);
-  const maxV = Math.max(...allForces.map(f => Math.abs(f.V)), 1);
-  const maxM = Math.max(...allForces.map(f => Math.abs(f.M)), 1);
+  const maxN = Math.max(...allForces.map(f => Math.abs(f.N)), 0);
+  const maxV = Math.max(...allForces.map(f => Math.abs(f.V)), 0);
+  const maxM = Math.max(...allForces.map(f => Math.abs(f.M)), 0);
   const maxDy = allDeflections.length > 0
-    ? Math.max(...allDeflections.map(d => Math.abs(d.dy)), 0.0001)
-    : 0.0001;
+    ? Math.max(...allDeflections.map(d => Math.abs(d.dy)), 0)
+    : 0;
 
   const width = 500;
   const height = 120;
@@ -114,7 +114,7 @@ export const DiagramPanel = ({ state, diagramType }: { state: SolverState; diagr
     // 挠度图使用单元的详细挠度曲线
     allDeflections.forEach((d, i) => {
       const x = padding + (d.x / totalLength) * plotWidth;
-      const y = height / 2 + (d.dy / maxDy) * (plotHeight / 2) * 0.8;
+      const y = height / 2 + (d.dy / (maxDy || 1)) * (plotHeight / 2) * 0.8;
       if (i === 0) {
         pathData = `M ${x} ${y}`;
       } else {
@@ -125,7 +125,7 @@ export const DiagramPanel = ({ state, diagramType }: { state: SolverState; diagr
     // 轴力图
     allForces.forEach((f, i) => {
       const x = padding + (f.x / totalLength) * plotWidth;
-      const y = height / 2 - (f.N / maxN) * (plotHeight / 2) * 0.8;
+      const y = height / 2 - (f.N / (maxN || 1)) * (plotHeight / 2) * 0.8;
       if (i === 0) {
         pathData = `M ${padding} ${height / 2} L ${x} ${y}`;
       } else {
@@ -143,7 +143,7 @@ export const DiagramPanel = ({ state, diagramType }: { state: SolverState; diagr
     
     allForces.forEach((f, i) => {
       const x = padding + (f.x / totalLength) * plotWidth;
-      const y = height / 2 - (f.V / maxV) * (plotHeight / 2) * 0.8;
+      const y = height / 2 - (f.V / (maxV || 1)) * (plotHeight / 2) * 0.8;
       
       if (i === 0) {
         // 第一个点：从基线开始
@@ -151,7 +151,7 @@ export const DiagramPanel = ({ state, diagramType }: { state: SolverState; diagr
       } else {
         const prevF = allForces[i - 1];
         const prevX = padding + (prevF.x / totalLength) * plotWidth;
-        const prevY = height / 2 - (prevF.V / maxV) * (plotHeight / 2) * 0.8;
+        const prevY = height / 2 - (prevF.V / (maxV || 1)) * (plotHeight / 2) * 0.8;
         const xDiff = Math.abs(f.x - prevF.x);
         
         if (xDiff < 0.1) {
@@ -181,7 +181,7 @@ export const DiagramPanel = ({ state, diagramType }: { state: SolverState; diagr
     // 弯矩图 - 直接连线
     allForces.forEach((f, i) => {
       const x = padding + (f.x / totalLength) * plotWidth;
-      const y = height / 2 + (f.M / maxM) * (plotHeight / 2) * 0.8;
+      const y = height / 2 + (f.M / (maxM || 1)) * (plotHeight / 2) * 0.8;
       pathData += ` L ${x} ${y}`;
     });
     pathData += ` L ${padding + plotWidth} ${height / 2} Z`;
@@ -255,8 +255,11 @@ export const DiagramPanel = ({ state, diagramType }: { state: SolverState; diagr
           </span>
         )}
       </div>
+      <p className="px-2 text-[9px] text-slate-500">{diagramType === 'deflection' ? '水平梁：由分段弯矩与端部位移积分恢复' : '内力按当前求解结果绘制'} · 横轴沿单元累计长度</p>
       <svg 
         ref={svgRef}
+        role="img"
+        aria-label={`${getTitle()}，峰值 ${diagramType === 'deflection' ? maxDy.toFixed(4) + ' mm' : diagramType === 'moment' ? (maxM/1000).toFixed(2) + ' N·m' : (diagramType === 'axial' ? maxN : maxV).toFixed(2) + ' N'}`}
         width="100%" 
         height={height} 
         viewBox={`0 0 ${width} ${height}`} 

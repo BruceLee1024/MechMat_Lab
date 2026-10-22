@@ -18,6 +18,7 @@ import {
 
 import { calculateElementStress } from './StressCalculator';
 import { validateSolverModel } from './validateModel';
+import { recoverBeamDeflection } from './beamDeflection';
 
 // ==========================================
 // 结构类型识别
@@ -332,6 +333,9 @@ function solveBySectionMethod(
   // 获取荷载
   const load = loads[0];
   if (!load) return null;
+  // 本组解析式只适用于从左到右的水平梁和纯竖向荷载；其余交给坐标变换完整的矩阵路径。
+  if (dx <= 0 || Math.abs(dy) > 1e-9 || Math.abs(Math.cos(load.angle * Math.PI / 180)) > 1e-10) return null;
+  if (structureInfo.type === 'cantilever' && !leftFixed) return null;
   
   // 计算荷载位置
   let loadPos = 0.5;
@@ -374,7 +378,7 @@ function solveBySectionMethod(
     if (load.type === 'point') {
       result = solveCantilever_PointLoad(P, a, L, E, I);
     } else if (load.type === 'distributed') {
-      const q = load.value / 1000; // N/m -> N/mm
+      const q = Py / 1000; // N/m -> N/mm，保留向上/向下方向
       result = solveCantilever_DistributedLoad(q, L, E, I);
     }
   } else if (structureInfo.type === 'simple-beam') {
@@ -384,7 +388,7 @@ function solveBySectionMethod(
       if (load.type === 'point') {
         result = solveFixedFixed_PointLoad(P, a, L, E, I);
       } else if (load.type === 'distributed') {
-        const q = load.value / 1000;
+        const q = Py / 1000;
         result = solveFixedFixed_DistributedLoad(q, L, E, I);
       }
     } else if (leftSupported && rightSupported) {
@@ -392,7 +396,7 @@ function solveBySectionMethod(
       if (load.type === 'point') {
         result = solveSimplySupported_PointLoad(P, a, L, E, I, h);
       } else if (load.type === 'distributed') {
-        const q = load.value / 1000;
+        const q = Py / 1000;
         result = solveSimplySupported_DistributedLoad(q, L, E, I);
       }
     }
@@ -412,7 +416,8 @@ function solveBySectionMethod(
   if (n1.support !== 'none') {
     node1Result.reaction = {
       Fx: 0,
-      Fy: result.R1,
+      // R1/R2 在截面公式内向上为正；对外统一为全局 y 向下为正。
+      Fy: -result.R1,
       Mz: result.M1 ?? 0,
     };
   }
@@ -430,7 +435,7 @@ function solveBySectionMethod(
   if (n2.support !== 'none') {
     node2Result.reaction = {
       Fx: 0,
-      Fy: result.R2 ?? 0,
+      Fy: -(result.R2 ?? 0),
       Mz: result.M2 ?? 0,
     };
   }
@@ -452,6 +457,7 @@ function solveBySectionMethod(
   const elementResults: ElementResult[] = [{
     elementId: elem.id,
     internalForces: result.forces,
+    deflectionCurve: recoverBeamDeflection(result.forces, L, E * I, node1Result.displacement.dy, node2Result.displacement.dy),
     stressDistribution: stressResult.stressDistribution,
     maxStress: stressResult.maxStress,
     minStress: stressResult.minStress,
@@ -1091,6 +1097,10 @@ function solveByMatrixMethod(
     return {
       elementId: elem.id,
       internalForces: forces,
+      // 当前图表采用全局竖向位移；非水平单元不冒充同一条梁的挠曲线。
+      deflectionCurve: isBeam && cos > 0 && Math.abs(sin) < 1e-10
+        ? recoverBeamDeflection(forces, L, E * I, nodeResults[i1].displacement.dy, nodeResults[i2].displacement.dy)
+        : undefined,
       stressDistribution: stressResult.stressDistribution,
       maxStress: stressResult.maxStress,
       minStress: stressResult.minStress,

@@ -17,12 +17,62 @@ describe('生产统一求解入口', () => {
   it('简支梁支反力、内力、应力和能量符合解析结果', () => {
     const m = beam(), result = solveUnified(m.nodes, m.elements, m.loads);
     expect(result.success).toBe(true);
-    expect(result.nodes[0].reaction?.Fy).toBeCloseTo(500, 8);
-    expect(result.nodes[1].reaction?.Fy).toBeCloseTo(500, 8);
+    expect(result.nodes[0].reaction?.Fy).toBeCloseTo(-500, 8);
+    expect(result.nodes[1].reaction?.Fy).toBeCloseTo(-500, 8);
     expect(Math.max(...result.elements[0].internalForces.map(f => f.M))).toBeCloseTo(250000, 2);
     expect(result.elements[0].maxStress).toBeCloseTo(2.5, 6);
     expect(result.totalStrainEnergy).toBeCloseTo(52.083333333333336, 4); // U=P²L³/(96EI)
     expect(result.elements[0].stressDistribution.length).toBeGreaterThan(0);
+  });
+  it.each([90, -90])('解析与矩阵路径采用同一全局反力符号，荷载方向 %s°', angle => {
+    const m = beam(); m.loads[0].angle = angle;
+    const analytical = solveUnified(m.nodes, m.elements, m.loads);
+    const matrix = solveUnified(m.nodes, m.elements, [{ ...m.loads[0], value: 500 }, { ...m.loads[0], id: 'p2', value: 500 }]);
+    const appliedY = 1000 * Math.sin(angle * Math.PI / 180);
+    expect(analytical.success && matrix.success).toBe(true);
+    expect(analytical.nodes.reduce((sum, n) => sum + (n.reaction?.Fy ?? 0), appliedY)).toBeCloseTo(0, 8);
+    analytical.nodes.forEach((n, i) => expect(n.reaction?.Fy).toBeCloseTo(matrix.nodes[i].reaction?.Fy!, 6));
+  });
+  it('向上均布荷载的反力与弯矩不能沿用向下方向', () => {
+    const m = beam(); m.loads[0] = { ...m.loads[0], type: 'distributed', value: 1000, angle: -90 };
+    const r = solveUnified(m.nodes, m.elements, m.loads);
+    expect(r.nodes[0].reaction?.Fy).toBeCloseTo(500, 8);
+    for (const f of r.elements[0].internalForces) {
+      const x = f.position * 1000;
+      expect(f.M).toBeCloseTo(-x * (1000 - x) / 2, 5);
+    }
+  });
+  it('斜向集中力保留水平分量，不误入纯竖向解析模型', () => {
+    const m = beam(); m.loads[0].angle = 45;
+    const r = solveUnified(m.nodes, m.elements, m.loads);
+    expect(r.success).toBe(true);
+    expect(r.nodes.reduce((sum, n) => sum + (n.reaction?.Fx ?? 0), 1000 / Math.sqrt(2))).toBeCloseTo(0, 6);
+  });
+  it('简支梁节点位移为零，但跨内挠度不能画成零直线', () => {
+    const m = beam(), r = solveUnified(m.nodes, m.elements, m.loads);
+    const curve = r.elements[0].deflectionCurve!;
+    expect(r.nodes.every(n => n.displacement.dy === 0)).toBe(true);
+    expect(curve.find(p => p.position === .5)!.dy).toBeCloseTo(1000 * 1000 ** 3 / (48 * 200000 * 1e6), 8);
+    const matrix = solveUnified(m.nodes, m.elements, [{...m.loads[0],value:500},{...m.loads[0],id:'p2',value:500}]);
+    expect(matrix.elements[0].deflectionCurve!.find(p => p.position === .5)!.dy).toBeCloseTo(curve.find(p => p.position === .5)!.dy, 8);
+  });
+  it('均布荷载挠曲线满足端位移，采样积分误差小于0.3%，反向载荷反向挠曲', () => {
+    const m = beam();m.loads[0]={...m.loads[0],type:'distributed',value:1000,angle:-90};
+    const curve=solveUnified(m.nodes,m.elements,m.loads).elements[0].deflectionCurve!;
+    const expected=-5 * 1 * 1000 ** 4 / (384 * 200000 * 1e6);
+    expect(Math.abs(curve.find(p=>p.position===.5)!.dy/expected-1)).toBeLessThan(.003);
+    expect(curve[0].dy).toBe(0);expect(curve.at(-1)!.dy).toBeCloseTo(0,10);
+  });
+  it('右端固定的悬臂不套用左端固定公式', () => {
+    const m = beam();
+    m.nodes[0].support = 'none'; m.nodes[0].fixedDOF = {dx:false,dy:false,rz:false};
+    m.nodes[1].support = 'fixed'; m.nodes[1].fixedDOF = {dx:true,dy:true,rz:true};
+    m.loads[0].position = 0;
+    const r = solveUnified(m.nodes, m.elements, m.loads);
+    expect(r.success).toBe(true);
+    expect(r.nodes[1].reaction?.Fy).toBeCloseTo(-1000, 6);
+    expect(r.nodes[1].reaction?.Mz).toBeCloseTo(1000000, 5);
+    expect(r.nodes[0].displacement.dy).toBeCloseTo(1000 * 1000 ** 3 / (3 * 200000 * 1e6), 8);
   });
   it('悬臂梁端部集中力：位移、固定端弯矩与应变能', () => {
     const m = beam();

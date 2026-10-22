@@ -14,7 +14,7 @@ interface NumericInputProps extends NumericConstraints {
 // 输入草稿与已提交参数分开：清空、负号和指数输入期间不污染计算状态。
 export function NumericInput({ label, value, onChange, unit = '', validate, compact = false, displayDecimals, ...constraints }: NumericInputProps) {
   const id = useId();
-  // 固定小数只影响显示，聚焦时恢复完整数值用于编辑。
+  // 固定小数只影响显示；未编辑的舍入文本不会回写原始数值。
   const format = (v: number) => displayDecimals === undefined ? String(v) : v.toFixed(displayDecimals);
   const [draft, setDraft] = useState(() => format(value));
   const dirty = useRef(false);
@@ -42,7 +42,8 @@ export function NumericInput({ label, value, onChange, unit = '', validate, comp
         <div className="flex items-center gap-1 min-w-0">
           <input id={id} type="text" inputMode="decimal" value={draft}
             aria-invalid={!!error} aria-describedby={error ? `${id}-error` : undefined}
-            onFocus={() => { if (displayDecimals !== undefined && !error) setDraft(String(value)); }}
+            title={displayDecimals === undefined ? undefined : `完整数值：${value}${unit ? ` ${unit}` : ''}`}
+            // 聚焦不改写 value，保留浏览器建立的选区，避免替换输入变成追加数字。
             onChange={event => { dirty.current = true; setDraft(event.target.value); setError(null); }} onBlur={commit}
             onKeyDown={event => {
               if (event.key === 'Enter') { event.preventDefault(); commit(); }

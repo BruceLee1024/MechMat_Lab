@@ -13,6 +13,17 @@ describe('带版本的独立实验文档', () => {
     const document = createExperiment(module);
     expect(parseExperimentJSON(serializeExperiment(document))).toEqual(document);
   });
+  it.each([['bending', 'bendLoad', -4000], ['torsion', 'torqTorque', -500]] as const)('%s 的反向载荷可存档、导出和自动恢复', (module, field, value) => {
+    const document = createExperiment(module);
+    if (document.model.kind !== 'simulation') throw new Error('模型不匹配');
+    document.model.parameters[field] = value;
+    expect(getSimulation(parseExperimentJSON(serializeExperiment(document)))[field]).toBe(value);
+    const workspace = emptyWorkspace();
+    workspace.documents[module] = document;
+    let saved = '';
+    writeWorkspace({ setItem: (_key, data) => { saved = data; } }, workspace);
+    expect(getSimulation(parseWorkspace(JSON.parse(saved)).documents[module])[field]).toBe(value);
+  });
   it('修改拉伸材料不会改变弯曲文档或其存档', () => {
     let state = initialHistory(emptyWorkspace());
     const bending = structuredClone(state.workspace.documents.bending);

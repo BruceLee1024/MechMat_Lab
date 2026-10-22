@@ -82,7 +82,8 @@ function validateModel(module: ExperimentModule, value: unknown): ExperimentMode
     const candidate = { ...DEFAULT_STATE, ...parameters } as SimulationState;
     const checked = updateSimulationState(DEFAULT_STATE, parameters as Partial<SimulationState>);
     assert(checked !== DEFAULT_STATE && JSON.stringify(simulationParameters(module, checked)) === JSON.stringify(simulationParameters(module, candidate)), '实验参数超出范围或载荷位置越界');
-    if (['axialForce', 'bendLoad', 'torqTorque'].some(key => finite(parameters[key]) && (parameters[key] as number) < 0)) throw new Error('载荷大小不能为负数');
+    // 弯曲载荷与扭矩用正负表示方向，必须与界面、计算及自动恢复保持一致。
+    if (finite(parameters.axialForce) && parameters.axialForce < 0) throw new Error('轴向拉力不能为负数');
     const context = getCalculationContext(module, candidate);
     assert(!context?.includes('当前本地计算无效'), '参数量级超出可计算范围');
     return { kind: 'simulation', parameters: simulationParameters(module, candidate) };

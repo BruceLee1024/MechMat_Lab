@@ -1,7 +1,7 @@
 /* 压杆保持竖向展示，控制台和结果栏复用现有实验语言。 */
 .taste-lab.buckling-lab .buckling-grid{min-height:min(650px,calc(100dvh - 162px))}
-.taste-lab.buckling-lab .fundamentals-main{grid-template-rows:minmax(370px,1fr) max-content;min-height:min-content}
-.taste-lab.buckling-lab .poisson-figure{min-height:370px}
+.taste-lab.buckling-lab .fundamentals-main{grid-template-rows:minmax(0,1fr) max-content}
+.taste-lab.buckling-lab .poisson-figure{min-height:0;overflow-y:auto}
 .taste-lab.buckling-lab .poisson-canvas-wrap{min-height:240px}
 .buckling-stage{background:radial-gradient(ellipse at 50% 65%,#163c483b,transparent 70%),#0b1725!important}
 .buckling-scene .axial-deformation-bar>div{max-width:70%}

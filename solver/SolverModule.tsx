@@ -17,8 +17,12 @@ import {
   Calculator,
   TrendingDown,
   Activity,
+  Scan,
 } from "lucide-react";
 import { LatexRenderer } from "../components";
+import { SolverTrussResults } from "../components/SolverTrussResults";
+import { DiagramPanel as ResultDiagramPanel } from './components/DiagramPanel';
+import { fitSolverView } from './view';
 import {
   SolverState,
   SolverNode,
@@ -749,7 +753,7 @@ const CalculationPanel = ({ state }: { state: SolverState }) => {
     const n1 = state.nodes.find(n => n.id === elem.nodeStart);
     const n2 = state.nodes.find(n => n.id === elem.nodeEnd);
     
-    if (n1 && n2) {
+    if (n1 && n2 && elem.type === 'beam' && n2.x > n1.x && Math.abs(n2.y - n1.y) < 1e-9 && Math.abs(Math.cos(load.angle * Math.PI / 180)) < 1e-10 && !(n2.support === 'fixed' && n1.support === 'none')) {
       const L = Math.sqrt(Math.pow(n2.x - n1.x, 2) + Math.pow(n2.y - n1.y, 2));
       const isFixedFixed = n1.support === 'fixed' && n2.support === 'fixed';
       const isSimplySupported = (n1.support === 'pinned' && n2.support === 'roller') ||
@@ -763,7 +767,7 @@ const CalculationPanel = ({ state }: { state: SolverState }) => {
       const b = L - a;
       
       if (isSimplySupported && load.type === 'point') {
-        const P = load.value;
+        const P = load.value * Math.sin(load.angle * Math.PI / 180);
         formulaContent = (
           <div className="mt-2 pt-2 border-t border-indigo-200">
             <div className="text-[10px] text-indigo-800 mb-1">简支梁集中力公式:</div>
@@ -773,7 +777,7 @@ const CalculationPanel = ({ state }: { state: SolverState }) => {
           </div>
         );
       } else if (isSimplySupported && load.type === 'distributed') {
-        const q = load.value;
+        const q = load.value * Math.sin(load.angle * Math.PI / 180);
         formulaContent = (
           <div className="mt-2 pt-2 border-t border-indigo-200">
             <div className="text-[10px] text-indigo-800 mb-1">简支梁均布荷载公式:</div>
@@ -783,7 +787,7 @@ const CalculationPanel = ({ state }: { state: SolverState }) => {
           </div>
         );
       } else if (isCantilever && load.type === 'point') {
-        const P = load.value;
+        const P = load.value * Math.sin(load.angle * Math.PI / 180);
         formulaContent = (
           <div className="mt-2 pt-2 border-t border-indigo-200">
             <div className="text-[10px] text-indigo-800 mb-1">悬臂梁集中力公式:</div>
@@ -793,7 +797,7 @@ const CalculationPanel = ({ state }: { state: SolverState }) => {
           </div>
         );
       } else if (isCantilever && load.type === 'distributed') {
-        const q = load.value;
+        const q = load.value * Math.sin(load.angle * Math.PI / 180);
         formulaContent = (
           <div className="mt-2 pt-2 border-t border-indigo-200">
             <div className="text-[10px] text-indigo-800 mb-1">悬臂梁均布荷载公式:</div>
@@ -826,7 +830,15 @@ const CalculationPanel = ({ state }: { state: SolverState }) => {
     }
   }
   
-  // 如果没有匹配到标准公式，显示通用截面法公式
+  if (state.elements.every(e => e.type === 'truss')) {
+    formulaContent = <div className="mt-2 pt-2 border-t border-indigo-200">
+      <div className="text-[10px] text-indigo-800 mb-1">铰接桁架 · 节点平衡与杆件伸缩</div>
+      <LatexRenderer formula={String.raw`\sum F_x=0,\quad\sum F_y=0`} />
+      <LatexRenderer formula={String.raw`\sigma=\frac{N}{A},\qquad\Delta L=\frac{NL}{EA}`} />
+      <p className="text-[10px] text-slate-500">杆端理想铰接，杆件为二力杆；不套用梁的弯曲、剪切挠度公式。</p>
+    </div>;
+  }
+  // 没有匹配标准工况的梁或框架，显示通用截面关系。
   if (!formulaContent) {
     formulaContent = (
       <div className="mt-2 pt-2 border-t border-indigo-200">
@@ -862,13 +874,14 @@ const CalculationPanel = ({ state }: { state: SolverState }) => {
         <h4 className="font-semibold text-slate-700 mb-2">📐 结构概览</h4>
         <div className="bg-slate-50 p-2 rounded border text-[11px] space-y-1">
           <div>节点: {state.nodes.length} 个 | 单元: {state.elements.length} 个 | 荷载: {state.loads.length} 个</div>
-          <div>总跨度: {totalLength.toFixed(0)} mm</div>
+          <div>单元总长: {totalLength.toFixed(0)} mm</div>
         </div>
       </div>
 
       {/* 支座反力 */}
       <div>
         <h4 className="font-semibold text-slate-700 mb-2">⚖️ 支座反力</h4>
+        <p className="text-[10px] text-slate-500 mb-2">全局 x 向右、y 向下；Fy 负值为向上。下列 R 公式以向上为正。</p>
         <div className="bg-indigo-50 p-2 rounded border border-indigo-100 space-y-1">
           {result.nodes.filter(n => n.reaction).map(n => (
             <div key={n.nodeId} className="text-[11px] flex justify-between">
@@ -955,11 +968,11 @@ const CalculationPanel = ({ state }: { state: SolverState }) => {
                   <div className="font-medium text-rose-700">{elem.elementId}:</div>
                 )}
                 <div className="flex justify-between">
-                  <span>最大拉应力 σ_max:</span>
+                  <span>最大正应力 σ_max:</span>
                   <span className="font-medium">{elem.maxStress.toFixed(2)} MPa</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>最大压应力 σ_min:</span>
+                  <span>最小正应力 σ_min:</span>
                   <span className="font-medium">{elem.minStress.toFixed(2)} MPa</span>
                 </div>
                 <div className="flex justify-between">
@@ -971,15 +984,14 @@ const CalculationPanel = ({ state }: { state: SolverState }) => {
                   <span className="font-medium">{elem.maxVonMises.toFixed(2)} MPa</span>
                 </div>
                 <div className="flex justify-between items-center pt-1 border-t border-rose-200">
-                  <span>安全系数:</span>
+                  <span>屈服参考比:</span>
                   <span className={`font-bold ${elem.safetyFactor >= 2 ? 'text-green-600' : elem.safetyFactor >= 1 ? 'text-amber-600' : 'text-red-600'}`}>
                     {elem.safetyFactor === Infinity ? '∞' : elem.safetyFactor.toFixed(2)}
-                    {elem.safetyFactor < 1 && ' ⚠️ 超过屈服'}
-                    {elem.safetyFactor >= 1 && elem.safetyFactor < 2 && ' ⚠️ 偏低'}
+                    {elem.safetyFactor < 1 && ' · 超参考'}
                   </span>
                 </div>
                 <div className="text-[10px] text-slate-500">
-                  (屈服强度: {yieldStrength} MPa)
+                  屈服参考: {yieldStrength} MPa；未含压杆失稳与局部稳定验算。
                 </div>
               </div>
             );
@@ -1435,6 +1447,12 @@ export const SolverModule = ({ model, onModelChange }: { model: SolverModel; onM
   const [diagramHeight, setDiagramHeight] = useState(200);
   const [isResizing, setIsResizing] = useState(false);
 
+  const fitView = () => {
+    const rect=svgRef.current?.getBoundingClientRect();
+    if(rect)setUI(prev=>({...prev,...fitSolverView(latestState.current.nodes,rect.width,rect.height)}));
+  };
+  useEffect(fitView, []);
+
   // 处理高度调整
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -1479,8 +1497,10 @@ export const SolverModule = ({ model, onModelChange }: { model: SolverModel; onM
 
   // 加载模板
   const loadTemplate = (template: SolverTemplate) => {
+    const rect=svgRef.current?.getBoundingClientRect();
     setState({
       ...DEFAULT_SOLVER_STATE,
+      ...(rect?fitSolverView(template.nodes,rect.width,rect.height):{}),
       nodes: JSON.parse(JSON.stringify(template.nodes)),
       elements: JSON.parse(JSON.stringify(template.elements)),
       loads: JSON.parse(JSON.stringify(template.loads)),
@@ -1998,6 +2018,7 @@ export const SolverModule = ({ model, onModelChange }: { model: SolverModel; onM
             tooltip="放大视图"
             onClick={() => onChange({ viewScale: Math.min(3, state.viewScale * 1.2) })}
           />
+          <IconButton icon={Scan} label="适应画布" tooltip="完整显示结构、支座与荷载" onClick={fitView} disabled={!state.nodes.length}/>
         </div>
 
         {/* 模板选择 */}
@@ -2217,20 +2238,20 @@ export const SolverModule = ({ model, onModelChange }: { model: SolverModel; onM
               }}
             />
             
-            <div className="h-full flex">
+            {state.elements.length > 0 && state.elements.every(e => e.type === 'truss') ? <SolverTrussResults result={state.result}/> : <div className="h-full flex">
               {/* 剪力图 */}
               <div className="flex-1 border-r border-slate-100 p-1 overflow-hidden">
-                <DiagramPanel state={state} diagramType="shear" />
+                <ResultDiagramPanel state={state} diagramType="shear" />
               </div>
               {/* 弯矩图 */}
               <div className="flex-1 border-r border-slate-100 p-1 overflow-hidden">
-                <DiagramPanel state={state} diagramType="moment" />
+                <ResultDiagramPanel state={state} diagramType="moment" />
               </div>
               {/* 挠度图 */}
               <div className="flex-1 p-1 overflow-hidden">
-                <DiagramPanel state={state} diagramType="deflection" />
+                <ResultDiagramPanel state={state} diagramType="deflection" />
               </div>
-            </div>
+            </div>}
           </div>
         </div>
 

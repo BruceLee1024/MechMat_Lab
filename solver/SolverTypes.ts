@@ -75,7 +75,7 @@ export interface NodeResult {
   };
   reaction?: {
     Fx: number;  // N
-    Fy: number;  // N
+    Fy: number;  // N，全局 y 向下为正
     Mz: number;  // N·mm（显示时转换为 N·m）
   };
 }
@@ -114,8 +114,8 @@ export interface ElementResult {
   // 应力分布
   stressDistribution: StressPoint[];
   // 应力极值
-  maxStress: number;   // 最大拉应力 (MPa)
-  minStress: number;   // 最大压应力 (MPa，负值)
+  maxStress: number;   // 最大正应力 (MPa，拉正压负，可全为负)
+  minStress: number;   // 最小正应力 (MPa，拉正压负，可全为正)
   maxShearStress: number; // 最大剪应力 (MPa)
   maxVonMises: number; // 最大von Mises应力 (MPa)
   // 安全系数
@@ -203,7 +203,7 @@ export const SIMPLY_SUPPORTED_BEAM: SolverTemplate = {
       type: 'beam',
       nodeStart: 'n1',
       nodeEnd: 'n2',
-      section: { A: 10000, I: 833333, width: 100, height: 100 },
+      section: { A: 10000, I: 8333333.333333333, width: 100, height: 100 },
       material: { E: 200000, G: 77000, yield: 250 },
     },
   ],
@@ -246,7 +246,7 @@ export const CANTILEVER_BEAM: SolverTemplate = {
       type: 'beam',
       nodeStart: 'n1',
       nodeEnd: 'n2',
-      section: { A: 10000, I: 833333, width: 100, height: 100 },
+      section: { A: 10000, I: 8333333.333333333, width: 100, height: 100 },
       material: { E: 200000, G: 77000, yield: 250 },
     },
   ],
@@ -295,7 +295,7 @@ export const CONTINUOUS_BEAM: SolverTemplate = {
       type: 'beam',
       nodeStart: 'n1',
       nodeEnd: 'n2',
-      section: { A: 10000, I: 833333, width: 100, height: 100 },
+      section: { A: 10000, I: 8333333.333333333, width: 100, height: 100 },
       material: { E: 200000, G: 77000, yield: 250 },
     },
     {
@@ -303,7 +303,7 @@ export const CONTINUOUS_BEAM: SolverTemplate = {
       type: 'beam',
       nodeStart: 'n2',
       nodeEnd: 'n3',
-      section: { A: 10000, I: 833333, width: 100, height: 100 },
+      section: { A: 10000, I: 8333333.333333333, width: 100, height: 100 },
       material: { E: 200000, G: 77000, yield: 250 },
     },
   ],
@@ -420,7 +420,7 @@ export const DISTRIBUTED_LOAD_BEAM: SolverTemplate = {
       type: 'beam',
       nodeStart: 'n1',
       nodeEnd: 'n2',
-      section: { A: 10000, I: 833333, width: 100, height: 100 },
+      section: { A: 10000, I: 8333333.333333333, width: 100, height: 100 },
       material: { E: 200000, G: 77000, yield: 250 },
     },
   ],
