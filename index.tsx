@@ -1,4 +1,21 @@
 import "./workbench.css";
+import "./deep-space.css";
+import "./taste-layout.css";
+import "./analysis-rail.css";
+import "./controls-dock.css";
+import "./color-accents.css";
+import "./floating-tutor.css";
+import "./fundamentals-overview.css";
+import "./concept-studies.css";
+import "./theory-lessons.css";
+import "./axial-workbench.css";
+import "./bending-workbench.css";
+import "./torsion-workbench.css";
+import "./buckling-workbench.css";
+import "./combined-workbench.css";
+import "./stress-workbench.css";
+import "./control-console.css";
+import "./section-workspace.css";
 import { useWorkspace } from "./experiments/useWorkspace";
 import { getSimulation } from "./experiments/schema";
 import type { SolverModel, SectionModel } from "./experiments/schema";
@@ -18,7 +35,7 @@ import { ResourcesModule } from "./modules/ResourcesModule";
 import { SectionModule } from "./modules/SectionModule";
 import { FormulasModule } from "./modules/FormulasModule";
 import { SolverModule } from "./solver/SolverModule";
-import { AITutor } from "./ai";
+import { FloatingAITutor } from "./components/FloatingAITutor";
 import { ThemeName, getCurrentTheme, applyTheme } from "./theme";
 import { isActivated, activateApp, isModuleAvailable, FREE_MODULES } from "./activation";
 
@@ -284,7 +301,7 @@ const LockedModuleOverlay = ({ onActivate }: { onActivate: () => void }) => {
   const [showWechatQR, setShowWechatQR] = useState(false);
   
   return (
-    <div className="absolute inset-0 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center z-10 rounded-xl">
+    <div className="activation-gate absolute inset-0 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center z-10 rounded-xl">
       <div className="text-center p-8 max-w-md">
         <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
           <Lock className="w-8 h-8 text-slate-400" />
@@ -412,7 +429,7 @@ const App = () => {
       case 'solver': return <SolverModule model={store.workspace.documents.solver.model as SolverModel} onModelChange={model => store.editModel('solver', model)} />;
       case 'section': return <SectionModule model={store.workspace.documents.section.model as SectionModel} onModelChange={model => store.editModel('section', model)} />;
       case 'formulas': return <FormulasModule />;
-      case 'resources': return <ResourcesModule />;
+      case 'resources': return <ResourcesModule onNavigate={handleModuleChange} />;
       case 'settings': return <SettingsModule currentTheme={currentTheme} onThemeChange={handleThemeChange} />;
     }
   })();
@@ -429,13 +446,16 @@ const App = () => {
       {store.message ? <div className="workspace-alert" role="alert"><span>{store.message}</span><button className="tool-button" onClick={store.retryStorage}>{store.blocked ? '重新启用自动恢复' : '重试保存'}</button></div> : null}
       <main className={`app-content ${activeModule === 'home' ? '!p-0' : ''}`}>
         {locked ? <div className="relative h-full"><div inert aria-hidden="true" className="opacity-30 h-full overflow-hidden">{content}</div><LockedModuleOverlay onActivate={() => setShowActivationModal(true)} /></div> : hasPanels ?
-          <Workbench module={activeModule} state={simState} focus={focus} onSettings={() => handleModuleChange('settings')} onBegin={() => { if (current) store.begin(current.module); }} onEnd={() => { if (current) store.end(current.module); }}>{content}</Workbench> :
+          <Workbench module={activeModule} focus={focus} onBegin={() => { if (current) store.begin(current.module); }} onEnd={() => { if (current) store.end(current.module); }}>{content}</Workbench> :
           <div key={activeModule} className="single-module module-content">{content}</div>}
       </main>
     </div>
+    {hasPanels && !locked ? <FloatingAITutor activeModule={activeModule} state={simState} onSettings={() => handleModuleChange('settings')} /> : null}
     {showActivationModal ? <ActivationModal onClose={() => setShowActivationModal(false)} onActivated={() => setActivated(true)} /> : null}
   </div>;
 };
 
-const root = createRoot(document.getElementById("root")!);
+// 开发热更新复用 React 根节点，避免重复 createRoot 的警告。
+const root: ReturnType<typeof createRoot> = import.meta.hot?.data.reactRoot ?? createRoot(document.getElementById("root")!);
+if (import.meta.hot) import.meta.hot.data.reactRoot = root;
 root.render(<App />);

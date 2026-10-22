@@ -60,9 +60,12 @@ export function calculateSectionProperties(section: SectionProperties): { area: 
       const tf = section.channelFlange ?? 8;
       const tw = section.channelWeb ?? 5;
       const area = 2 * b * tf + (h - 2 * tf) * tw;
-      const Iz = (tw * Math.pow(h, 3)) / 12 + 2 * (b * Math.pow(tf, 3) / 12 + b * tf * Math.pow((h - tf) / 2, 2));
-      const Iy = 2 * (tf * Math.pow(b, 3)) / 12 + ((h - 2 * tf) * Math.pow(tw, 3)) / 12;
-      return { area, Iz, Iy, yMax: h / 2, zMax: b, Ip: Iz + Iy, Wp: (Iz + Iy) / Math.max(h, b) / 2 };
+      const webHeight = h - 2 * tf;
+      const zc = (2 * b * tf * b / 2 + webHeight * tw * tw / 2) / area;
+      // 两块完整翼缘 + 翼缘之间的腹板，避免重叠面积重复计入。
+      const Iz = (tw * Math.pow(webHeight, 3)) / 12 + 2 * (b * Math.pow(tf, 3) / 12 + b * tf * Math.pow((h - tf) / 2, 2));
+      const Iy = 2 * (tf * Math.pow(b, 3) / 12 + b * tf * (b / 2 - zc) ** 2) + webHeight * Math.pow(tw, 3) / 12 + webHeight * tw * (tw / 2 - zc) ** 2;
+      return { area, Iz, Iy, yMax: h / 2, zMax: Math.max(zc, b - zc), Ip: Iz + Iy, Wp: (Iz + Iy) / Math.max(h, b) / 2 };
     }
     case 'composite': {
       const b1 = section.comp1Width ?? 100;
@@ -128,5 +131,5 @@ export function validateSection(section: SectionProperties): string | null {
 export function evaluateSection(section: SectionProperties): CalculationResult<ReturnType<typeof calculateSectionProperties>> {
   const message = validateSection(section);
   if (message) return { ok: false, diagnostics: [{ field: 'section', message }] };
-  return calculation(calculateSectionProperties(section), ['截面几何尺寸使用 mm，惯性矩使用 mm⁴。'], section.type === 'custom' ? ['自定义截面边缘距离仍采用原模块的 50 mm 示意值；精确边缘应力需要补充完整几何信息。'] : []);
+  return calculation(calculateSectionProperties(section), ['截面几何尺寸使用 mm，惯性矩使用 mm⁴。'], section.type === 'custom' ? ['自定义截面仅提供 A、Iy、Iz；未提供轮廓和边缘坐标，不能据此确定边缘应力。'] : []);
 }

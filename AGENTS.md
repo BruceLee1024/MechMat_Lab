@@ -29,7 +29,7 @@ GitHub Actions (`.github/workflows/deploy.yml`) auto-deploys to GitHub Pages on 
 
 `index.tsx` is the main entry. It renders the `App` component which manages:
 - Module routing via `experiments/useWorkspace.ts` (no router library — conditional rendering in `renderModule()`；导航立即生效)
-- `components/Workbench.tsx`：桌面可调分栏、专注模式；小屏“实验 / 理论 / AI 助教”面板。布局规则在 `workbench.css`
+- `components/Workbench.tsx`：桌面可调分栏、专注模式；小屏“实验 / 理论”面板。AI 助教由应用层 `components/FloatingAITutor.tsx` 提供独立气泡，样式在 `floating-tutor.css`；工作台布局规则在 `workbench.css`
 - `components/ExperimentToolbar.tsx`：存档、例题、对比和导入导出；弹窗提供焦点限制与关闭后恢复
 - Theme application and activation gating
 
@@ -62,7 +62,7 @@ The structural solver analyzes beam/truss structures using finite element method
 
 ### Theming (`theme.ts` + `THEME_GUIDE.md`)
 
-4 color schemes (sunset, vibrant, warm, cool), each with 5 CSS variable colors (`--color-1` through `--color-5`). Colors are applied via `applyTheme()` which sets CSS custom properties on `:root`. Use `var(--color-N)` in styles or utility classes like `text-theme-1`, `bg-theme-2`, etc. See `THEME_GUIDE.md` for the full color role mapping.
+5 color schemes (deepSpace, sunset, vibrant, warm, cool), each with 5 CSS variable colors (`--color-1` through `--color-5`). `deepSpace` 是默认深空外观，基础视觉位于 `deep-space.css`，当前工作台布局位于 `taste-layout.css`；`applyTheme()` 同时设置根节点 `data-theme` 和 `color-scheme`。Colors are applied via `applyTheme()` which sets CSS custom properties on `:root`. Use `var(--color-N)` in styles or utility classes like `text-theme-1`, `bg-theme-2`, etc. See `THEME_GUIDE.md` for the full color role mapping.
 
 ### AI Tutor (`ai.tsx`)
 
@@ -92,6 +92,8 @@ Reusable UI: `LatexRenderer` (KaTeX), `MarkdownRenderer`, `SliderControl`, `Slid
 - `export.ts`：JSON/CSV；`report.tsx` 和 `utils/exportPdf.ts` 按需加载中文 A4 报告、html2canvas、jsPDF。导出冻结模型，报告在独立临时元素中生成；完成或失败都清理，页内溢出给出诊断。
 
 ## Key Conventions
+
+- UI 按钮与标签页的选中态不要使用顶部彩色强调线、装饰条或加粗顶边；使用背景与文字颜色区分状态。保留可访问的键盘焦点轮廓，结构分隔线不属于这类装饰。
 
 - Tailwind CSS is loaded via CDN (`<script src="https://cdn.tailwindcss.com">`) in `index.html`, not as an npm dependency
 - Path alias `@/*` maps to the project root (configured in both `tsconfig.json` and `vite.config.ts`)

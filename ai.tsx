@@ -143,7 +143,7 @@ const getWelcomeMessage = (module: ModuleType, hasApiKey: boolean): string => {
   
   switch (module) {
     case "fundamentals":
-      return `👋 欢迎来到应力应变基础模块！\n\n这里我们将探索材料受力时的基本行为。你可以调整右边的泊松比滑块，观察材料拉伸时的横向收缩。\n\n**想一想**：为什么橡皮筋拉长时会变细？这和金属有什么不同？${apiHint}`;
+      return `👋 欢迎来到应力应变基础模块！\n\n这里我们将探索材料受力时的基本行为。你可以调整加载应变，或在试件设置中修改泊松比，观察材料拉伸时的横向收缩。\n\n**想一想**：为什么橡皮筋拉长时会变细？这和金属有什么不同？${apiHint}`;
     case "axial":
       return `👋 欢迎来到轴向拉伸模块！\n\n这是最基础的受力形式。试着调整力的大小，观察应力-应变曲线的变化。\n\n**关键问题**：当应力超过屈服强度时，会发生什么？${apiHint}`;
     case "bending":
@@ -167,9 +167,10 @@ interface AITutorProps {
   activeModule: ModuleType;
   state: SimulationState;
   onNavigateToSettings?: () => void;
+  embedded?: boolean;
 }
 
-export const AITutor = ({ activeModule, state, onNavigateToSettings }: AITutorProps) => {
+export const AITutor = ({ activeModule, state, onNavigateToSettings, embedded = false }: AITutorProps) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -310,9 +311,9 @@ export const AITutor = ({ activeModule, state, onNavigateToSettings }: AITutorPr
   const hasApiKey = !!apiKey;
 
   return (
-    <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl shadow-sm border flex flex-col h-full" style={{ borderColor: 'var(--color-3)', minHeight: '350px' }}>
+    <div className="ai-tutor bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl shadow-sm border flex flex-col h-full" style={{ borderColor: 'var(--color-3)', minHeight: '350px' }}>
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b" style={{ borderColor: 'var(--color-3)' }}>
+      {!embedded && <div className="flex items-center justify-between px-3 py-2 border-b" style={{ borderColor: 'var(--color-3)' }}>
         <div className="flex items-center gap-2">
           <Bot className="w-4 h-4" style={{ color: 'var(--color-2)' }} />
           <span className="font-bold text-sm" style={{ color: 'var(--color-1)' }}>AI 助教</span>
@@ -342,8 +343,12 @@ export const AITutor = ({ activeModule, state, onNavigateToSettings }: AITutorPr
         </div>
       </div>
 
+      }
+
+      {embedded ? <div className="ai-tutor-session"><span>结合当前实验参数</span><button aria-label="重新开始对话" onClick={resetConversation}><RefreshCw size={12} />新对话</button></div> : null}
+
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-3">
+      <div className="ai-tutor-messages flex-1 overflow-y-auto p-3 space-y-3">
         {messages.map((msg, idx) => (
           <div
             key={idx}
@@ -399,7 +404,7 @@ export const AITutor = ({ activeModule, state, onNavigateToSettings }: AITutorPr
       )}
 
       {/* Quick Questions */}
-      <div className="px-3 py-2 border-t flex items-center gap-2 flex-wrap" style={{ borderColor: 'var(--color-3)' }}>
+      <div className="ai-tutor-suggestions px-3 py-2 border-t flex items-center gap-2 flex-wrap" style={{ borderColor: 'var(--color-3)' }}>
         <Lightbulb className="w-3 h-3 flex-shrink-0" style={{ color: 'var(--color-2)' }} />
         {guidingQuestions.slice(0, 3).map((q, idx) => (
           <button
@@ -415,11 +420,14 @@ export const AITutor = ({ activeModule, state, onNavigateToSettings }: AITutorPr
         ))}
       </div>
 
+      {embedded && !hasApiKey && onNavigateToSettings ? <div className="ai-tutor-connect"><span>配置模型后即可对话</span><button onClick={onNavigateToSettings}>前往设置</button></div> : null}
+
       {/* Input Area */}
-      <div className="px-3 py-2 border-t" style={{ borderColor: 'var(--color-3)' }}>
+      <div className="ai-tutor-composer px-3 py-2 border-t" style={{ borderColor: 'var(--color-3)' }}>
         <div className="flex gap-2">
           <input
             ref={inputRef}
+            aria-label="向 AI 助教提问"
             type="text"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}

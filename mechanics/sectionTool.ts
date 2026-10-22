@@ -260,7 +260,7 @@ export const SECTION_TOOL_CONFIGS: Record<SectionToolType, {
   },
   "double-channel": {
     name: "双槽钢组合",
-    description: "两个槽钢背靠背组合，总高H，翼缘宽B，腹板厚tw，翼缘厚tf，间距δ",
+    description: "两个槽钢背靠背组合，总高H，翼缘宽B，腹板厚tw，翼缘厚tf，两腹板背面净距δ",
     params: [
       { key: "H", label: "总高 H", unit: "mm", default: 160, min: 50, max: 400 },
       { key: "B", label: "翼缘宽 B", unit: "mm", default: 65, min: 20, max: 200 },
@@ -286,7 +286,8 @@ export const SECTION_TOOL_CONFIGS: Record<SectionToolType, {
       const Iy_single = 2 * ((tf * Math.pow(B, 3)) / 12 + A1 * Math.pow(x1 - xc_single, 2)) +
                         (hw * Math.pow(tw, 3)) / 12 + A2 * Math.pow(x2 - xc_single, 2);
       // 双槽钢组合，各槽钢形心到组合形心的距离
-      const d = (delta / 2) + (B - xc_single);
+      // 背靠背：间距在两腹板外背面之间，单槽形心距腹板背面为 xc_single。
+      const d = (delta / 2) + xc_single;
       const Iy = 2 * (Iy_single + A_single * d * d);
       const Ip = Ix + Iy;
       const ix = Math.sqrt(Ix / A);

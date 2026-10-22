@@ -1,0 +1,137 @@
+/* 轴向拉伸沿用基础理论的工作台层级，局部样式只作用于本课程。 */
+.axial-workbench-heading{display:flex;align-items:center;justify-content:space-between;gap:20px;min-width:0}
+.axial-specimen-summary{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px 17px;color:#8fa8c2;font:10px ui-monospace,monospace;padding:10px 0;min-width:0}
+.axial-specimen-summary span:first-child{color:#a9d9cc;font-family:inherit}
+.taste-lab.axial-lab .axial-grid{min-height:min(620px,calc(100dvh - 162px))}
+.taste-lab.axial-lab .axial-analysis .analysis-results{gap:16px}
+.axial-model-note{padding-top:16px;color:#9fb6d0;font-size:10px;line-height:1.9}
+.axial-model-note>div:first-child{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.axial-model-note output{font:13px ui-monospace,monospace;color:#d2e3f7}
+.axial-model-note small{font:10px system-ui,sans-serif;margin-left:4px;color:#a9bed6}
+.axial-model-note .axial-yield-meter{height:2px;margin:12px 0 10px;background:#334459;overflow:hidden}
+.axial-yield-meter i{display:block;height:100%;background:#80cfc1}
+.axial-model-note.is-teaching .axial-yield-meter i{background:#e7b487}
+.axial-model-note.is-teaching p{color:#e2c5a5}
+.axial-response-chart{border-top:1px solid var(--rail-line);padding-top:18px;flex-shrink:0}
+.axial-chart-heading{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.axial-chart-heading h3,.axial-cut-analysis h3{font-size:12px;font-weight:500;color:#c8d9ee}
+.axial-chart-heading button{display:flex;align-items:center;gap:9px;font-size:10px;color:#9db8d8;padding:5px 7px;border:1px solid #344b62;border-radius:4px}
+.axial-chart-heading button:hover:enabled{color:#d9ebff;background:#20344b}
+.axial-chart-heading button:disabled{border-color:transparent;cursor:default;color:#cbb7df}
+.axial-chart-meta{display:flex;justify-content:space-between;color:#9eb5cc;font-size:10px;margin-bottom:9px}
+.axial-chart-meta output{color:#d6e8fb;font-family:ui-monospace,monospace}
+.axial-response-chart svg{width:100%;height:auto;display:block;max-height:240px;overflow:visible}
+.axial-response-chart svg text{fill:#9cb8d5;font:9px ui-monospace,monospace}
+.axial-response-chart p,.axial-cut-analysis p{font-size:10px;line-height:1.9;color:#9eb4ce;margin-top:10px}
+.axial-response-chart p i{display:inline-block;vertical-align:middle;width:12px;border-top:1px solid #a4cdff;margin-right:6px}
+.axial-section-controls{display:flex;align-items:center;gap:15px;padding:0 20px 10px;min-width:0;flex-wrap:wrap}
+.axial-section-controls>div:first-child{max-width:190px}
+.axial-section-controls input[type=text]{width:55px;background:#13293c!important;color:#a7e7d7!important;border:1px solid #365267!important}
+.axial-section-controls label{color:#a6bfda!important;font-size:10px}
+.axial-section-controls input[type=range]{flex:1;min-width:80px;max-width:220px;accent-color:#7ad7c5;height:3px}
+.axial-angle-presets{display:flex;gap:4px}
+.axial-angle-presets button{font:10px ui-monospace,monospace;padding:5px 8px;border:1px solid #2c455c;border-radius:4px;color:#a3bcd5}
+.axial-angle-presets button[aria-pressed=true]{background:#22474c;color:#adf0de;border-color:#41686b}
+.axial-cut-analysis{border-top:1px solid var(--rail-line);padding-top:20px}
+.axial-component-bars{display:flex;flex-direction:column;gap:18px;margin:24px 0}
+.axial-component-bars>div{display:flex;align-items:center;gap:12px;font-size:11px;color:#b1c6dc}
+.axial-component-bars span{width:50px}.axial-component-bars i{flex:1;height:4px;background:#2a3e53;border-radius:3px;overflow:hidden}
+.axial-component-bars b{display:block;height:100%;background:#95c7ff}.axial-component-bars>div+div b{background:#88dac6}
+.axial-component-bars output{width:45px;font:11px ui-monospace,monospace;text-align:right;color:#d0e4f9}
+.axial-cut-analysis .lab-formula{margin-top:22px;background:#162b3e;border:1px solid #34495f;border-radius:6px;padding:12px;font-size:13px}
+.axial-lab button:focus-visible{outline:2px solid #94c8ed;outline-offset:3px}
+@media(max-width:1100px){.axial-specimen-summary span:first-child,.axial-specimen-summary span:last-child{display:none}.axial-specimen-summary{gap:8px}}
+@media(max-width:767px){
+ .axial-workbench-heading{align-items:flex-start;flex-direction:column;gap:0;padding-bottom:10px}
+ .axial-workbench-heading .topic-nav{margin-bottom:7px!important}
+ .axial-specimen-summary{padding:0 2px;justify-content:flex-start;gap:12px;font-size:9px}.axial-specimen-summary span:last-child{display:inline}
+ .taste-lab.axial-lab .axial-grid{min-height:0;gap:14px}
+ .taste-lab.axial-lab .fundamentals-main{grid-template-rows:480px auto}
+ .taste-lab.axial-lab .poisson-figure .lab-section-head{padding:15px 12px 10px;gap:7px}.taste-lab.axial-lab .poisson-figure h3{font-size:15px}
+ .axial-section-controls{padding:0 12px 8px;gap:10px}.axial-section-controls input[type=range]{max-width:none;min-width:80px}
+ .axial-section-controls>div:first-child{flex:1;max-width:none}.axial-angle-presets{order:2}.axial-section-controls>input{order:3;flex-basis:100%}
+ .axial-response-chart svg{max-height:330px}
+}
+
+/* 结果图表共用分析栏，三维区只保留加载操作。 */
+.axial-result-charts{border-top:1px solid var(--rail-line);padding-top:18px;flex-shrink:0}
+.axial-chart-switch{display:flex;gap:5px;margin-bottom:20px;padding:3px;background:#0e1a2a;border:1px solid #2c4057;border-radius:5px}
+.axial-chart-switch button{flex:1;min-height:30px;padding:5px 7px;color:#99b0cc;font-size:11px;border-radius:3px}
+.axial-chart-switch button[aria-pressed=true]{background:#243d54;color:#b6e8db}
+.axial-chart-switch button:hover{color:#dceafa}
+.axial-result-charts .axial-response-chart{border-top:0;padding-top:0}
+.axial-force-diagram{margin:0;padding:0;min-width:0}
+.axial-force-diagram header{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.axial-force-diagram h3{font-size:11px;font-weight:500;color:#c1d4e9;display:flex;align-items:baseline;gap:8px}
+.axial-force-diagram h3 span{color:#88a6c1;font:10px ui-monospace,monospace}
+.axial-force-diagram output{font:18px ui-monospace,monospace;color:#9ce5d4;white-space:nowrap}
+.axial-force-diagram small{font:10px system-ui,sans-serif;color:#9bb8ca;margin-left:4px}
+.axial-force-plot{position:relative;margin-top:15px;height:100px}
+.axial-force-plot svg{display:block;width:100%;height:100%}
+.axial-force-plot text{font:9px ui-monospace,monospace;fill:#8daac2}
+.axial-force-diagram p{font-size:10px;color:#9bb6cc;line-height:1.8;margin-top:10px}
+.axial-force-explanation{display:grid;gap:15px;margin:22px 0 4px;padding-top:17px;border-top:1px solid #2c405755;font-size:10px;color:#9db5cd}
+.axial-force-explanation>div{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.axial-force-explanation dd{font:12px ui-monospace,monospace;color:#c6ddef}
+.axial-force-explanation small{font-size:9px;color:#8fa8bf}
+@media(max-width:767px){.taste-lab.axial-lab .fundamentals-main{grid-template-rows:440px auto}}
+
+.material-curve-identity{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 0 13px;font-size:11px;color:#c8dcef}
+.material-curve-identity strong{font-weight:500;min-width:0}.material-curve-identity span,.material-curve-kind{font-size:10px;color:#9bd5c7;white-space:nowrap}
+.material-curve-estimate{color:#d7bc9c!important;padding-top:8px}
+.axial-chart-meta{flex-wrap:wrap;gap:5px 10px}.axial-chart-meta output{font-size:10px}
+.axial-yield-meter.is-unrated{display:none}
+.specimen-model-hint{font-size:10px;line-height:1.9;color:#a8bed6;margin-top:14px}
+.axial-deformation-bar{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:0 20px 12px;flex-shrink:0}
+.axial-deformation-bar>div{display:flex;align-items:center;gap:12px;flex-wrap:wrap;min-width:0}
+.axial-deformation-bar span{font-size:10px;color:#92dbcb;display:flex;align-items:center;gap:6px}
+.axial-deformation-bar span:before{content:'';width:4px;height:4px;border-radius:50%;background:currentColor}
+.axial-deformation-bar .is-reference{color:#dfbb9c}
+.axial-deformation-bar small{font-size:9px;color:#8da9bf}
+.axial-deformation-bar label{display:flex;align-items:center;gap:8px;font-size:9px;color:#8da9bf;white-space:nowrap}
+.axial-deformation-bar select{padding:5px 7px;border-radius:4px;border:1px solid #334e64;background:#112538;color:#c4dfef;font:10px ui-monospace,monospace;min-width:83px}
+.axial-deformation-bar select:focus-visible{outline:2px solid #91c4e7;outline-offset:2px}
+.axial-deformation-bar select:disabled{opacity:.45}
+@media(max-width:1100px){.axial-deformation-bar>div{gap:4px}.axial-deformation-bar small{flex-basis:100%}}
+@media(max-width:767px){.axial-deformation-bar{padding:0 12px 9px;gap:7px}.axial-deformation-bar small{font-size:8px}.axial-deformation-bar label{font-size:0;gap:0}.axial-deformation-bar select{max-width:90px}}
+
+/* 轴拉图层由同一材料计算场驱动；图层按钮用底色区分，不使用顶部装饰线。 */
+.axial-field-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 20px 10px;flex-shrink:0;flex-wrap:wrap}
+.axial-field-toolbar [role=group]{display:flex;gap:4px;padding:3px;border:1px solid #2b4458;border-radius:6px;background:#0a1928}
+.axial-field-toolbar button{border:0;border-radius:4px;padding:6px 11px;font-size:10px;color:#97afc6;white-space:nowrap}
+.axial-field-toolbar button[aria-pressed=true]{background:#204340;color:#adf0da}
+.axial-field-toolbar button:disabled{opacity:.35;cursor:not-allowed}
+.axial-field-toolbar label{display:flex;align-items:center;gap:10px;font-size:9px;color:#a2b9cd}
+.axial-field-toolbar input{width:90px;accent-color:#8cdec9;height:3px}
+.axial-field-toolbar output{min-width:53px;text-align:right;font:10px ui-monospace,monospace;color:#c5deed}
+.axial-field-readout{flex-shrink:0;margin:0 16px 12px;padding:12px 14px 10px;border:1px solid #2c4958;border-radius:7px;background:linear-gradient(115deg,#122e34aa,#111e32cc);min-width:0}
+.axial-field-principle{display:flex;align-items:center;justify-content:space-between;gap:12px;color:#b1e4d6;font-size:10px;flex-wrap:wrap}
+.axial-field-principle .katex-display{margin:0;font-size:12px}
+.axial-field-readout dl{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:11px 0 0}
+.axial-field-readout dt{font-size:9px;color:#8eacbf;margin-bottom:4px}
+.axial-field-readout dd{font:16px ui-monospace,monospace;color:#bce8e0;white-space:nowrap}
+.axial-field-readout small{font:9px system-ui,sans-serif;color:#8eacbf}
+.axial-field-readout p{font-size:9px;line-height:1.7;color:#91aabd;margin:9px 0 0}
+.axial-field-readout.is-unavailable{border-color:#4c4547;background:#1c2430}
+.axial-field-readout.is-unavailable strong{font-size:11px;color:#d7b5a5;font-weight:500}
+.axial-displacement-key{position:absolute;right:18px;top:17px;z-index:2;display:flex;align-items:center;gap:6px;font:10px ui-monospace,monospace;color:#b3cce1;pointer-events:none}
+.axial-displacement-key i{width:65px;height:3px;background:linear-gradient(90deg,#69b9ff,#9de4d8,#bd9ef7)}
+.axial-force-unavailable>header>span{font-size:10px;color:#cfb8ab}
+.axial-force-unavailable>div{padding:20px 0 7px}.axial-force-unavailable strong{font-size:13px;font-weight:500;color:#d3b7a7}
+.axial-capacity-comparison{display:grid;gap:14px;margin-top:18px;font-size:10px;color:#a6bfd2}
+.axial-capacity-comparison>div{display:flex;justify-content:space-between;gap:12px}
+.axial-capacity-comparison dd{font:12px ui-monospace,monospace;color:#e4c3b2}.axial-capacity-comparison small{font-size:9px}
+@media(max-width:1100px){.axial-field-principle{gap:7px}.axial-field-principle .katex-display{font-size:10px}}
+@media(max-width:767px){
+ .taste-lab.axial-lab .fundamentals-main{grid-template-rows:minmax(590px,75svh) auto}
+ .axial-field-toolbar{padding:0 12px 8px;gap:8px}.axial-field-toolbar label{flex:1;justify-content:space-between}.axial-field-toolbar input{flex:1;max-width:180px}
+ .axial-field-readout{margin:0 10px 10px;padding:10px}.axial-field-readout dl{gap:6px}.axial-field-readout dd{font-size:13px}
+ .axial-field-principle>span{font-size:9px}.axial-displacement-key{top:60px;right:12px}
+}
+.taste-lab.axial-lab .fundamentals-main{grid-template-rows:minmax(580px,1fr) auto}
+.axial-field-principle .math-renderer{--math-size:12px}
+.axial-field-principle .math-scroll{padding:0}
+@media(max-width:767px){
+ .taste-lab.axial-lab .fundamentals-main{grid-template-rows:minmax(650px,80svh) auto}
+ .axial-field-principle .math-renderer{--math-size:10px}
+}

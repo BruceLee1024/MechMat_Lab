@@ -1,0 +1,33 @@
+import type {ModuleType} from '../types';
+export type ResourceCategory='course'|'reading'|'practice'|'tool'|'local';
+export type ResourceDifficulty='beginner'|'intermediate'|'advanced';
+export interface LearningResource {
+ id:string;title:string;subtitle:string;description:string;source:string;author:string;
+ category:ResourceCategory;difficulty:ResourceDifficulty;language:'中文'|'英文'|'多语言';tags:string[];
+ access:'open'|'account'|'catalog'|'local';accessNote:string;action:string;
+ url?:string;module?:Extract<ModuleType,'fundamentals'|'formulas'|'section'>;checkedOn?:string;
+}
+const MIT='https://ocw.mit.edu/courses/';
+const checkedOn='2026-10-21';
+/** 外部条目保留明确的官方内容页；账号、版权和收费范围分别说明，不把目录页当作免费全文。 */
+export const RESOURCE_CATALOG:LearningResource[]=[
+ {id:'course-dlut',title:'工程力学——材料力学',subtitle:'中文系统课程',description:'覆盖轴向拉压、扭转、弯曲、应力状态与压杆稳定，适合按课程顺序建立知识体系。',source:'大连理工大学 · 中国大学MOOC',author:'大连理工大学课程团队',category:'course',difficulty:'beginner',language:'中文',tags:['系统学习','拉伸','扭转','弯曲','稳定'],access:'account',accessNote:'课程主页可查看；学习与考核可能需登录、选课。开课安排和证书费用以平台为准。',action:'查看课程',url:'https://www.icourse163.org/course/DLUT-1002170002',checkedOn},
+ {id:'course-mit',title:'Mechanics & Materials I',subtitle:'MIT 2.001 · Fall 2006',description:'围绕平衡、变形协调与材料响应学习固体力学，课程页提供讲义与习题入口。',source:'MIT OpenCourseWare',author:'Carol Livermore 等',category:'course',difficulty:'intermediate',language:'英文',tags:['系统学习','平衡','本构','变形协调'],access:'open',accessNote:'课程材料开放浏览。该课程页主要提供讲义与习题，不标为完整视频课。',action:'浏览课程',url:MIT+'2-001-mechanics-materials-i-fall-2006/',checkedOn},
+ {id:'course-mit-advanced',title:'Mechanics of Materials',subtitle:'MIT 3.11 · Fall 1999',description:'进一步学习固体材料的力学行为，连接应力应变、材料响应与失效分析。',source:'MIT OpenCourseWare',author:'David Roylance',category:'course',difficulty:'advanced',language:'英文',tags:['进阶','材料响应','失效','应力应变'],access:'open',accessNote:'MIT 研究生课程的开放资料；可浏览教材与作业，内容超出部分本科基础要求。',action:'浏览课程',url:MIT+'3-11-mechanics-of-materials-fall-1999/',checkedOn},
+ {id:'book-liu',title:'材料力学 Ⅰ（第6版）',subtitle:'刘鸿文 · 高等教育出版社',description:'从基本变形到强度、刚度与稳定性。链接进入出版社的图书目录及配套资源页。',source:'高等教育出版社',author:'刘鸿文',category:'reading',difficulty:'beginner',language:'中文',tags:['教材','拉伸','扭转','弯曲','稳定'],access:'catalog',accessNote:'这是图书信息与配套资源入口，不是免费教材全文。部分资源需登录或教材授权。',action:'出版社页面',url:'https://xuanshu.hep.com.cn/front/h5Mobile/bookDetails?bookId=59cf7f2cba9eb884cf823470',checkedOn},
+ {id:'book-sun',title:'材料力学（第6版）（Ⅰ）',subtitle:'孙训方、方孝淑、关来泰',description:'材料力学本科教材。通过官方图书页查看书目信息、样章及配套教案入口。',source:'高等教育出版社',author:'孙训方 方孝淑 关来泰',category:'reading',difficulty:'beginner',language:'中文',tags:['教材','土木工程','截面','弯曲'],access:'catalog',accessNote:'出版社图书页可浏览，教材另行获取；样章及数字资源的开放条件以出版社为准。',action:'出版社页面',url:'https://xuanshu.hep.com.cn/front/h5Mobile/bookDetails?bookId=619fc226938b7cc2960ede0d',checkedOn},
+ {id:'book-roylance',title:'Modules in Mechanics of Materials',subtitle:'开放教材 · David Roylance',description:'以专题组织材料力学原理与推导，适合对照实验中的拉伸、扭转、弯曲与材料失效阅读。',source:'MIT OpenCourseWare',author:'David Roylance',category:'reading',difficulty:'advanced',language:'英文',tags:['开放教材','推导','扭转','弯曲','失效'],access:'open',accessNote:'进入 MIT 官方教材资源页阅读或下载；保留作者与平台的原始版权说明。',action:'阅读教材',url:MIT+'3-11-mechanics-of-materials-fall-1999/resources/3_11_f_99_coursetextbook_pdf/',checkedOn},
+ {id:'notes-mit',title:'材料与力学课堂讲义',subtitle:'MIT 2.001 · Lecture Notes',description:'按章节查阅应力应变、纯弯曲、挠度、扭转与能量法讲义，直接进入讲义目录。',source:'MIT OpenCourseWare',author:'MIT 2.001 课程团队',category:'reading',difficulty:'intermediate',language:'英文',tags:['讲义','弯曲','扭转','应力应变','能量法'],access:'open',accessNote:'讲义目录开放浏览，PDF 链接由 MIT 提供；不是课程视频或中文译本。',action:'查阅讲义',url:MIT+'2-001-mechanics-materials-i-fall-2006/pages/lecture-notes/',checkedOn},
+ {id:'practice-mit',title:'材料力学练习题集',subtitle:'MIT 2.001 · Problem Sets',description:'配合课程练习建模、受力分析和变形计算，目录按题集提供原始 PDF。',source:'MIT OpenCourseWare',author:'MIT 2.001 课程团队',category:'practice',difficulty:'intermediate',language:'英文',tags:['习题','受力分析','变形计算','复习'],access:'open',accessNote:'开放题目目录；不承诺每道题都提供答案或完整解析。',action:'查看题集',url:MIT+'2-001-mechanics-materials-i-fall-2006/pages/assignments/',checkedOn},
+ {id:'tool-geogebra',title:'GeoGebra 计算器套件',subtitle:'交互几何与函数绘图',description:'构造莫尔圆、截面几何及函数关系。进入计算器，而不是需要再次寻找工具的首页。',source:'GeoGebra',author:'GeoGebra',category:'tool',difficulty:'beginner',language:'多语言',tags:['莫尔圆','几何','可视化'],access:'open',accessNote:'浏览器内可使用计算器；保存或分享账号内容可能需要登录。力学模型需自行建立。',action:'打开计算器',url:'https://www.geogebra.org/calculator',checkedOn},
+ {id:'tool-desmos',title:'Desmos 图形计算器',subtitle:'函数与参数关系',description:'绘制应力分布和函数曲线，利用参数滑块观察数学关系；不替代结构求解器。',source:'Desmos',author:'Desmos Studio',category:'tool',difficulty:'beginner',language:'多语言',tags:['绘图','参数','应力分布'],access:'open',accessNote:'核心绘图工具可直接使用；账号保存等功能以官方页面为准。',action:'开始绘图',url:'https://www.desmos.com/calculator',checkedOn},
+ {id:'tool-latex',title:'LaTeXLive 公式编辑器',subtitle:'整理公式与学习笔记',description:'在线编辑和预览 LaTeX 数学公式，适合整理推导步骤及课堂笔记。',source:'LaTeXLive',author:'LaTeXLive',category:'tool',difficulty:'beginner',language:'中文',tags:['LaTeX','公式','笔记'],access:'open',accessNote:'编辑器官方入口；可用功能与导出方式以网站当前界面为准。',action:'编辑公式',url:'https://www.latexlive.com/',checkedOn},
+ {id:'local-formulas',title:'常用公式工作台',subtitle:'公式、图解与参数代入',description:'查阅公式、符号含义和适用范围，用当前参数核对推导与计算结果。',source:'MechMat Lab',author:'本站',category:'local',difficulty:'beginner',language:'中文',tags:['公式','速查','代入','梁','拱'],access:'local',accessNote:'跳转到站内常用公式模块；模块访问沿用当前激活状态。',action:'进入公式工作台',module:'formulas'},
+ {id:'local-section',title:'截面特性计算器',subtitle:'从几何分块到惯性矩',description:'调整截面尺寸，查看形心、惯性矩和截面模量，并用演示理解计算过程。',source:'MechMat Lab',author:'本站',category:'local',difficulty:'beginner',language:'中文',tags:['截面','形心','惯性矩','计算器'],access:'local',accessNote:'跳转到站内截面计算模块；模块访问沿用当前激活状态。',action:'进入截面计算',module:'section'},
+ {id:'local-fundamentals',title:'基础理论可视化实验',subtitle:'从现象回到力学原理',description:'结合三维试件理解泊松效应、截面法、位移应变和基本变形。',source:'MechMat Lab',author:'本站',category:'local',difficulty:'beginner',language:'中文',tags:['基础','泊松效应','截面法','变形'],access:'local',accessNote:'跳转到站内基础理论模块，在当前工作区继续学习。',action:'进入基础实验',module:'fundamentals'},
+];
+export interface ResourceFilters {category?:ResourceCategory|'all';query?:string;difficulty?:ResourceDifficulty|'all';openOnly?:boolean}
+export function filterResources(resources:LearningResource[],filters:ResourceFilters) {
+ const query=filters.query?.trim().toLocaleLowerCase()??'';
+ return resources.filter(r=>(!filters.category||filters.category==='all'||r.category===filters.category)&&(!filters.difficulty||filters.difficulty==='all'||r.difficulty===filters.difficulty)&&(!filters.openOnly||r.access==='open')&&(!query||[r.title,r.subtitle,r.description,r.source,r.author,...r.tags].join(' ').toLocaleLowerCase().includes(query)));
+}

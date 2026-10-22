@@ -1,361 +1,85 @@
-import { calculateAxialTeaching } from "../mechanics/calculations";
-import { InvalidCalculation, CalculationNotice } from "../components/CalculationNotice";
-import React from "react";
-import { Calculator, Sigma, Activity, Rotate3d } from "lucide-react";
-import { SliderControl, LatexRenderer, MaterialSelector } from "../components";
-import { SimulationState, DEFAULT_STATE } from "../types";
-import { CommonDefs } from "./CommonDefs";
+import {axialFormulas} from '../mechanics/formulaExplanations';
+import {FormulaList} from '../components/FormulaCard';
+import React, { useId, useState } from 'react';
+import { MoveHorizontal, Scissors } from 'lucide-react';
+import { calculateAxialTeaching } from '../mechanics/calculations';
+import { InvalidCalculation } from '../components/CalculationNotice';
+import { LatexRenderer } from '../components';
+import { SimulationState, DEFAULT_STATE } from '../types';
+import { PoissonScene } from '../components/PoissonScene';
+import { ExperimentControls } from '../components/ExperimentControls';
+import { AnalysisRail, AnalysisReadout, AnalysisSecondary, AnalysisPair, AnalysisCard } from '../components/AnalysisRail';
+import { TheoryLesson, TheoryRelation, TheoryArrow } from '../components/TheoryLesson';
+import { AxialResponseChart } from '../components/AxialResponseChart';
+import { AxialForceDiagram } from '../components/AxialForceDiagram';
+import { NumericInput } from '../components/NumericInput';
+import { deriveAxialSpecimen } from '../graphics/axialSpecimen';
 
 export const AxialModule = ({ state, onChange }: { state: SimulationState; onChange: (s: Partial<SimulationState>) => void }) => {
-  const obliqueAngle = state.axialObliqueAngle;
-  const setObliqueAngle = (value: number) => onChange({ axialObliqueAngle: value });
-  const result = calculateAxialTeaching({ force: state.axialForce, area: state.axialArea, length: state.axialLength, modulus: state.bendModulus, yieldStrength: state.materialYield });
-  if (result.ok === false) return <InvalidCalculation diagnostics={result.diagnostics} onReset={() => { onChange({ axialForce: DEFAULT_STATE.axialForce, axialArea: DEFAULT_STATE.axialArea, axialLength: DEFAULT_STATE.axialLength, bendModulus: DEFAULT_STATE.bendModulus, materialYield: DEFAULT_STATE.materialYield }); }} />;
-  const { stress, strain, deformation, strainAtYield, strainAtUTS, strainAtFailure, utsStrength, failureStrength, isPlastic, isFailure, strainEnergyDensityKJ, totalStrainEnergyJ } = result.values;
-  const E_MPa = result.values.modulusMPa;
-  const yieldStrength = state.materialYield;
-  const originalLength = result.values.lengthMm;
-  const visualDeformation = Math.min(deformation * 100, 150);
+  const [view, setView] = useState<'loading' | 'section'>('loading');
+  const id = useId();
+  const [resultChart, setResultChart] = useState<'force' | 'stress'>('force');
+  const result = calculateAxialTeaching({ materialName: state.materialName, force: state.axialForce, area: state.axialArea, length: state.axialLength, modulus: state.bendModulus, yieldStrength: state.materialYield });
+  if (result.ok === false) return <InvalidCalculation diagnostics={result.diagnostics} onReset={() => onChange({ axialForce: DEFAULT_STATE.axialForce, axialArea: DEFAULT_STATE.axialArea, axialLength: DEFAULT_STATE.axialLength, bendModulus: DEFAULT_STATE.bendModulus, materialYield: DEFAULT_STATE.materialYield })} />;
+  const v = result.values, section = view === 'section';
+  const alpha = state.axialObliqueAngle * Math.PI / 180;
+  const normal = v.stress * Math.cos(alpha) ** 2, shear = v.stress * Math.sin(2 * alpha) / 2;
+  const status = v.phase;
+  const specimen = deriveAxialSpecimen(v, state.axialArea, state.poissonRatio);
+  const geometry = specimen.geometry;
+  const failed = v.isFailure;
+  const brittleLimitKN = v.modelFamily === 'brittle' && v.quantitative ? state.materialYield * state.axialArea / 1000 : null;
+  const formulas=axialFormulas(state,v,section);
+  const theory = <TheoryLesson context={section ? '斜截面应力' : '轴向拉伸'} first={section ? '同一载荷' : '力引起应力'} second={section ? '不同截面方向' : '材料决定伸长'}
+    lead={section ? '旋转截面法线，观察同一个轴向应力如何分解为正应力和切应力。' : '沿杆轴施加载荷，用当前试件把外力、应力、应变和伸长联系起来。'}
+    diagram={<svg viewBox="0 0 280 140" role="img" aria-label={section ? `斜截面法线与杆轴夹角 ${state.axialObliqueAngle} 度` : '等大反向轴力作用于等截面直杆'}>
+      <path d="M45 52H235V95H45Z" fill="#77bbff16" stroke="#91c6ff" strokeWidth="1.5" /><path d="M45 74H235" stroke="#9ab9d655" strokeDasharray="4 4" />
+      <TheoryArrow x1={43} y1={74} x2={13} y2={74} /><TheoryArrow x1={237} y1={74} x2={267} y2={74} />
+      <text x="15" y="56">F</text><text x="259" y="56">F</text>
+      {section ? <g transform={`translate(140 74) rotate(${-state.axialObliqueAngle})`}><path d="M0 -43V43" stroke="#8ee6d2" strokeWidth="2" /><TheoryArrow x1={0} y1={0} x2={52} y2={0} mint /><text x="53" y="-8">n</text></g> : <><path d="M45 112H235M45 107V117M235 107V117" stroke="#84a9ce" /><text x="140" y="132" textAnchor="middle">L₀ → L₀ + ΔL</text><text x="140" y="38" textAnchor="middle">N = F　·　σ = F / A₀</text></>}
+    </svg>}
+    caption={section ? 'α 为截面法线与杆轴的夹角，切应力保留方向符号。' : '均匀等截面杆，两端等大反向轴力；图中变形经放大。'}
+    readings={section ? [{ label: '正应力 σα', value: normal.toFixed(2), unit: 'MPa' }, { label: '切应力 τα', value: shear.toFixed(2), unit: 'MPa', accent: true }] : [{ label: '当前应力', value: v.stress.toFixed(1), unit: 'MPa' }, { label: v.strainMode === 'elastic-estimate' ? '估算伸长' : '当前伸长', value: v.deformation.toFixed(3), unit: 'mm', accent: true }]}
+    formulas={formulas} scope={section ? '应力变换适用于均匀单轴应力状态；90° 为极限方向，此时两分量均为零。' : result.assumptions.join(' ')}>
+    {section ? <><TheoryRelation title="正应力与切应力"><p>α = 0° 时截面正应力等于轴向应力，切应力为零。α = 45° 时，切应力绝对值达到 |σ| / 2。</p></TheoryRelation><TheoryRelation title="截面旋转，受力不变"><p>改变截面角度只改变力在截面上的分解，不改变杆件的轴向载荷、工程应力与伸长。</p></TheoryRelation></> : <><TheoryRelation title="同一载荷，截面越大应力越小"><p>当前 { (state.axialForce / 1000).toFixed(2) } kN 轴力作用于 {state.axialArea} mm² 截面，产生 {v.stress.toFixed(1)} MPa 工程应力。</p></TheoryRelation><TheoryRelation title="弹性阶段，伸长与载荷成正比"><p>保持截面与材料不变，增大原长会同比增大伸长。所选材料为 {v.materialLabel}，采用{v.responseLabel}；{v.strainMode === 'elastic-estimate' ? '当前数值只有线弹性估算意义。' : '曲线节点是教学设定，不代表实测响应。'}</p></TheoryRelation><TheoryRelation title="应变能的适用范围"><p>{!v.energyApplicable ? '当前模型或工况不适用线弹性应变能公式。' : `当前弹性应变能为 ${v.totalStrainEnergyJ.toFixed(3)} J，能量密度为 ${v.strainEnergyDensityKJ.toFixed(3)} kJ/m³。`}</p></TheoryRelation></>}
+  </TheoryLesson>;
 
-  // Color Logic for Transparent/Solid
-  let strokeColor = "#4f46e5"; // Indigo
-  let fillColor = "rgba(79, 70, 229, 0.1)";
-
-  if (isFailure) {
-    strokeColor = "#e11d48"; // Rose
-    fillColor = "rgba(225, 29, 72, 0.1)";
-  } else if (isPlastic) {
-    strokeColor = "#f59e0b"; // Amber
-    fillColor = "rgba(245, 158, 11, 0.1)";
-  }
-
-  const baseWidth = 200;
-  const currentWidth = baseWidth + visualDeformation;
-  
-  const gx = (val: number) => 40 + (val / strainAtFailure) * 240; 
-  const gy = (val: number) => 170 - (val / utsStrength) * 140;    
-
-  const pOrigin = "40,170";
-  const pYield = `${gx(strainAtYield)},${gy(yieldStrength)}`;
-  const pUTS = `${gx(strainAtUTS)},${gy(utsStrength)}`;
-  const pFail = `${gx(strainAtFailure)},${gy(failureStrength)}`;
-  
-  const curvePath = `M ${pOrigin} L ${pYield} Q ${gx((strainAtYield+strainAtUTS)/2)},${gy(utsStrength)} ${pUTS} L ${pFail}`;
-  
-  const dotX = gx(strain);
-  const dotY = gy(Math.min(stress, utsStrength)); 
-
-  const formulaStress = `\\sigma = \\frac{F}{A} = \\frac{${state.axialForce}}{${state.axialArea}} = ${stress.toFixed(1)} \\text{ MPa}`;
-  const formulaHooke = `\\varepsilon = \\frac{\\sigma}{E} = \\frac{${stress.toFixed(1)}}{${E_MPa}} = ${(strain*100).toFixed(4)} \\% `;
-  const formulaDeformation = `\\Delta L = \\varepsilon \\cdot L = ${(strain*100).toFixed(4)}\\% \\times ${(state.axialLength*1000).toFixed(0)} = ${deformation.toFixed(3)} \\text{ mm}`;
-  const formulaPlastic = `\\sigma = ${stress.toFixed(1)} > \\sigma_{yield} = ${yieldStrength} \\text{ MPa} \\rightarrow \\text{塑性变形!}`;
-
-  const barHeight = Math.sqrt(state.axialArea) * 4;
-
-  // --- Oblique Section State ---
-  const alphaRad = (obliqueAngle * Math.PI) / 180;
-  const sigmaAlpha = stress * Math.pow(Math.cos(alphaRad), 2);
-  const tauAlpha = (stress / 2) * Math.sin(2 * alphaRad);
-  
-  // Oblique Visual Constants
-  const oblW = 200;
-  const oblH = 80;
-  const oblCx = 150;
-  const oblCy = 100;
-  // Calculate polygon points for the left part of the cut bar
-  // Cut line passes through center. 
-  // x = y * tan(alpha) relative to center? 
-  // Let's define alpha as angle between section normal and axis.
-  // Then the section plane is at (90 - alpha) to the axis.
-  // Actually, standard text: alpha is angle between normal (n) and axis (x).
-  // So the cut plane is rotated by alpha from the vertical.
-  const cutDx = (oblH / 2) * Math.tan(alphaRad);
-  
-  const polyPoints = `
-    ${oblCx - oblW/2},${oblCy - oblH/2} 
-    ${oblCx + cutDx},${oblCy - oblH/2} 
-    ${oblCx - cutDx},${oblCy + oblH/2} 
-    ${oblCx - oblW/2},${oblCy + oblH/2}
-  `;
-
-  const formulaSigAlpha = `\\sigma_{\\alpha} = \\sigma \\cos^2 \\alpha = ${stress.toFixed(1)} \\cdot \\cos^2(${obliqueAngle}^\\circ) = ${sigmaAlpha.toFixed(1)} \\text{ MPa}`;
-  const formulaTauAlpha = `\\tau_{\\alpha} = \\frac{\\sigma}{2} \\sin 2\\alpha = \\frac{${stress.toFixed(1)}}{2} \\sin(${2*obliqueAngle}^\\circ) = ${tauAlpha.toFixed(1)} \\text{ MPa}`;
-
-  const formulaStrainEnergy = `U = \\frac{P^2 L}{2 E A} = \\frac{${state.axialForce}^2 \\cdot ${(state.axialLength*1000).toFixed(0)}}{2 \\cdot ${E_MPa} \\cdot ${state.axialArea}} = ${totalStrainEnergyJ.toFixed(2)} \\text{ J}`;
-
-  return (
-    <div className="flex flex-col h-full space-y-6">
-      <CalculationNotice assumptions={result.assumptions} warnings={result.warnings} />
-      {/* TOP: Visualization */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-          {/* Visualizer */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex items-center justify-center relative overflow-hidden h-[320px]">
-             <div className="absolute top-4 left-4 text-xs font-bold text-slate-400 uppercase flex items-center gap-2">
-                 <Activity className="w-4 h-4"/> 试件变形演示
-             </div>
-             <svg width="100%" height="100%" viewBox="0 0 400 200" className="z-10">
-                <CommonDefs />
-                
-                {/* Wall Fixed Support */}
-                <rect x="10" y="20" width="20" height="160" fill="url(#hatchPattern)" stroke="#64748b" strokeWidth="2" />
-                <line x1="30" y1="20" x2="30" y2="180" stroke="#64748b" strokeWidth="2" />
-                
-                {/* Bar Specimen */}
-                <g>
-                    {/* Fixed part (reference) */}
-                     <rect
-                        x="30"
-                        y={100 - barHeight/2}
-                        width={10}
-                        height={barHeight}
-                        fill={fillColor}
-                        stroke={strokeColor}
-                        strokeWidth="2"
-                    />
-                    {/* Main Bar */}
-                    <rect 
-                        x="40" 
-                        y={100 - barHeight/2} 
-                        width={currentWidth} 
-                        height={barHeight} 
-                        fill={fillColor}
-                        stroke={strokeColor}
-                        strokeWidth="2"
-                        style={{ transition: "width 0.1s linear, fill 0.3s, stroke 0.3s" }}
-                    />
-                     {/* Centerline */}
-                     <line x1="30" y1="100" x2={40 + currentWidth} y2="100" stroke={strokeColor} strokeWidth="1" strokeDasharray="4 4" strokeOpacity="0.5" />
-                     
-                     {/* Measuring Points */}
-                     <line x1={40} y1={100 - barHeight/2} x2={40} y2={100 + barHeight/2} stroke={strokeColor} strokeOpacity="0.5" />
-                     <line x1={40 + currentWidth} y1={100 - barHeight/2} x2={40 + currentWidth} y2={100 + barHeight/2} stroke={strokeColor} strokeOpacity="0.5" />
-                </g>
-
-                {/* Force Arrow (Rose) */}
-                <g transform={`translate(${40 + currentWidth}, 100)`} style={{ transition: "transform 0.1s linear" }}>
-                    <line x1="0" y1="0" x2="60" y2="0" stroke="#e11d48" strokeWidth="2" markerEnd="url(#arrowForce)" />
-                    <text x="5" y="-10" fill="#e11d48" fontWeight="bold">F = {state.axialForce} N</text>
-                </g>
-
-                {/* Dimensions */}
-                <g transform="translate(0, 160)">
-                    <line x1="40" y1="0" x2={40} y2="20" stroke="#94a3b8" />
-                    <line x1={40 + currentWidth} y1="0" x2={40 + currentWidth} y2="20" stroke="#94a3b8" />
-                    <line x1="40" y1="10" x2={40 + currentWidth} y2="10" stroke="#94a3b8" markerEnd="url(#arrowDim)" />
-                    <text x={40 + currentWidth/2} y="25" fill="#64748b" fontSize="12" textAnchor="middle">L + ΔL</text>
-                </g>
-             </svg>
+  return <div className="fundamentals-lab taste-lab axial-lab">
+    <div className="axial-workbench-heading"><div className="lab-chapter-tabs topic-nav" role="tablist" aria-label="轴向拉伸主题" onKeyDown={event => {
+      if (!['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return;
+      event.preventDefault(); const next = event.key === 'Home' ? 'loading' : event.key === 'End' ? 'section' : section ? 'loading' : 'section'; setView(next); document.getElementById(`${id}-${next}`)?.focus();
+    }}>
+      {([['loading','拉伸实验',MoveHorizontal],['section','斜截面应力',Scissors]] as const).map(([key,label,Icon]) => <button key={key} id={`${id}-${key}`} role="tab" aria-selected={view === key} tabIndex={view === key ? 0 : -1} aria-controls={`${id}-workbench`} onClick={() => setView(key)}><Icon size={15} />{label}</button>)}
+    </div><div className="axial-specimen-summary"><span>{v.materialLabel} · {v.responseLabel}</span><span>E {state.bendModulus} GPa</span><span>A₀ {state.axialArea} mm²</span><span>L₀ {v.lengthMm} mm</span></div></div>
+    <div className="fundamentals-grid axial-grid" role="tabpanel" id={`${id}-workbench`} aria-labelledby={`${id}-${view}`}>
+      <div className="fundamentals-main">
+        <PoissonScene values={geometry} specimen={specimen} axial showSection={section} sectionAngle={section ? state.axialObliqueAngle : 0} title={section ? '斜截面 · 应力分解' : '轴向拉伸实验'} subtitle={section ? '同一应力场，观察不同截面上的正应力与切应力' : v.strainMode === 'elastic-estimate' ? '当前工况无定量变形解，三维区展示材料参考形态' : `${v.materialLabel} · ${v.responseLabel} · 材料响应教学示意`}>
+          {section && <div className="axial-section-controls"><NumericInput compact label="截面法线夹角 α" value={state.axialObliqueAngle} unit="°" domain="signed" minimum={0} maximum={90} onChange={value => onChange({ axialObliqueAngle: value })} /><input type="range" aria-label="截面法线夹角滑块" min={0} max={90} step={1} value={state.axialObliqueAngle} onChange={event => onChange({ axialObliqueAngle: Number(event.target.value) })} /><div className="axial-angle-presets">{[0,45,90].map(value => <button key={value} aria-pressed={state.axialObliqueAngle === value} onClick={() => onChange({ axialObliqueAngle: value })}>{value}°</button>)}</div></div>}
+        </PoissonScene>
+        <ExperimentControls state={state} onChange={onChange} strain={v.strain} valid control="force" />
+      </div>
+      <AnalysisRail key={view} title={section ? '斜截面应力' : '轴向拉伸'} className="axial-analysis" theory={theory} reference={<>
+        <FormulaList formulas={formulas}/>
+        <dl className="reference-geometry"><div><dt>原始长度 L₀</dt><dd>{v.lengthMm.toFixed(1)} mm</dd></div><div><dt>当前长度 L</dt><dd>{specimen.currentLength === null ? '未确定' : `${specimen.currentLength.toFixed(3)} mm`}</dd></div><div><dt>截面积 A₀</dt><dd>{state.axialArea} mm²</dd></div><div><dt>能量密度</dt><dd>{!v.energyApplicable ? '当前不适用' : `${v.strainEnergyDensityKJ.toFixed(3)} kJ/m³`}</dd></div></dl><p className="reference-assumption">{result.assumptions.join(' ')}</p>
+      </>} analysis={<>
+        <section className="result-panel"><div className="analysis-panel-heading"><h3>{section ? '截面应力分量' : '实时结果'}</h3><span className="result-model-status">{section ? `α ${state.axialObliqueAngle}°` : status}</span></div>
+          <AnalysisReadout label={section ? failed ? '试算正应力 σα' : '正应力 σα' : failed ? '试加载名义应力 F/A₀' : '工程应力 σ'} value={(section ? normal : v.stress).toFixed(1)} unit="MPa" />
+          <AnalysisSecondary label={section ? '切应力 τα' : '弹性应变能 U'} value={section ? shear.toFixed(3) : !v.energyApplicable ? '不适用' : v.totalStrainEnergyJ.toFixed(3)} unit={section ? 'MPa' : !v.energyApplicable ? undefined : 'J'} />
+          <AnalysisPair><AnalysisCard label={failed ? '轴向应变 ε' : v.strainMode === 'elastic-estimate' ? '估算应变 ε' : '轴向应变 ε'} value={failed ? '未求解' : (v.strain*100).toFixed(3)} unit={failed ? undefined : '%'} /><AnalysisCard label={failed ? '总伸长 ΔL' : v.strainMode === 'elastic-estimate' ? '估算伸长 ΔL' : '总伸长 ΔL'} value={failed ? '未求解' : v.deformation.toFixed(3)} unit={failed ? undefined : 'mm'} accent /></AnalysisPair>
+          <div className={`axial-model-note ${v.isPlastic ? 'is-teaching' : ''}`}><div><span>{v.referenceLabel}</span><output>{state.materialYield} <small>MPa</small></output></div><div className={`axial-yield-meter ${!v.quantitative ? 'is-unrated' : ''}`} aria-hidden="true"><i style={{width:`${Math.min(100, Math.max(0,v.stress/state.materialYield*100))}%`}} /></div><p>{failed ? '已超出材料教学曲线；名义需求应力不代表破坏后的实际应力。' : v.strainMode === 'elastic-estimate' ? '当前应变与伸长仅作线弹性估算；不据此判断材料真实破坏。' : v.strainMode === 'teaching' ? '应变与曲线共用材料教学模型；不代表实测响应。' : '均匀直杆 · 线弹性计算；粒子流表示应力传递。'}</p></div>
+        </section>
+        {section ? <section className="axial-cut-analysis"><h3>方向与分量</h3><div className="axial-component-bars"><div><span>cos²α</span><i><b style={{width:`${Math.cos(alpha)**2*100}%`}} /></i><output>{(Math.cos(alpha)**2*100).toFixed(1)}%</output></div><div><span>½sin2α</span><i><b style={{width:`${Math.abs(Math.sin(2*alpha)/2)*100}%`}} /></i><output>{(Math.sin(2*alpha)/2*100).toFixed(1)}%</output></div></div><p>α 为截面法线与杆轴的夹角。45° 时切应力绝对值最大，90° 时两种应力分量均为零。</p><div className="lab-formula"><LatexRenderer formula={String.raw`\sigma_\alpha=\sigma\cos^2\alpha`} /><LatexRenderer formula={String.raw`\tau_\alpha=\frac{\sigma}{2}\sin 2\alpha`} /></div></section> : <section className="axial-result-charts" aria-label="实验结果图表">
+          <div className="axial-chart-switch" role="group" aria-label="切换结果图表">
+            <button aria-pressed={resultChart === 'force'} onClick={() => setResultChart('force')}>轴力图</button>
+            <button aria-pressed={resultChart === 'stress'} onClick={() => setResultChart('stress')}>应力–应变</button>
           </div>
-
-          {/* Chart */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex items-center justify-center relative h-[320px]">
-             <div className="absolute top-4 left-4 text-xs font-bold text-slate-400 uppercase flex items-center gap-2">
-                 <Sigma className="w-4 h-4"/> 应力-应变曲线
-             </div>
-             <svg width="100%" height="100%" viewBox="0 0 300 200">
-                {/* Grid */}
-                <path d="M40,30 L40,170 L280,170" fill="none" stroke="#cbd5e1" strokeWidth="2" />
-                
-                {/* Curve */}
-                <path d={curvePath} fill="none" stroke="#94a3b8" strokeWidth="2" strokeDasharray="4 2" />
-                <path d={curvePath} fill="none" stroke="#cbd5e1" strokeWidth="4" strokeLinecap="round" opacity="0.3" />
-
-                {/* Current Point */}
-                <circle cx={dotX} cy={dotY} r="6" fill={fillColor} stroke={strokeColor} strokeWidth="2" className="shadow-sm" />
-                
-                {/* Drop lines */}
-                <line x1={dotX} y1={dotY} x2={dotX} y2="170" stroke={strokeColor} strokeWidth="1" strokeDasharray="2 2" />
-                <line x1={dotX} y1={dotY} x2="40" y2={dotY} stroke={strokeColor} strokeWidth="1" strokeDasharray="2 2" />
-
-                <text x="280" y="185" fontSize="12" fill="#64748b" textAnchor="end">Strain (ε)</text>
-                <text x="30" y="25" fontSize="12" fill="#64748b">Stress (σ)</text>
-             </svg>
-          </div>
-      </div>
-
-      {/* MIDDLE: Parameters & Results */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left: Experimental Parameters */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 h-full">
-           <h3 className="font-semibold text-indigo-900 mb-4 flex items-center gap-2">
-               <Calculator className="w-4 h-4 text-indigo-500" /> 实验参数
-           </h3>
-           <div className="space-y-4">
-                <MaterialSelector 
-                  currentE={state.bendModulus} 
-                  currentYield={state.materialYield}
-                  currentPoisson={state.poissonRatio}
-                  onSelect={(mat) => onChange({ bendModulus: mat.E, materialYield: mat.yield, poissonRatio: mat.poisson })} 
-                />
-               <SliderControl label="轴向拉力 (Force)" value={state.axialForce} min={0} max={50000} step={1000} unit="N" onChange={(v) => onChange({ axialForce: v })} />
-               <SliderControl label="横截面积 (Area)" value={state.axialArea} min={10} max={500} step={10} unit="mm²" onChange={(v) => onChange({ axialArea: v })} />
-               <SliderControl label="原长 (Length)" value={state.axialLength} min={0.1} max={5.0} step={0.1} unit="m" onChange={(v) => onChange({ axialLength: v })} />
-           </div>
-        </div>
-        
-        {/* Right: Results Analysis */}
-        <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 h-full">
-            <h3 className="font-semibold text-indigo-900 mb-4 flex items-center gap-2">
-                <Sigma className="w-4 h-4 text-indigo-500" /> 结果分析
-            </h3>
-            <div className="space-y-3">
-                <div className="flex justify-between items-center p-3 bg-white rounded border border-slate-200">
-                  <span className="text-sm text-slate-600">当前应力 (Stress)</span>
-                  <span className={`font-mono font-bold text-lg ${isPlastic ? 'text-rose-600' : 'text-indigo-600'}`}>{stress.toFixed(1)} MPa</span>
-                </div>
-                <div className="flex justify-between items-center p-3 bg-white rounded border border-slate-200">
-                  <span className="text-sm text-slate-600">当前应变 (Strain)</span>
-                  <span className="font-mono font-bold text-slate-700">{(strain*100).toFixed(3)} %</span>
-                </div>
-                <div className="flex justify-between items-center p-3 bg-white rounded border border-slate-200">
-                  <span className="text-sm text-slate-600">总伸长量 (ΔL)</span>
-                  <span className="font-mono font-bold text-slate-700">{deformation.toFixed(2)} mm</span>
-                </div>
-                <div className="flex justify-between items-center p-3 bg-white rounded border border-slate-200">
-                  <span className="text-sm text-slate-600">原始长度 (L0)</span>
-                  <span className="font-mono font-bold text-slate-500">{originalLength.toFixed(0)} mm</span>
-                </div>
-                <div className="flex justify-between items-center p-3 bg-white rounded border border-slate-200">
-                  <span className="text-sm text-slate-600">弹性应变能 (U)</span>
-                  <div className="text-right">
-                      <span className="font-mono font-bold text-indigo-600 block">{isPlastic ? "不适用" : `${totalStrainEnergyJ.toFixed(2)} J`}</span>
-                      <span className="text-xs text-slate-400">{isPlastic ? "线弹性公式不适用于当前状态" : `(${strainEnergyDensityKJ.toFixed(0)} kJ/m³)`}</span>
-                  </div>
-                </div>
-                
-                <div className={`mt-4 p-3 rounded text-sm font-bold text-center transition-colors ${isFailure ? "bg-rose-100 text-rose-700" : (isPlastic ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700")}`}>
-                    {isFailure ? "结构断裂 (Fracture)" : (isPlastic ? "塑性屈服 (Yielding)" : "弹性状态 (Elastic)")}
-                </div>
-            </div>
-        </div>
-      </div>
-
-      {/* NEW: Oblique Section Analysis */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 h-full">
-             <h3 className="font-semibold text-indigo-900 mb-4 flex items-center gap-2">
-                 <Rotate3d className="w-4 h-4 text-indigo-500" /> 斜截面应力分析 (Oblique Section)
-             </h3>
-             <div className="flex flex-col items-center">
-                  <div className="w-full h-[200px] flex items-center justify-center border border-slate-100 rounded mb-4 bg-slate-50 relative">
-                      <svg width="300" height="200" viewBox="0 0 300 200">
-                          <defs>
-                              <marker id="arrowN" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
-                                <path d="M0,0 L0,6 L9,3 z" fill="#e11d48" />
-                              </marker>
-                              <marker id="arrowV" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
-                                <path d="M0,0 L0,6 L9,3 z" fill="#4f46e5" />
-                              </marker>
-                          </defs>
-                          
-                          {/* Left part of the bar */}
-                          <polygon points={polyPoints} fill="rgba(79, 70, 229, 0.1)" stroke="#4f46e5" strokeWidth="2" />
-                          
-                          {/* Cut Face Line */}
-                          <line 
-                            x1={oblCx + cutDx} y1={oblCy - oblH/2} 
-                            x2={oblCx - cutDx} y2={oblCy + oblH/2} 
-                            stroke="#4f46e5" strokeWidth="2" strokeDasharray="4 2"
-                          />
-
-                          {/* Normal Vector n (Perpendicular to cut) */}
-                          {/* Angle of normal is alpha. So vector is (cos alpha, -sin alpha) if y is up. 
-                              Here y is down. Cut line angle with vertical is alpha. 
-                              Normal angle with horizontal is alpha.
-                              Vector: (cos alpha, sin alpha) ? 
-                              Let's check: alpha=0 -> horizontal vector (1,0). Correct.
-                              alpha=45 -> (0.7, 0.7). Down-right.
-                          */}
-                          <line 
-                             x1={oblCx} y1={oblCy} 
-                             x2={oblCx + 60 * Math.cos(alphaRad)} 
-                             y2={oblCy - 60 * Math.sin(alphaRad)} 
-                             stroke="#94a3b8" strokeWidth="1" markerEnd="url(#arrowDim)"
-                          />
-                          <text x={oblCx + 70 * Math.cos(alphaRad)} y={oblCy - 70 * Math.sin(alphaRad)} fontSize="10" fill="#94a3b8">n</text>
-
-                          {/* Stress Vectors on the face */}
-                          {/* Sigma (Normal) - Along n */}
-                          <g transform={`translate(${oblCx}, ${oblCy}) rotate(${-obliqueAngle})`}>
-                               <line x1="0" y1="0" x2={Math.min(sigmaAlpha*1.5, 80)} y2="0" stroke="#e11d48" strokeWidth="3" markerEnd="url(#arrowN)" />
-                               <text x={Math.min(sigmaAlpha*1.5, 80) + 10} y="4" fill="#e11d48" fontSize="12" fontWeight="bold">σ_α</text>
-                          </g>
-
-                          {/* Tau (Shear) - Along the cut face */}
-                          {/* Cut face direction is -90 deg from n. */}
-                           <g transform={`translate(${oblCx}, ${oblCy}) rotate(${-obliqueAngle + 90})`}>
-                               <line x1="0" y1="0" x2={Math.min(Math.abs(tauAlpha)*3, 80)} y2="0" stroke="#4f46e5" strokeWidth="3" markerEnd="url(#arrowV)" />
-                               <text x={Math.min(Math.abs(tauAlpha)*3, 80) + 10} y="4" fill="#4f46e5" fontSize="12" fontWeight="bold">τ_α</text>
-                          </g>
-                          
-                          {/* Angle Arc */}
-                          <path d={`M ${oblCx+30},${oblCy} A 30,30 0 0,0 ${oblCx + 30*Math.cos(-alphaRad)},${oblCy + 30*Math.sin(-alphaRad)}`} fill="none" stroke="#94a3b8" />
-                          <text x={oblCx + 40} y={oblCy - 10} fontSize="10" fill="#94a3b8">α</text>
-                      </svg>
-                  </div>
-                  <div className="w-full px-4">
-                      <SliderControl label="截面角度 α (Angle)" value={obliqueAngle} min={-60} max={60} step={1} unit="°" onChange={setObliqueAngle} />
-                  </div>
-             </div>
-         </div>
-         
-         <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 h-full flex flex-col justify-center">
-            <h3 className="font-semibold text-indigo-900 mb-4 flex items-center gap-2">
-                <Sigma className="w-4 h-4 text-indigo-500" /> 计算结果
-            </h3>
-            <div className="space-y-4">
-                <div className="p-3 bg-white rounded border border-slate-200">
-                    <div className="text-xs text-slate-500 mb-1">正应力 (Normal Stress)</div>
-                    <div className="overflow-x-auto pb-2">
-                        <LatexRenderer formula={formulaSigAlpha} />
-                    </div>
-                </div>
-                 <div className="p-3 bg-white rounded border border-slate-200">
-                    <div className="text-xs text-slate-500 mb-1">切应力 (Shear Stress)</div>
-                    <div className="overflow-x-auto pb-2">
-                        <LatexRenderer formula={formulaTauAlpha} />
-                    </div>
-                </div>
-                <div className="text-xs text-slate-500 bg-indigo-50 p-3 rounded border border-indigo-100">
-                    <strong>规律总结：</strong><br/>
-                    • α = 0° 时，正应力最大 (σ_max = σ)，切应力为 0。<br/>
-                    • α = 45° 时，切应力达到最大值 (τ_max = σ/2)。<br/>
-                    • α = 90° 时，正应力和切应力均为 0。
-                </div>
-            </div>
-         </div>
-      </div>
-
-      {/* BOTTOM: Calculation Process */}
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-         <h4 className="font-semibold text-indigo-900 mb-4 flex items-center gap-2">
-            <Sigma className="w-4 h-4 text-indigo-500" /> 计算过程演示
-         </h4>
-         <div className="bg-slate-50 rounded-lg border border-slate-200 p-4 space-y-4 overflow-x-auto">
-            <div className="space-y-3">
-                <div className="p-3 bg-white rounded border border-slate-200">
-                    <div className="text-xs text-slate-500 mb-1">① 应力计算 (Stress)</div>
-                    <LatexRenderer formula={formulaStress} />
-                </div>
-                <div className="p-3 bg-white rounded border border-slate-200">
-                    <div className="text-xs text-slate-500 mb-1">② 应变计算 (Strain) - 胡克定律</div>
-                    {isPlastic ? (
-                        <LatexRenderer formula={formulaPlastic} />
-                    ) : (
-                        <LatexRenderer formula={formulaHooke} />
-                    )}
-                </div>
-                <div className="p-3 bg-white rounded border border-slate-200">
-                    <div className="text-xs text-slate-500 mb-1">③ 变形量计算 (Deformation)</div>
-                    <LatexRenderer formula={formulaDeformation} />
-                </div>
-                <div className="p-3 bg-white rounded border border-slate-200">
-                    <div className="text-xs text-slate-500 mb-1">④ 应变能计算 (Strain Energy)</div>
-                    {isPlastic ? <p className="text-sm text-amber-700">屈服后的教学曲线不能用于计算真实塑性应变能。</p> : <LatexRenderer formula={formulaStrainEnergy} />}
-                </div>
-            </div>
-         </div>
-      </div>
+          {resultChart === 'force' ? <>
+            <AxialForceDiagram force={state.axialForce} lengthMm={v.lengthMm} failureTeaching={v.isFailure} />
+            {brittleLimitKN !== null && <dl className="axial-capacity-comparison"><div><dt>教学参考载荷 σₜ,ref A₀</dt><dd>{brittleLimitKN.toFixed(3)} <small>kN</small></dd></div><div><dt>试加载 / 参考载荷</dt><dd>{(state.axialForce/(brittleLimitKN*1000)).toFixed(2)}</dd></div></dl>}
+            {!failed && <dl className="axial-force-explanation"><div><dt>分布区间</dt><dd>0 — {v.lengthMm.toLocaleString('zh-CN')} <small>mm</small></dd></div><div><dt>中间轴向荷载</dt><dd>0 <small>N/mm</small></dd></div></dl>}
+          </> : <AxialResponseChart state={state} />}
+        </section>}
+      </>} />
     </div>
-  );
+  </div>;
 };

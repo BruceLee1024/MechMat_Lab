@@ -1,11 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { AITutor } from '../ai';
 import { TheoryPanel } from '../components';
-import { ModuleType, SimulationState } from '../types';
+import { ModuleType } from '../types';
 
-export function Workbench({ module, state, children, focus, onSettings, onBegin, onEnd }: {
-  module: ModuleType; state: SimulationState; children: React.ReactNode; focus: boolean;
-  onSettings: () => void; onBegin: () => void; onEnd: () => void;
+export function Workbench({ module, children, focus, onBegin, onEnd }: {
+  module: ModuleType; children: React.ReactNode; focus: boolean;
+  onBegin: () => void; onEnd: () => void;
 }) {
   const [panel, setPanel] = useState('experiment');
   const [width, setWidth] = useState(65);
@@ -18,10 +17,15 @@ export function Workbench({ module, state, children, focus, onSettings, onBegin,
     return () => { window.removeEventListener('pointerup', end); window.removeEventListener('pointercancel', end); };
   }, [onEnd]);
   const changeWidth = (value: number) => setWidth(Math.max(50, Math.min(75, value)));
-  const rangeEvent = (target: EventTarget) => target instanceof HTMLInputElement && target.type === 'range';
+  const rangeEvent = (target: EventTarget) => target instanceof Element && ((target instanceof HTMLInputElement && target.type === 'range') || !!target.closest('[data-experiment-gesture]'));
+  if (module === 'fundamentals' || module === 'axial' || module === 'bending' || module === 'torsion' || module === 'buckling' || module === 'combined' || module === 'stress') return <div className={`fundamentals-workbench ${focus ? 'is-focused' : ''}`}
+    onPointerDownCapture={event => { if (rangeEvent(event.target)) onBegin(); }}
+    onKeyDownCapture={event => { if (rangeEvent(event.target) && ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End'].includes(event.key)) onBegin(); }}
+    onKeyUpCapture={event => { if (rangeEvent(event.target)) onEnd(); }}
+    onBlurCapture={event => { if (rangeEvent(event.target)) onEnd(); }}>{children}</div>;
   return <div className={`experiment-workbench ${focus ? 'is-focused' : ''}`}>
     <div className="panel-tabs" role="tablist" aria-label="实验面板">
-      {[['experiment', '实验'], ['theory', '理论'], ['ai', 'AI 助教']].map(([key, label]) => <button key={key} type="button" role="tab" aria-selected={panel === key} aria-controls={`panel-${key}`} id={`tab-${key}`} onClick={() => setPanel(key)}>{label}</button>)}
+      {[['experiment', '实验'], ['theory', '理论']].map(([key, label]) => <button key={key} type="button" role="tab" aria-selected={panel === key} aria-controls={`panel-${key}`} id={`tab-${key}`} onClick={() => setPanel(key)}>{label}</button>)}
     </div>
     <div ref={layout} className="experiment-layout" data-panel={panel} style={{ '--experiment-width': `${width}%` } as React.CSSProperties}>
       <div id="panel-experiment" className="experiment-panel module-content" aria-labelledby="tab-experiment"
@@ -36,7 +40,6 @@ export function Workbench({ module, state, children, focus, onSettings, onBegin,
         onPointerMove={event => { if (dragging.current && layout.current) { const rect = layout.current.getBoundingClientRect(); changeWidth((event.clientX - rect.left) / rect.width * 100); } }}
         onPointerUp={() => { dragging.current = false; }} onPointerCancel={() => { dragging.current = false; }}><span /></div>
       <div className="support-panels">
-        <div id="panel-ai" className="ai-panel" aria-labelledby="tab-ai"><AITutor activeModule={module} state={state} onNavigateToSettings={onSettings} /></div>
         <div id="panel-theory" className="theory-panel" aria-labelledby="tab-theory"><TheoryPanel activeModule={module} /></div>
       </div>
     </div>

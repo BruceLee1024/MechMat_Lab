@@ -1,0 +1,285 @@
+/* 面向实验操作的连续工作区。层级依次为应用、画布、控制区、分析工具。 */
+:root{--taste-radius:6px;--taste-line:#223349;--taste-muted:#a0b0c5}
+[data-theme=deepSpace] .app-shell{background:#09111d;color:#d6e1ef;font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif}
+[data-theme=deepSpace] .app-main .app-header{min-height:72px;height:72px;padding:14px 390px 14px 24px;background:#0b1421;border-bottom:1px solid #213147;gap:12px}
+[data-theme=deepSpace] .app-main .app-header h2{font-size:18px;line-height:1.4;font-weight:600;letter-spacing:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#e2eaf5}
+[data-theme=deepSpace] .app-main .app-header p{font-size:11px;line-height:1.5;margin-top:4px;color:#9cacc0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+[data-theme=deepSpace] .app-main .experiment-toolbar{position:absolute;right:20px;top:18px;min-height:0;padding:0;border:0;background:transparent;gap:7px;z-index:20}
+[data-theme=deepSpace] .experiment-toolbar>.tool-button,[data-theme=deepSpace] .toolbar-more>summary{height:35px;min-height:35px;padding:8px 10px;border-radius:var(--taste-radius);font-size:12px}
+[data-theme=deepSpace] .experiment-toolbar>.toolbar-save{min-width:104px;margin-left:4px;background:#347cf1;border-color:#4c8df5;box-shadow:none}
+[data-theme=deepSpace] .app-main .app-content{padding:0 18px 18px;background:#09111d}
+[data-theme=deepSpace] .app-sidebar{width:188px;background:#0c1624;border-color:#203044}
+[data-theme=deepSpace] .app-sidebar>div:first-child{min-height:72px;height:72px;padding:17px 16px;border-color:#203044}
+[data-theme=deepSpace] .sidebar-brand h1{font-size:13px;letter-spacing:-.5px}
+[data-theme=deepSpace] .sidebar-brand p{font-size:10px;margin-top:5px;color:#9aacc6;letter-spacing:.5px}
+[data-theme=deepSpace] .app-sidebar nav{padding:20px 9px 10px}
+[data-theme=deepSpace] .app-sidebar nav button{height:39px;min-height:39px;padding:8px 11px;margin-top:4px;font-size:13px;gap:10px;color:#a6b4c9;border-radius:5px}
+[data-theme=deepSpace] .app-sidebar nav button svg{width:17px;height:17px;stroke-width:1.6}
+[data-theme=deepSpace] .app-sidebar nav button[aria-current=page]{background:#192c47!important;border-color:transparent;box-shadow:none!important;color:#d8e7fd}
+[data-theme=deepSpace] .app-sidebar nav button[data-module=stress],[data-theme=deepSpace] .app-sidebar nav button[data-module=resources]{height:48px;margin-top:16px;padding-top:16px;border-color:#223247}
+[data-theme=deepSpace] .sidebar-lab-art{display:none}
+[data-theme=deepSpace] .app-sidebar>div:has(>p){padding:12px;border-color:#223247}
+[data-theme=deepSpace] .tool-button{box-shadow:none}
+[data-theme=deepSpace] .tool-button:active,.analysis-tabs button:active{transform:translateY(1px)}
+[data-theme=deepSpace] .menu-toggle{padding:7px;border-radius:6px}
+.fundamentals-workbench{overflow:auto}
+.taste-lab{height:100%;min-height:0;gap:0;color:#d4dfed}
+.taste-lab .lab-chapter-tabs{background:transparent;border:0;border-bottom:1px solid var(--taste-line);padding:0;min-height:51px;gap:18px;border-radius:0;margin-bottom:18px;overflow-x:auto;flex-shrink:0}
+.taste-lab .lab-chapter-tabs button{position:relative;flex:0 0 auto;font-size:12px;padding:15px 0;gap:7px;border:0;border-bottom:2px solid transparent;border-radius:0;color:#9baec5}
+.taste-lab .lab-chapter-tabs button:first-child{font-size:12px;display:flex}
+.taste-lab .lab-chapter-tabs button[aria-selected=true]{background:none;border-color:#6ca6ff;box-shadow:none;color:#dfebfc}
+.taste-lab .lab-chapter-tabs button:hover{background:none;color:#d6e9ff}
+.taste-lab .fundamentals-grid{grid-template-columns:minmax(0,1fr) 320px;gap:20px;min-height:0;flex:1;align-items:stretch}
+.taste-lab .fundamentals-grid.is-reading{display:none}
+.taste-lab .fundamentals-main{display:grid;grid-template-rows:minmax(370px,1fr) auto;gap:0;min-height:0;min-width:0;border:1px solid var(--taste-line);border-radius:var(--taste-radius);overflow:hidden;background:#0b1625}
+.taste-lab .poisson-figure{min-height:370px;border:0;border-radius:0;background:#0b1625;box-shadow:none}
+.taste-lab .poisson-figure .lab-section-head{padding:20px 20px 12px;align-items:center;min-height:79px}
+.taste-lab .poisson-figure .lab-section-head h3{font-size:17px;font-weight:500;letter-spacing:.2px;color:#e2ebf7}
+.taste-lab .poisson-figure .lab-section-head h3:before{display:none}
+.taste-lab .poisson-figure .lab-section-head p{font-size:11px;color:#a0b1c7;margin-top:5px}
+.taste-lab .scene-view-controls{gap:3px}
+.taste-lab .scene-view-controls button{min-height:30px;border:1px solid transparent;border-radius:4px;color:#a4b6cc;padding:6px;font-size:10px}
+.taste-lab .scene-view-controls button[aria-pressed=true]{background:#1b314c;border-color:#365476;color:#dfedff}
+.taste-lab .scene-view-controls button:hover{background:#182c44}
+.taste-lab .poisson-canvas-wrap{background:#0b1625;min-height:280px;container-type:inline-size}
+.taste-lab .scene-legend{left:20px;top:12px;background:transparent;border:0;padding:0;font-size:10px;gap:6px;color:#b0c4df}
+.taste-lab .scene-caption{left:20px;right:20px;bottom:14px;font-size:10px;color:#a2b4cc}
+.taste-lab .experiment-control-dock{display:grid;grid-template-columns:minmax(210px,.95fr) minmax(230px,1.05fr);gap:24px;padding:20px;background:#111e2f;border:0;border-top:1px solid #26394f;border-radius:0;overflow:visible;box-shadow:none;position:relative}
+.taste-lab .experiment-control-dock h3{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:500;color:#bdcee5;margin:0 0 13px}
+.taste-lab .dock-material-fields{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+.taste-lab .dock-material-fields>div>div{flex-direction:column;align-items:stretch;gap:6px}
+.taste-lab .dock-material-fields>div>div>div{width:100%}
+.taste-lab .experiment-control-dock input[type=text]{width:100%!important;background:#0c192a!important;border-color:#35485f!important;color:#e5edf8!important;min-height:35px;padding:7px 9px;font-size:14px;flex:1;min-width:0;font-family:ui-monospace,"SFMono-Regular",Consolas,monospace;font-variant-numeric:tabular-nums;border-radius:5px}
+.taste-lab .experiment-control-dock label{font-size:11px;color:#b2c0d4;line-height:1.5}
+.taste-lab .experiment-control-dock input+span{font-size:10px;color:#a2b4ce}
+.taste-lab .dock-loading>.mb-2>.flex{align-items:center;gap:8px;flex-wrap:nowrap}
+.taste-lab .dock-loading>.mb-2>.flex>div{max-width:100px}
+.taste-lab .dock-loading>.mb-2{margin:0 0 13px}
+.taste-lab .dock-loading input[type=range]{height:18px;display:block;margin:0 0 3px}
+.taste-lab .slider-ticks{font-size:10px;color:#a4b3c9}
+.taste-lab .lab-material-library{position:relative;font-size:11px;line-height:1.5;margin-top:10px;color:#b2c8e4}
+.taste-lab .lab-material-library summary{padding:0;cursor:pointer;width:fit-content}
+.taste-lab .lab-material-library[open] summary{margin:0;color:#dce9fa}
+.taste-lab .material-detail-content{position:absolute;left:0;bottom:calc(100% + 16px);z-index:10;width:450px;max-width:calc(100vw - 48px);background:#112237;border:1px solid #3a526d;border-radius:6px;padding:16px;box-shadow:0 12px 40px #03091466}
+.taste-lab .material-detail-content>.mb-2{margin-bottom:10px}
+.taste-lab .analysis-rail{display:flex;flex-direction:column;gap:0;border-left:1px solid var(--taste-line);padding-left:20px;min-height:0;overflow:hidden}
+.analysis-tabs{display:flex;gap:18px;align-items:stretch;min-height:43px;border-bottom:1px solid var(--taste-line);flex-shrink:0}
+.analysis-tabs button{display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;color:#9cacc1;padding:7px 0 12px;border-bottom:2px solid transparent;white-space:nowrap;transition:color .15s}
+.analysis-tabs button[aria-selected=true]{color:#dceafd;border-color:#78acff}
+.analysis-tabs button:hover{color:#e2ecf9}
+.analysis-tab-panel{min-height:0;flex:1;overflow-y:auto;padding-top:22px}
+.analysis-tab-panel[hidden]{display:none!important}
+.analysis-results{display:flex;flex-direction:column;gap:24px}
+.analysis-panel-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:17px}
+.analysis-panel-heading h3{font-size:13px;font-weight:500;color:#d4e0ef}
+.analysis-panel-heading>span{font-size:10px;color:#a8b8cc;background:#192a3e;padding:3px 6px;border-radius:3px}
+.taste-lab .analysis-rail .result-panel{border:0;border-radius:0;padding:0;background:none;box-shadow:none}
+.taste-lab .analysis-rail .result-row{display:flex;flex-direction:column;align-items:flex-start;gap:8px;margin:0;font-size:11px;color:#a5b8ce}
+.taste-lab .analysis-rail .result-row em{font-size:13px;padding-left:6px;color:#bbcee7}
+.taste-lab .analysis-rail .result-row output{border:0;border-radius:0;padding:0;min-width:0;text-align:left;line-height:1.25;letter-spacing:-.5px;background:none;color:#d6e9ff;font:500 23px/1.3 ui-monospace,"SFMono-Regular",Consolas,monospace;font-variant-numeric:tabular-nums;white-space:nowrap}
+.taste-lab .analysis-rail .result-row output small{font-family:system-ui,sans-serif;font-size:11px;letter-spacing:0;color:#a6bbd4;margin-left:3px}
+.taste-lab .analysis-rail .result-primary{gap:6px;padding:0 0 20px}
+.taste-lab .analysis-rail .result-primary output{font-size:38px;color:#dcecff;letter-spacing:-1.4px}
+.taste-lab .analysis-rail .result-primary output small{font-size:14px;margin-left:7px}
+.strain-result-pair{display:grid;grid-template-columns:1fr 1fr;gap:15px;border-top:1px solid #24374d;padding-top:17px}
+.taste-lab .analysis-rail .transverse output{color:#a2d2e0}
+.taste-lab .lab-secondary-results{font-size:10px;color:#b5c5d9;line-height:1.6;margin-top:17px}
+.taste-lab .lab-secondary-results p{font-size:11px;color:#c1cfe0}
+.taste-lab .lab-warning{font-size:11px;line-height:1.6;background:#392c1c;color:#f4ce91;border-color:#5c4529;margin-top:16px;padding:9px 10px}
+.taste-lab .analysis-rail .fundamentals-chart{border:0;border-top:1px solid #26384f;border-radius:0;padding:20px 0 0;background:none;box-shadow:none;min-height:260px;flex:1;max-height:410px}
+.taste-lab .fundamentals-chart .lab-section-head{padding:0 0 12px;display:flex;flex-direction:column;align-items:flex-start;gap:12px}
+.taste-lab .fundamentals-chart .lab-section-head h3{font-size:13px;font-weight:500;color:#d2dff0}
+.taste-lab .fundamentals-chart .lab-section-head h3:before{display:none}
+.taste-lab .fundamentals-chart .lab-section-head p{display:none}
+.taste-lab .chart-legend{flex-direction:row;font-size:10px;gap:16px;color:#a9bdd5}
+.taste-lab .chart-legend i{width:17px}
+.taste-lab .fundamentals-chart canvas{height:0;min-height:190px;max-height:none;flex:1}
+.analysis-reading-note{display:flex;align-items:flex-start;gap:10px;border-top:1px solid #23354c;padding-top:18px;padding-bottom:8px;color:#a0b3cc;font-size:11px;line-height:1.8}
+.analysis-reading-note svg{flex-shrink:0;margin-top:3px;color:#a0badf}
+.theory-reading h4{font-size:13px;font-weight:500;margin:24px 0 10px;color:#d7e4f5}
+.theory-reading>p{font-size:12px;line-height:1.9;color:#adc0d7;margin-bottom:16px}
+.theory-reading .theory-lead{font-size:15px;line-height:1.8;color:#d0dff0;margin-bottom:24px}
+.taste-lab .theory-reading .lab-formula{border:0;border-radius:5px;background:#14243a;padding:8px 12px;color:#dce8fa}
+.rail-text-action{display:inline-flex;align-items:center;gap:3px;font-size:11px;color:#a8c9f5}
+.tutor-reading{display:flex;flex-direction:column;padding-top:16px}
+.tutor-reading>div:not(.tutor-empty){flex:1;background-image:none!important;min-height:420px!important;border-color:#2a3d54!important}
+.tutor-empty{display:flex;flex-direction:column;align-items:flex-start;gap:14px;padding:20px 0}
+.tutor-empty>svg{color:#adc9ee}
+.tutor-empty h3{font-size:17px;font-weight:500;color:#dae7f8;margin-top:3px}
+.tutor-empty p{font-size:12px;color:#acbdd3;line-height:1.9;margin-bottom:7px}
+.tutor-empty .tool-button{align-self:stretch;justify-content:center;height:38px}
+.taste-lab .lab-concept-reader{border:0;border-radius:0;background:transparent;padding:0 0 20px;overflow:auto}
+.taste-lab .lab-concept-reader>.tool-button{margin:0 0 15px}
+.taste-lab .fundamental-concepts{box-shadow:none}
+.is-focused .taste-lab .fundamentals-grid{grid-template-columns:1fr}
+.is-focused .taste-lab .analysis-rail{display:none}
+/* 窗口切换到桌面工作区时仍保留导航，平板与手机改用抽屉。 */
+@media(min-width:1024px){
+ [data-theme=deepSpace] .app-sidebar{position:relative;inset:auto;transform:none!important;visibility:visible;width:188px;height:100dvh}
+ [data-theme=deepSpace] :is(.sidebar-close,.menu-toggle,.sidebar-backdrop){display:none}
+}
+@media(min-width:1440px){.taste-lab .fundamentals-grid{grid-template-columns:minmax(0,1fr) 344px;gap:24px}.taste-lab .analysis-rail{padding-left:24px}.taste-lab .experiment-control-dock{gap:32px;padding:22px 24px}.taste-lab .dock-material-fields{gap:20px}}
+@media(min-width:1600px){.taste-lab .fundamentals-grid{min-height:0}.taste-lab .fundamentals-main{grid-template-rows:minmax(370px,1fr) auto}}
+@media(max-width:1279px){
+ .taste-lab .lab-chapter-tabs{gap:16px}
+ .taste-lab .lab-chapter-tabs button:first-child{display:none}
+ .taste-lab .fundamentals-grid{grid-template-columns:minmax(0,1fr) 282px;gap:16px}
+ .taste-lab .analysis-rail{padding-left:16px}
+ .taste-lab .experiment-control-dock{grid-template-columns:1fr 1fr;gap:18px;padding:17px}
+ .taste-lab .dock-loading>.mb-2>.flex{flex-direction:column;align-items:stretch;gap:6px}
+ .taste-lab .dock-loading>.mb-2>.flex>div{max-width:none;width:100%}
+ .taste-lab .dock-loading input[type=text]{flex:1}
+ .taste-lab .poisson-figure .lab-section-head{align-items:flex-start;padding:18px 17px 10px;gap:8px}
+ .taste-lab .poisson-figure .lab-section-head h3{font-size:15px}
+ .taste-lab .scene-view-controls button span{display:none}
+ .analysis-tabs{gap:14px}
+ .analysis-tabs button{font-size:11px}
+ [data-theme=deepSpace] .app-main .app-header{padding-left:18px;padding-right:370px}
+ [data-theme=deepSpace] .app-main .app-header h2{font-size:16px}
+}
+@media(max-width:1023px){
+ [data-theme=deepSpace] .app-sidebar{position:fixed;inset:0 auto 0 0;width:240px;transform:translateX(-100%);visibility:hidden;z-index:40}
+ [data-theme=deepSpace] .app-sidebar.sidebar-open{transform:none;visibility:visible}
+ [data-theme=deepSpace] .app-main .app-header{padding-left:15px;padding-right:365px}
+ [data-theme=deepSpace] .menu-toggle,[data-theme=deepSpace] .sidebar-close{display:inline-flex}
+ [data-theme=deepSpace] .sidebar-backdrop{display:block}
+ [data-theme=deepSpace] .app-main .app-header p{display:none}
+ [data-theme=deepSpace] .app-main .app-content{padding:0 14px 14px}
+}
+@media(max-width:767px){
+ [data-theme=deepSpace] .app-main .app-header{padding:13px 12px;height:61px;min-height:61px}
+ [data-theme=deepSpace] .app-main .app-header h2{font-size:15px}
+ [data-theme=deepSpace] .app-main .experiment-toolbar{position:relative;right:auto;top:auto;padding:9px 12px;background:#0b1421;border-bottom:1px solid #223247;justify-content:flex-end;gap:7px;min-height:51px}
+ [data-theme=deepSpace] .experiment-toolbar>.tool-button,[data-theme=deepSpace] .toolbar-more>summary{height:32px;min-height:32px;font-size:11px;padding:7px 9px}
+ [data-theme=deepSpace] .experiment-toolbar>.toolbar-save{min-width:96px}
+ [data-theme=deepSpace] .app-main .app-content{padding:0 12px 12px}
+ .taste-lab{height:auto;min-height:100%}
+ .taste-lab .lab-chapter-tabs{margin-bottom:12px;min-height:45px;gap:18px}
+ .taste-lab .lab-chapter-tabs button{padding:12px 0;font-size:11px}
+ .taste-lab .fundamentals-grid{display:grid;grid-template-columns:1fr;gap:16px;min-height:0}
+ .taste-lab .fundamentals-main{display:grid;grid-template-rows:350px auto;min-height:0;order:initial}
+ .taste-lab .poisson-figure{order:initial;min-height:0}
+ .taste-lab .poisson-figure .lab-section-head{min-height:68px;padding:15px 13px 8px}
+ .taste-lab .poisson-figure .lab-section-head h3{font-size:14px}
+ .taste-lab .poisson-figure .lab-section-head p{font-size:10px;max-width:160px}
+ .taste-lab .poisson-canvas-wrap{min-height:0}
+ .taste-lab .scene-view-controls{max-width:none;flex-wrap:nowrap;flex-shrink:0;gap:2px}
+ .taste-lab .scene-view-controls button{width:25px;min-height:27px;padding:4px;justify-content:center}
+ .taste-lab .scene-legend{left:13px;top:10px;font-size:9px}
+ .taste-lab .scene-caption{left:13px;right:13px;bottom:12px;font-size:9px}
+ .taste-lab .experiment-control-dock{display:flex;flex-direction:column;gap:19px;padding:18px 15px;order:initial}
+ .taste-lab .dock-material-fields{gap:16px}
+ .taste-lab .dock-loading{border-top:1px solid #2a3d53;padding-top:18px}
+ .taste-lab .dock-loading>.mb-2>.flex{flex-direction:row;align-items:center}
+ .taste-lab .dock-loading>.mb-2>.flex>div{max-width:116px}
+ .taste-lab .material-detail-content{position:static;box-shadow:none;width:100%;max-width:none;margin-top:12px;padding:12px}
+ .taste-lab .analysis-rail{display:flex;min-height:500px;border-left:0;border-top:1px solid #2a3b51;padding:0;overflow:visible;order:initial}
+ .analysis-tabs{gap:25px;min-height:47px}
+ .analysis-tabs button{font-size:13px;padding:10px 0}
+ .analysis-tab-panel{padding-top:20px;overflow:visible}
+ .analysis-results{gap:22px}
+ .taste-lab .analysis-rail .result-primary output{font-size:36px}
+ .taste-lab .analysis-rail .fundamentals-chart{order:initial;height:330px;min-height:330px;max-height:none;flex:none}
+ .taste-lab .fundamentals-chart canvas{min-height:220px}
+ .taste-lab .fundamentals-chart .lab-section-head h3{font-size:14px}
+ .tutor-reading{min-height:450px}
+ .tutor-empty{padding-bottom:35px}
+ .is-focused .taste-lab .analysis-rail{display:none}
+}
+@container(max-width:620px){.taste-lab .scene-mobile-dimensions{position:absolute;display:flex;flex-direction:column;gap:3px;top:14px;right:14px;z-index:1;font-size:10px;color:#b4cfe9;pointer-events:none;text-align:right;font-variant-numeric:tabular-nums}}
+@media(prefers-reduced-motion:reduce){.analysis-tabs button,.tool-button{transition:none!important;transform:none!important}}
+[data-theme=deepSpace] .app-sidebar nav button[data-module=stress],[data-theme=deepSpace] .app-sidebar nav button[data-module=resources]{border-left:0;border-right:0;border-bottom:0}
+@media(min-width:768px){.taste-lab .analysis-rail .fundamentals-chart{height:300px;min-height:270px;flex:0 0 300px}.taste-lab .fundamentals-chart canvas{min-height:180px}}
+.taste-lab .material-detail-content{max-height:min(520px,65dvh);overflow-y:auto}
+[data-theme=deepSpace] .experiment-toolbar>.toolbar-save{background:#2868d4;border-color:#3a7add;color:#f3f7fe}
+/* 第二轮：可收合导航、直接视图控制与曲线细读。 */
+.sidebar-workspace-heading{display:none}
+[data-theme=deepSpace] .sidebar-workspace-heading{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 0;color:#9eafc6;font-size:10px;min-height:39px}
+.sidebar-collapse-toggle{display:none;align-items:center;justify-content:center;width:26px;height:26px;border-radius:4px;color:#adc1dd}
+.sidebar-collapse-toggle:hover{background:#1c304c;color:#e2ecfa}
+[data-theme=deepSpace] .app-sidebar nav{padding-top:8px}
+@media(min-width:1024px){
+ [data-theme=deepSpace] .sidebar-collapse-toggle{display:inline-flex}
+ [data-theme=deepSpace] .app-sidebar[data-collapsed=true]{width:68px}
+ [data-theme=deepSpace] .app-sidebar[data-collapsed=true]>div:first-child{padding:15px 8px;justify-content:center}
+ [data-theme=deepSpace] .app-sidebar[data-collapsed=true] .sidebar-brand h1{display:none}
+ [data-theme=deepSpace] .app-sidebar[data-collapsed=true] .sidebar-brand p{font-size:10px;max-width:48px;white-space:normal;text-align:center;line-height:1.6;margin:0}
+ [data-theme=deepSpace] .app-sidebar[data-collapsed=true] .sidebar-workspace-heading{padding:12px 0 0;justify-content:center}
+ [data-theme=deepSpace] .app-sidebar[data-collapsed=true] .sidebar-workspace-heading>span{display:none}
+ [data-theme=deepSpace] .app-sidebar[data-collapsed=true] nav{padding-left:9px;padding-right:9px}
+ [data-theme=deepSpace] .app-sidebar[data-collapsed=true] nav button{position:relative;justify-content:center;padding-left:0;padding-right:0}
+ [data-theme=deepSpace] .app-sidebar[data-collapsed=true] .nav-item-label{display:none}
+ [data-theme=deepSpace] .app-sidebar[data-collapsed=true] nav button>svg:last-child:not(:first-child){position:absolute;right:2px;bottom:3px;width:9px;height:9px;color:#8398b5}
+ [data-theme=deepSpace] .app-sidebar[data-collapsed=true]>div:has(>p)>.flex{flex-direction:column;gap:5px}
+}
+.taste-lab .scene-camera-dock{position:absolute;bottom:45px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:3px;z-index:2;padding:5px 7px;background:#102238e8;border:1px solid #334b69;border-radius:7px;box-shadow:0 4px 16px #03091544}
+.scene-camera-dock button{display:flex;align-items:center;justify-content:center;width:28px;height:27px;border-radius:4px;color:#b3c8e3}
+.scene-camera-dock button:hover{background:#203d60;color:#ecf4ff}
+.scene-camera-dock button[aria-pressed=true]{background:#213b59;color:#d7e9ff}
+.scene-camera-dock button:disabled{opacity:.35;cursor:not-allowed}
+.scene-camera-dock output{font:11px ui-monospace,monospace;color:#c9daef;min-width:41px;text-align:center;font-variant-numeric:tabular-nums}
+.camera-dock-divider{height:17px;width:1px;background:#38516d;margin:0 3px}
+.taste-lab .dock-heading-line{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:13px;min-height:20px}
+.taste-lab .dock-heading-line h3{margin:0}
+.dock-material-name{font-size:10px;color:#abc2dd;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.unload-action{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#b8cde8;padding:2px 0}
+.unload-action:hover{color:#e0edff}.unload-action:disabled{opacity:.4;cursor:not-allowed}
+.load-slider-track{position:relative}
+.yield-reference-track{position:absolute;left:9px;right:9px;top:17px;height:6px;pointer-events:none}
+.yield-reference-track i{position:absolute;height:6px;width:1px;background:#e3b875;transform:translateX(-.5px)}
+.yield-reference-label{display:flex;justify-content:space-between;gap:6px;font-size:10px;color:#a5b7d0;margin-top:9px}
+.yield-reference-label span{font-family:ui-monospace,monospace;color:#dbbd8f}
+.taste-lab .slider-ticks{margin-top:6px}
+.taste-lab .fundamentals-main:has(.lab-material-library[open]){overflow:visible}
+.taste-lab .chart-heading-row{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%}
+.chart-expand-action{display:inline-flex;align-items:center;gap:4px;color:#b7cceb;font-size:10px;white-space:nowrap;border:1px solid #344b67;padding:4px 6px;border-radius:4px}
+.chart-expand-action:hover{background:#19334e;color:#e6f0ff}
+.chart-focus-dialog{padding:0;width:min(960px,calc(100vw - 48px));max-width:none;height:min(660px,calc(100dvh - 72px));max-height:none;border:1px solid #3b536f;border-radius:12px;background:#0d1b2c;color:#d9e6f5;box-shadow:0 24px 100px #0009;overflow:hidden}
+.chart-focus-dialog::backdrop{background:#030b15b3;backdrop-filter:blur(5px)}
+.chart-focus-content{height:100%;display:flex;flex-direction:column}
+.chart-focus-content>header{padding:22px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;border-bottom:1px solid #2d4057}
+.chart-focus-content h2{font-size:21px;font-weight:500;color:#e5edf9}
+.chart-focus-content header p{font-size:12px;color:#a9bdd6;line-height:1.7;margin-top:5px}
+.chart-focus-content header button{background:#172c45;border-color:#3d5674;color:#d3e4fa;min-height:34px;min-width:34px;padding:6px}
+.chart-focus-legend{padding:20px 24px 2px}
+.chart-focus-legend .chart-legend{flex-direction:row;gap:24px;font-size:12px;color:#b4cbe5}
+.chart-focus-canvas{padding:0 18px 14px;flex:1;min-height:0}
+.chart-focus-canvas canvas{width:100%;height:100%;display:block}
+.chart-focus-content footer{display:flex;flex-wrap:wrap;gap:18px 32px;padding:17px 24px;border-top:1px solid #2d4057;font-size:12px;color:#afc3dc}
+.chart-focus-content footer strong{font:500 14px ui-monospace,monospace;margin-left:8px;color:#e1edfd;white-space:nowrap}
+@media(max-width:1279px){.taste-lab .dock-material-fields{gap:10px}.dock-material-name{max-width:80px}.taste-lab .scene-camera-dock{bottom:43px}.taste-lab .scene-caption{font-size:9px}}
+@media(max-width:767px){
+ .taste-lab .scene-camera-dock{bottom:35px;padding:4px 5px;gap:2px;max-width:calc(100% - 32px)}
+ .scene-camera-dock button{width:26px;height:25px}.scene-camera-dock output{font-size:10px;min-width:35px}
+ .taste-lab .scene-caption>span:last-child{display:none}
+ .dock-material-name{max-width:150px}
+ .chart-focus-dialog{width:calc(100vw - 20px);height:min(620px,calc(100dvh - 32px));border-radius:8px}
+ .chart-focus-content>header{padding:15px;gap:10px}.chart-focus-content h2{font-size:18px}.chart-focus-content header p{font-size:11px}
+ .chart-focus-legend{padding:15px 15px 4px}.chart-focus-legend .chart-legend{font-size:11px}
+ .chart-focus-canvas{padding:0 8px 8px}.chart-focus-content footer{padding:12px 15px;gap:10px;font-size:11px;flex-direction:column}
+ .chart-focus-content footer strong{font-size:12px}
+}
+
+[data-theme=deepSpace] .activation-gate{background:#0d1726f5;border:1px solid #24374e;border-radius:6px}
+[data-theme=deepSpace] .activation-gate>div>div:first-child{background:#182c43;border:1px solid #334c68}
+[data-theme=deepSpace] .activation-gate h3{color:#e0eafa}
+[data-theme=deepSpace] .activation-gate>div>p{color:#adbed6;line-height:1.8}
+[data-theme=deepSpace] .activation-gate>div>button{background:#2868d4;background-image:none;border:1px solid #3a7add;border-radius:6px;color:#f3f7fe}
+
+/* 无编号主题导航，与分析工具保持同一分段语言。 */
+.taste-lab .lab-chapter-tabs.topic-nav{align-self:flex-start;align-items:center;width:fit-content;max-width:100%;min-height:44px;margin:12px 0 14px;padding:4px;gap:4px;border:1px solid #22394f;border-radius:7px;background:#0d1929;overflow-x:auto;scrollbar-width:thin;scrollbar-color:#304a67 transparent}
+.taste-lab .topic-nav::-webkit-scrollbar{height:3px}
+.taste-lab .topic-nav::-webkit-scrollbar-thumb{background:#304a67;border-radius:3px}
+.taste-lab .lab-chapter-tabs.topic-nav button{position:relative;flex:0 0 auto;min-height:34px;padding:8px 13px;gap:7px;border:1px solid transparent;border-radius:4px;font-size:12px;line-height:1.5;font-weight:400;color:#9db3ce;transition:background .14s,color .14s,border-color .14s}
+.taste-lab .lab-chapter-tabs.topic-nav button:first-child{display:flex;font-size:12px}
+.taste-lab .topic-nav button svg{display:block;color:#849fbe;stroke-width:1.6;flex-shrink:0}
+.taste-lab .lab-chapter-tabs.topic-nav button:hover{background:#162a42;color:#d6e7fd}
+.taste-lab .lab-chapter-tabs.topic-nav button[aria-selected=true]{background:#203a57;border-color:#365779;box-shadow:0 1px 3px #0002;color:#e4efff}
+.taste-lab .topic-nav button[aria-selected=true] svg{color:#b6d6ff}
+.taste-lab .topic-nav button:focus-visible{outline:2px solid #80b2ed;outline-offset:-2px}
+@media(max-width:767px){
+ .taste-lab .lab-chapter-tabs.topic-nav{width:100%;min-height:49px;margin:10px 0 12px;padding:4px;gap:3px;border-radius:6px}
+ .taste-lab .lab-chapter-tabs.topic-nav button,.taste-lab .lab-chapter-tabs.topic-nav button:first-child{min-height:39px;padding:8px 11px;font-size:12px;gap:6px}
+ .taste-lab .topic-nav button svg{width:14px;height:14px}
+}
+@media(prefers-reduced-motion:reduce){.taste-lab .lab-chapter-tabs.topic-nav button{transition:none}}

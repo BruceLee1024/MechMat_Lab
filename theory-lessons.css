@@ -1,0 +1,54 @@
+/* 基础理论各主题使用相同阅读层级，颜色延续位移与应变图解。 */
+.theory-lesson{display:flex;flex-direction:column;gap:15px;min-width:0;padding:1px 9px 18px 0;color:#c9dcee}
+.unified-analysis-rail .theory-lesson{padding-right:0}
+.theory-lesson-context{display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:10px;color:#9db3ce}
+.theory-lesson-context>span:last-child{color:#c0afe9}
+.theory-lesson-intro h3{font-size:22px;line-height:1.4;font-weight:500;margin:12px 0 9px;letter-spacing:.015em}
+.theory-lesson-intro h3>span:first-child{color:#a5ceff}.theory-lesson-intro h3>span:last-child{color:#8be2cd}
+.taste-lab .theory-lesson p{font-size:11px;line-height:1.9;margin:0;color:#a5b9d0}
+.theory-lesson-figure{margin:0;padding:12px 11px 10px;background:#101f31;border:1px solid #2c435b;border-radius:8px}
+.theory-lesson-figure>svg{display:block;width:100%;height:158px;overflow:visible}
+.theory-lesson-figure figcaption{border-top:1px solid #263b52;padding-top:10px;margin-top:5px;font-size:10px;line-height:1.7;color:#9eb5ce;text-align:center}
+.theory-lesson-figure text{font:10px system-ui,sans-serif;fill:#b6cee6}
+.theory-lesson-figure .muted{fill:#8fa7c0;font-size:9px}
+.theory-lesson-figure .mint{fill:#8be2cd}.theory-lesson-figure .coral{fill:#f6ac9d}
+.lesson-axis{stroke:#476078;stroke-width:.7;stroke-dasharray:5 5;fill:none}
+.lesson-ghost{stroke:#8ca0b8;stroke-width:.9;stroke-dasharray:3 4;fill:none}
+.lesson-body{fill:#5caaff1a;stroke:#8fc8f7;stroke-width:1.3;stroke-linejoin:round}
+.lesson-mesh{stroke:#8bc1f0;stroke-width:.6;opacity:.5;fill:none}
+.lesson-cut{stroke:#8be2cd;stroke-width:1;stroke-dasharray:3 3;fill:none}
+.lesson-measure{stroke:#7b94b0;stroke-width:.7;fill:none}
+.lesson-arrow{fill:none;stroke:#f6ac9d;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
+.lesson-arrow.mint,.lesson-torque{stroke:#8be2cd;fill:none;stroke-width:1.3}
+.lesson-bend-outer{stroke:#f6ac9d;fill:none;stroke-width:1.4}.lesson-bend-inner{stroke:#8be2cd;fill:none;stroke-width:1.4}
+.theory-lesson-readings{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;padding:2px 0 4px}
+.theory-lesson-readings>div{display:flex;flex-direction:column;gap:8px;border-left:2px solid #577fbc;padding-left:10px;min-width:0}
+.theory-lesson-readings>div.is-accent{border-color:#4e968b}
+.theory-lesson-readings span{font-size:10px;color:#a6bbd2;line-height:1.7}
+.theory-lesson-readings output{color:#a8cfff;font:500 21px/1.4 ui-monospace,"SFMono-Regular",monospace;letter-spacing:-.035em;white-space:nowrap}
+.theory-lesson-readings .is-accent output{color:#8be2cd}
+.theory-lesson :is(output,strong) small{font:9px system-ui,sans-serif;color:#aac0d5;letter-spacing:0;margin-left:4px}
+.theory-lesson-explanation{display:flex;flex-direction:column;gap:16px;padding-top:16px;border-top:1px solid var(--rail-line)}
+.taste-lab .theory-lesson-relation h4{font-size:12px;line-height:1.7;font-weight:500;color:#d0e0f1;margin:0 0 9px}
+.lesson-value-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:10px;line-height:1.8;color:#9fb5ce;margin:5px 0}
+.lesson-value-row strong{font:500 13px/1.6 ui-monospace,"SFMono-Regular",monospace;color:#a8cfff;white-space:nowrap}
+.lesson-value-row.coral strong{color:#f6ac9d}.lesson-value-row.mint strong{color:#8be2cd}
+.taste-lab .theory-lesson-relation .lesson-value-row+p{margin-top:7px}
+.lesson-chain{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 0 12px;font-size:12px;color:#b7d4eb}
+.lesson-chain>svg{color:#69899f;flex-shrink:0}.lesson-chain>span:last-child{color:#8be2cd}
+.lesson-calculation{display:flex;align-items:baseline;gap:7px;font:16px/1.6 ui-monospace,"SFMono-Regular",monospace;color:#9fc9ef;margin:0 0 9px}
+.lesson-calculation small{font:10px system-ui,sans-serif;color:#9db4cc}.lesson-calculation>span{color:#8cddc9;margin:0 4px}
+.theory-lesson-equations{border-top:1px solid var(--rail-line);border-bottom:1px solid var(--rail-line)}
+.theory-lesson-equations summary{list-style:none;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 40px 14px 0;font-size:11px;color:#c5b6ef;cursor:pointer}
+.theory-lesson-equations summary::-webkit-details-marker{display:none}
+.theory-lesson-equations summary:focus-visible,.theory-lesson-action button:focus-visible{outline:2px solid #b9a5ed;outline-offset:3px}
+.theory-lesson-equations[open] summary svg{transform:rotate(180deg)}
+.theory-lesson-equations>div{display:flex;flex-direction:column;gap:10px;padding-bottom:13px}
+.theory-lesson-equations>div>div{display:grid;grid-template-columns:minmax(0,1fr);gap:6px;border:1px solid #2c435b;border-radius:7px;padding:12px 14px 7px;background:#101f31;min-width:0}
+.theory-lesson-equations>div>div>span{font-size:11px;line-height:1.6;color:#9fb6d0}
+.theory-lesson-equations .math-renderer{--math-size:17px}
+.theory-lesson-equations .math-renderer .katex-display{color:inherit;margin:0;font-size:inherit}
+.taste-lab .theory-lesson .theory-lesson-scope{color:#8fa7c1;font-size:10px;line-height:1.9;padding-right:39px;margin-top:-5px}
+.theory-lesson-action button{display:flex;align-items:center;gap:8px;min-height:32px;font-size:11px;line-height:1.7;color:#c3b0ee;padding-right:40px;text-align:left}
+.theory-lesson-action button:hover{color:#e3d8fc}
+@media(max-width:767px){.theory-lesson{gap:20px;padding-bottom:16px}.taste-lab .theory-lesson p{font-size:12px}.theory-lesson-context,.theory-lesson-readings span,.lesson-value-row{font-size:11px}}

@@ -1,174 +1,33 @@
-import { calculateBuckling } from "../mechanics/calculations";
-import { InvalidCalculation, CalculationNotice } from "../components/CalculationNotice";
-import React from "react";
-import { Calculator, Sigma, Activity } from "lucide-react";
-import { SliderInputControl, LatexRenderer, MaterialSelector, SectionSelector } from "../components";
-import { SimulationState, DEFAULT_STATE } from "../types";
-import { CommonDefs } from "./CommonDefs";
-
-export const BucklingModule = ({ state, onChange }: { state: SimulationState; onChange: (s: Partial<SimulationState>) => void }) => {
-  const result = calculateBuckling({ load: state.buckleLoad, length: state.buckleLength, modulus: state.buckleModulus, section: state.buckleSection, yieldStrength: state.materialYield });
-  if (result.ok === false) return <InvalidCalculation diagnostics={result.diagnostics} onReset={() => { onChange({ buckleLoad: DEFAULT_STATE.buckleLoad, buckleLength: DEFAULT_STATE.buckleLength, buckleModulus: DEFAULT_STATE.buckleModulus, buckleWidth: DEFAULT_STATE.buckleWidth, buckleHeight: DEFAULT_STATE.buckleHeight, buckleSection: DEFAULT_STATE.buckleSection, materialYield: DEFAULT_STATE.materialYield }); }} />;
-  const { E, L_mm, I_min, Area, radiusOfGyration, lambda, Pcr, isBuckled, ratio, bowAmount } = result.values;
-
-  // 根据截面类型生成惯性矩公式
-  const getInertiaFormula = () => {
-    switch (state.buckleSection.type) {
-      case 'rectangle':
-        const b = state.buckleSection.width || 40;
-        const h = state.buckleSection.height || 40;
-        return `I_{min} = \\frac{b \\cdot h_{min}^3}{12} = \\frac{${Math.max(b,h)} \\times ${Math.min(b,h)}^3}{12} = ${(I_min/10000).toFixed(2)} \\times 10^4 \\text{ mm}^4`;
-      case 'circle':
-        return `I = \\frac{\\pi r^4}{4} = ${(I_min/10000).toFixed(2)} \\times 10^4 \\text{ mm}^4`;
-      case 'hollow_circle':
-        return `I = \\frac{\\pi (R^4 - r^4)}{4} = ${(I_min/10000).toFixed(2)} \\times 10^4 \\text{ mm}^4`;
-      default:
-        return `I_{min} = ${(I_min/10000).toFixed(2)} \\times 10^4 \\text{ mm}^4`;
-    }
-  };
-  const formulaI = getInertiaFormula();
-  const formulaArea = `A = ${Area.toFixed(0)} \\text{ mm}^2`;
-  const formulaGyration = `i = \\sqrt{\\frac{I_{min}}{A}} = \\sqrt{\\frac{${I_min.toFixed(0)}}{${Area}}} = ${radiusOfGyration.toFixed(2)} \\text{ mm}`;
-  const formulaLambda = `\\lambda = \\frac{\\mu L}{i} = \\frac{1 \\times ${L_mm.toFixed(0)}}{${radiusOfGyration.toFixed(2)}} = ${lambda.toFixed(1)}`;
-  const formulaPcr = `P_{cr} = \\frac{\\pi^2 E I}{(\\mu L)^2} = \\frac{\\pi^2 \\times ${E} \\times ${I_min.toFixed(0)}}{(1 \\times ${L_mm.toFixed(0)})^2} = ${Math.round(Pcr)} \\text{ N}`;
-  
-  const strokeW = Math.max(12, state.buckleWidth / 3);
-  
-  // Visual styling
-  const mainColor = isBuckled ? "#e11d48" : "#4f46e5";
-  const transparentColor = isBuckled ? "rgba(225, 29, 72, 0.15)" : "rgba(79, 70, 229, 0.15)";
-
-  return (
-    <div className="flex flex-col h-full space-y-6">
-      <CalculationNotice assumptions={result.assumptions} warnings={result.warnings} />
-       {/* TOP: Visualization */}
-       <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex items-center justify-center relative h-[320px]">
-        <div className="absolute top-4 left-4 text-xs font-bold text-slate-400 uppercase flex items-center gap-2">
-             <Activity className="w-4 h-4"/> 压杆稳定性演示
-        </div>
-        <svg width="100%" height="100%" viewBox="0 0 600 300" preserveAspectRatio="xMidYMid meet">
-          <CommonDefs />
-          
-          {/* Floor */}
-          <rect x="200" y="250" width="200" height="6" fill="url(#hatchPattern)" stroke="#64748b" />
-          
-          {/* Column Body - Transparent with thick stroke feel */}
-          <path 
-            d={`M 300,250 Q ${300 + bowAmount * 2},150 300,50`} 
-            stroke={transparentColor} 
-            strokeWidth={strokeW} 
-            fill="none" 
-            strokeLinecap="butt" 
-            style={{ transition: "d 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55), stroke 0.3s" }}
-          />
-          
-           {/* Column Centerline - Solid */}
-           <path 
-            d={`M 300,250 Q ${300 + bowAmount * 2},150 300,50`} 
-            stroke={mainColor}
-            strokeWidth="2" 
-            fill="none" 
-            strokeDasharray="6 4"
-            style={{ transition: "d 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55), stroke 0.3s" }}
-          />
-          
-          {/* Top Plate */}
-          <rect x={280} y={40} width={40} height={10} fill="#f8fafc" stroke="#64748b" strokeWidth="2" rx="2" />
-          
-          {/* Load Arrow (Rose) */}
-          <g transform={`translate(300, 35)`}>
-             <line x1="0" y1="-40" x2="0" y2="-5" stroke="#e11d48" strokeWidth="2" markerEnd="url(#arrowForce)" />
-             <text x="15" y="-20" fill="#e11d48" fontWeight="bold">P = {state.buckleLoad} N</text>
-          </g>
-          
-          <text x={380} y={100} fill="#64748b" fontSize="12">
-             Crit. Load: {Math.round(Pcr)} N
-          </text>
-          {isBuckled && (
-             <text x="380" y="130" fill="#e11d48" fontWeight="bold" fontSize="16" className="animate-pulse">BUCKLED!</text>
-          )}
-        </svg>
-       </div>
-
-       {/* MIDDLE: Parameters & Results */}
-       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 h-full">
-           <h3 className="font-semibold text-indigo-900 mb-4 flex items-center gap-2">
-             <Calculator className="w-4 h-4 text-indigo-500" /> 实验参数
-           </h3>
-           <div className="space-y-4">
-                 <MaterialSelector 
-                   currentE={state.buckleModulus} 
-                   onSelect={(mat) => onChange({ buckleModulus: mat.E })} 
-                 />
-                 <SectionSelector
-                   section={state.buckleSection}
-                   onChange={(s) => onChange({ buckleSection: s })}
-                 />
-                 <SliderInputControl label="压力 (Load)" value={state.buckleLoad} min={0} max={100000} step={10} unit="N" onChange={(v) => onChange({ buckleLoad: v })} />
-                 <SliderInputControl label="杆长 (Length)" value={state.buckleLength} min={0.1} max={10} step={0.1} unit="m" onChange={(v) => onChange({ buckleLength: v })} />
-                 <SliderInputControl label="弹性模量 (E)" value={state.buckleModulus} min={1} max={500} step={1} unit="GPa" onChange={(v) => onChange({ buckleModulus: v })} />
-           </div>
-         </div>
-         
-         <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 h-full">
-            <h3 className="font-semibold text-indigo-900 mb-4 flex items-center gap-2">
-                <Sigma className="w-4 h-4 text-indigo-500" /> 稳定性分析
-            </h3>
-            <div className="space-y-3">
-               <div className="grid grid-cols-2 gap-2">
-                  <div className="p-2 bg-white rounded border border-slate-200 text-center">
-                    <div className="text-xs text-slate-500">惯性矩 (I_min)</div>
-                    <div className="font-mono font-bold text-slate-700">{(I_min/10000).toFixed(2)} cm⁴</div>
-                  </div>
-                  <div className="p-2 bg-white rounded border border-slate-200 text-center">
-                    <div className="text-xs text-slate-500">惯性半径 (i)</div>
-                    <div className="font-mono font-bold text-slate-700">{radiusOfGyration.toFixed(1)} mm</div>
-                  </div>
-              </div>
-              <div className="flex justify-between items-center p-3 bg-white rounded border border-slate-200">
-                <span className="text-sm text-slate-600">柔度/长细比 (λ)</span>
-                <span className="font-mono font-bold text-indigo-600">{lambda.toFixed(0)}</span>
-              </div>
-              <div className="flex justify-between items-center p-3 bg-white rounded border border-slate-200">
-                <span className="text-sm text-slate-600">临界载荷 (P_cr)</span>
-                <span className="font-mono font-bold text-slate-700">{Math.round(Pcr)} N</span>
-              </div>
-              <div className={`p-3 rounded text-sm font-bold text-center transition-colors duration-300 ${isBuckled ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                 {isBuckled ? "危险：结构已失稳" : "安全：处于稳定平衡状态"}
-              </div>
-            </div>
-         </div>
-       </div>
-
-       {/* BOTTOM: Calculation Process */}
-       <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-          <h4 className="font-semibold text-indigo-900 mb-4 flex items-center gap-2">
-            <Sigma className="w-3 h-3 text-indigo-500" /> 计算过程演示
-          </h4>
-          <div className="bg-slate-50 rounded-lg border border-slate-200 p-4 space-y-3 overflow-x-auto">
-             <div className="p-3 bg-white rounded border border-slate-200">
-               <div className="text-xs text-slate-500 mb-1">① 截面面积 (Cross-sectional Area)</div>
-               <LatexRenderer formula={formulaArea} />
-             </div>
-             <div className="p-3 bg-white rounded border border-slate-200">
-               <div className="text-xs text-slate-500 mb-1">② 最小惯性矩 (Minimum Moment of Inertia)</div>
-               <LatexRenderer formula={formulaI} />
-             </div>
-             <div className="p-3 bg-white rounded border border-slate-200">
-               <div className="text-xs text-slate-500 mb-1">③ 惯性半径 (Radius of Gyration)</div>
-               <LatexRenderer formula={formulaGyration} />
-             </div>
-             <div className="p-3 bg-white rounded border border-slate-200">
-               <div className="text-xs text-slate-500 mb-1">④ 柔度/长细比 (Slenderness Ratio)</div>
-               <LatexRenderer formula={formulaLambda} />
-             </div>
-             <div className="p-3 bg-white rounded border border-slate-200">
-               <div className="text-xs text-slate-500 mb-1">⑤ 欧拉临界力 (Euler Critical Load, μ=1 两端铰支)</div>
-               <LatexRenderer formula={formulaPcr} />
-             </div>
-          </div>
-       </div>
-    </div>
-  );
+import {bucklingFormulas} from '../mechanics/formulaExplanations';
+import {FormulaList} from '../components/FormulaCard';
+import React from 'react';
+import {MoveVertical} from 'lucide-react';
+import {calculateBucklingTeaching} from '../mechanics/calculations';
+import {bucklingGeometry,type BucklingField} from '../mechanics/bucklingField';
+import {bendingProfile} from '../graphics/bendingGeometry';
+import {InvalidCalculation} from '../components/CalculationNotice';
+import {AnalysisRail,AnalysisReadout,AnalysisSecondary,AnalysisPair,AnalysisCard} from '../components/AnalysisRail';
+import {TheoryLesson,TheoryRelation} from '../components/TheoryLesson';
+import {BeamSupportSymbol} from '../components/BeamSupportSymbol';
+import {LatexRenderer} from '../components';
+import {BucklingScene} from '../components/BucklingScene';
+import {BucklingControlDock} from '../components/BucklingControlDock';
+import {BucklingResultPlot} from '../components/BucklingResultPlot';
+import {SimulationState,DEFAULT_STATE} from '../types';
+export const BucklingModule=({state:s,onChange}:{state:SimulationState;onChange:(s:Partial<SimulationState>)=>void})=>{
+  const result=calculateBucklingTeaching({materialName:s.materialName,yieldStrength:s.materialYield,load:s.buckleLoad,length:s.buckleLength,modulus:s.buckleModulus,section:s.buckleSection,initialBow:s.buckleInitialBow});
+  if(result.ok===false)return <InvalidCalculation diagnostics={result.diagnostics} onReset={()=>onChange({materialName:DEFAULT_STATE.materialName,poissonRatio:DEFAULT_STATE.poissonRatio,buckleLoad:DEFAULT_STATE.buckleLoad,buckleLength:DEFAULT_STATE.buckleLength,buckleModulus:DEFAULT_STATE.buckleModulus,buckleSection:DEFAULT_STATE.buckleSection,buckleInitialBow:DEFAULT_STATE.buckleInitialBow,materialYield:DEFAULT_STATE.materialYield})}/>;
+  const v=result.values,field:BucklingField={load:s.buckleLoad,lengthMm:v.L_mm,modulusMPa:v.E,section:s.buckleSection,initialBow:s.buckleInitialBow},g=bucklingGeometry(field),profile=bendingProfile(s.buckleSection);
+  const format=(x:number,d=3)=>Math.abs(x)>1e5?x.toExponential(2):x.toFixed(d),scope=[...result.assumptions,...result.warnings].join(' ');
+  const formulas=bucklingFormulas(s,v);
+  const theory=<TheoryLesson context="压杆稳定" first="临界力决定失稳起点" second="初弯曲决定临界前侧移" lead="把材料刚度、截面弱轴与初始几何联系起来，区分欧拉临界力、二阶侧移和归一化模态。" diagram={<svg viewBox="0 0 280 168" role="img" aria-label="底端铰支与顶端侧向滚动约束的正弦初弯曲压杆"><path d="M125 124V32" stroke="#a6aec4" strokeDasharray="4 4"/><path d="M125 124Q157 78 125 32" fill="none" stroke="#92d2f5" strokeWidth="5"/><BeamSupportSymbol kind="pinned" x={125} y={124} size={.7}/><g transform="translate(125 32) rotate(-90)"><BeamSupportSymbol kind="roller" x={0} y={0} size={.65}/></g><path d="M125 8V25L121 18M125 25L129 18" fill="none" stroke="#e9a7bb"/><text x="108" y="15">P</text><text x="168" y="82">e · sin(πx/L)</text><text x="37" y="85">L，μ=1</text></svg>} caption="底端铰支、顶端限制侧移并允许轴向运动，按两端铰支计算。初弯曲沿弱轴平面取一阶正弦形。" readings={[{label:'欧拉临界力',value:format(v.Pcr/1000),unit:'kN'},{label:'当前载荷比',value:v.loadRatio.toFixed(3),unit:'P/Pcr',accent:true}]} formulas={formulas} scope={scope}>
+    <TheoryRelation title="材料与杆长决定临界力"><p>当前 {s.materialName} 的 E={s.buckleModulus} GPa，杆长 {s.buckleLength} m。相同截面下，Pcr 与 E 成正比、与 L² 成反比；不会根据材料把画面侧移重新归一化。</p></TheoryRelation>
+    <TheoryRelation title="弱轴会随截面尺寸改变"><p>当前 Imin={(v.I_min/1e4).toFixed(3)} cm⁴，弱轴 {v.weakAxis.toUpperCase()}。{v.equalAxes?'两个主轴惯性矩相同，任意横向方向都可成为模态；当前选择 Z。':'三维按当前弱轴平面生成弯曲。'} 矩形宽高互换会改变弯曲平面；同时放大两边为2倍，临界力为原来的16倍。</p></TheoryRelation>
+    <TheoryRelation title="初弯曲不是凭空生成的位移"><p>初弯曲 e₀={s.buckleInitialBow} mm。亚临界总侧移 e=e₀/(1−P/Pcr)，其中增量为 e−e₀。e₀=0 时，理想直杆在临界前保持直线。</p></TheoryRelation>
+    <TheoryRelation title="临界以后，模态不等于真实变形"><p>P≥Pcr 时，线性欧拉理论不能确定后屈曲幅值，因此三维只显示归一化一阶模态，不输出真实侧移。临界附近超出小变形或材料参考范围，也改用参考模态。</p></TheoryRelation>
+    <TheoryRelation title="临界力不是完整承载力验算"><p>{!v.stabilityVerified?'当前只求弱轴平面弯曲分支；缺少抗扭、翘曲或连接参数，不给出完整空间失稳结论。':v.eulerApplicable===false?'当前欧拉临界应力已达到材料屈服参考，不应作为有效弹性临界承载力。':v.eulerApplicable===null?'当前只用等效 E，未对该材料的比例极限或各向异性标定。':'当前欧拉临界应力低于库内屈服参考，但仍需满足材料比例极限与理想铰支假设。'} 未模拟局部屈曲、残余应力、塑性、连接滑移或轴向缩短。</p></TheoryRelation>
+  </TheoryLesson>;
+  return <div className="fundamentals-lab taste-lab axial-lab buckling-lab"><div className="axial-workbench-heading"><div className="bending-workbench-context"><MoveVertical size={15}/><span>两端铰支</span><i/><span>弱轴失稳 · μ=1</span></div><div className="axial-specimen-summary"><span>{s.materialName} · {profile.label}</span><span>E {s.buckleModulus} GPa</span><span>Imin {(v.I_min/1e4).toFixed(2)} cm⁴</span><span>L {s.buckleLength} m</span></div></div>
+    <div className="fundamentals-grid axial-grid buckling-grid"><div className="fundamentals-main"><BucklingScene field={field} material={s.materialName} status={v.phase} notice={v.notice} available={v.displacementAvailable}/><BucklingControlDock state={s} onChange={onChange} critical={v.Pcr}/></div><AnalysisRail title="压杆稳定" className="axial-analysis buckling-analysis" theory={theory} reference={<><FormulaList formulas={formulas}/><dl className="reference-geometry"><div><dt>截面积 A</dt><dd>{format(v.Area,1)} mm²</dd></div><div><dt>弱轴惯性矩</dt><dd>{v.I_min.toExponential(4)} mm⁴</dd></div><div><dt>临界平均应力</dt><dd>{format(v.criticalStress,2)} MPa</dd></div><div><dt>二阶边缘压应力</dt><dd>{v.displacementAvailable&&v.edgeStress!==null?`${format(v.edgeStress,2)} MPa`:'—（模型范围外）'}</dd></div></dl><p className="reference-assumption">{scope}</p></>} analysis={<><section className="result-panel"><div className="analysis-panel-heading"><h3>实时结果</h3><span className="result-model-status">{v.phase}</span></div><AnalysisReadout label={!v.stabilityVerified?'弱轴弯曲参考 Pcr':v.eulerApplicable===false?'欧拉外推参考 Pcr':'欧拉临界力 Pcr'} value={format(v.Pcr/1000)} unit="kN"/><AnalysisSecondary label="当前载荷比 P / Pcr" value={format(v.loadRatio)} unit=""/><div className={`buckling-capacity-meter${g.precritical?'':' is-exceeded'}`}><i style={{width:`${Math.min(100,v.loadRatio*100)}%`}}/></div><AnalysisPair><AnalysisCard label="长细比 λ" value={format(v.lambda,1)}/><AnalysisCard label="惯性半径 i" value={format(v.radiusOfGyration,2)} unit="mm" accent/></AnalysisPair><dl className="bending-secondary-readings"><div><dt>弱轴方向</dt><dd>{v.weakAxis.toUpperCase()}{v.equalAxes?' · 等惯性':''}</dd></div><div><dt>初弯曲 e₀</dt><dd>{format(s.buckleInitialBow)} <small>mm</small></dd></div><div><dt>总侧移 e</dt><dd>{v.displacementAvailable&&v.totalBow!==null?format(v.totalBow):'—'} <small>{v.displacementAvailable?'mm':'未计算真实位移'}</small></dd></div><div><dt>加载新增侧移</dt><dd>{v.displacementAvailable&&v.totalBow!==null?format(v.totalBow-s.buckleInitialBow):'—'} <small>{v.displacementAvailable?'mm':'不适用'}</small></dd></div><div><dt>最小纤维 σ（压负）</dt><dd>{v.displacementAvailable&&v.minNormalStress!==null?format(v.minNormalStress,2):'—'} <small>MPa</small></dd></div><div><dt>最大纤维 σ（拉正）</dt><dd>{v.displacementAvailable&&v.maxNormalStress!==null?format(v.maxNormalStress,2):'—'} <small>MPa</small></dd></div><div><dt>平均轴压应力</dt><dd>{format(v.averageStress,2)} <small>MPa</small></dd></div></dl><p className="bending-model-note">{v.notice}。欧拉参考不能替代承载力验算。</p></section><BucklingResultPlot field={field} available={v.displacementAvailable}/></>}/></div>
+  </div>;
 };

@@ -1,0 +1,77 @@
+/* 数学符号保留 KaTeX 字形与基线；长式只在公式内部滚动，不缩小字号。 */
+.math-renderer{--math-size:17px;--math-ink:inherit;position:relative;min-width:0;max-width:100%;color:var(--math-ink);font-size:var(--math-size);line-height:1.5}
+.math-scroll{box-sizing:border-box;min-width:0;max-width:100%;overflow-x:auto;overflow-y:hidden;padding:9px 2px 12px;scrollbar-width:thin;scrollbar-color:#5c789455 transparent;overscroll-behavior-x:contain}
+.math-renderer .katex-display{margin:0;min-width:max-content;font-size:inherit;text-align:left}
+.math-renderer .katex-display>.katex{font-size:1em;text-align:inherit}
+.math-renderer .katex-display>.katex>.katex-html{padding-block:2px}
+.math-scroll:focus-visible{outline:2px solid #74a9de;outline-offset:2px;border-radius:3px}
+.math-expandable>.math-scroll{padding-right:30px}
+.math-expand{position:absolute;right:0;top:7px;display:grid;place-items:center;width:27px;height:27px;border:1px solid transparent;border-radius:5px;background:transparent;color:#879fb9;cursor:pointer}
+.math-expand:hover{color:#bad8fa;border-color:#425d7d;background:#587daf16}
+.math-expand:focus-visible{outline:2px solid #8eb9ef;outline-offset:1px}
+.math-renderer-error{display:flex;flex-direction:column;gap:5px;padding:10px;color:#bf6a4b;font-size:12px}
+.math-renderer-error code{font-size:11px;white-space:pre-wrap;overflow-wrap:anywhere}
+[data-theme=deepSpace] .math-renderer{--math-ink:#d6e5f5}
+
+/* 单独阅读使用浏览器顶层对话框，不受侧栏滚动裁切。 */
+.math-dialog{--math-ink:#1d3553;--math-size:26px;box-sizing:border-box;position:fixed;inset:0;margin:auto;width:min(740px,calc(100vw - 40px));max-width:none;max-height:calc(100dvh - 48px);padding:0;border:1px solid #c5d2df;border-radius:14px;background:#f6f9fc;color:#243c59;box-shadow:0 24px 100px #0008;overflow:auto}
+.math-dialog::backdrop{background:#020710b8;backdrop-filter:blur(6px)}
+.math-dialog-heading{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:19px 22px;border-bottom:1px solid #ced9e5}
+.math-dialog .math-dialog-heading h3{margin:0;color:inherit;font:500 15px/1.5 system-ui,"PingFang SC",sans-serif}
+.math-dialog button{display:flex;align-items:center;justify-content:center;gap:7px;min-width:34px;min-height:34px;border:1px solid transparent;border-radius:6px;background:transparent;color:inherit;cursor:pointer}
+.math-dialog button:hover{background:#7da0c71a}
+.math-dialog button:focus-visible{outline:2px solid #83b6f0;outline-offset:2px}
+.math-dialog button:disabled{opacity:.3;cursor:default}
+.math-dialog-body{padding:28px 24px 34px;font-size:var(--math-size);color:var(--math-ink)}
+.math-dialog-body .math-scroll{padding:18px 8px 23px}
+.math-dialog-body .katex-display{text-align:center;color:inherit;font-size:inherit}
+.math-dialog-footer{display:flex;align-items:center;gap:12px;padding:14px 20px;border-top:1px solid #ced9e5;font:12px/1.5 system-ui,"PingFang SC",sans-serif}
+.math-type-controls{display:flex;align-items:center;border:1px solid #c8d6e5;border-radius:7px;padding:2px;gap:5px}
+.math-type-controls output{min-width:42px;text-align:center;font:11px ui-monospace,monospace}
+.math-copy{margin-left:auto;padding:0 10px;border-color:#c8d6e5!important}
+.math-copy-status{font-size:11px;color:#cb866c}
+[data-theme=deepSpace] .math-dialog{--math-ink:#d9e7fa;color:#c5d8ee;background:#101c2d;border-color:#3c526e}
+[data-theme=deepSpace] .math-dialog-heading,[data-theme=deepSpace] .math-dialog-footer{border-color:#2c4059}
+[data-theme=deepSpace] .math-type-controls,[data-theme=deepSpace] .math-copy{border-color:#3a526d!important}
+@media(max-width:767px){.math-dialog{width:calc(100vw - 24px);max-height:calc(100dvh - 32px);border-radius:11px}.math-dialog-heading{padding:15px 16px}.math-dialog-body{padding:20px 12px}.math-dialog-footer{padding:12px;gap:6px}.math-dialog button{min-width:36px;min-height:36px}.math-copy-status:empty{display:none}}
+@media print{.math-expand,.math-dialog{display:none!important}.math-scroll{overflow:visible;padding:6px 0}}
+
+/* 公式库为表达式留足宽度；卡片保留打开详情的原有行为。 */
+.formula-library-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,230px),1fr));gap:12px}
+.formula-library-card{min-width:0}
+.formula-card-content{min-height:166px}
+.formula-card-preview{display:flex;align-items:center;min-width:0;flex:1;padding:8px 0}
+.formula-card-math{min-width:0;width:100%;color:inherit}
+.formula-card-math .math-renderer{--math-size:18px}
+.formula-library-modal .math-renderer{--math-size:20px}
+.formula-library-modal .math-scroll{padding:14px 4px 17px}
+@media(max-width:767px){.formula-library>div:first-child{flex-wrap:wrap;gap:8px}.formula-library>div:first-child>div{flex-basis:100%;max-width:none;margin-left:0}.formula-library>div:first-child>button{flex:1;padding-inline:8px;white-space:nowrap}.formula-library-modal .math-renderer{--math-size:18px}}
+
+/* 公式、符号、代入步骤使用一份当前计算数据；不改变分栏宽度。 */
+.formula-explanation{padding:10px 0 3px;margin-top:5px;border-top:1px solid #718da52b;min-width:0;color:#9eb5ce;font:11px/1.7 system-ui,"PingFang SC",sans-serif}
+.formula-detail-title{display:flex;align-items:baseline;justify-content:space-between;gap:12px;color:#bdcde0;font-size:10px;letter-spacing:.03em;margin:0 0 8px}
+.formula-detail-title>span{color:#bcb0d9;font-size:9px}
+.formula-symbols{margin:0;display:flex;flex-direction:column;gap:5px}
+.formula-symbols>div{display:grid;grid-template-columns:48px minmax(0,1fr);gap:8px;align-items:start}
+.formula-symbols dt,.formula-symbols dd{margin:0;min-width:0}
+.formula-symbols .math-renderer{--math-size:13px!important}
+.formula-symbols .math-scroll{padding:2px 0 4px}
+.formula-symbols dd{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:1px 8px}
+.formula-symbols dd>span{flex:1 1 105px;font-size:10px;line-height:1.8;color:#90a8c1}
+.formula-symbols dd>strong{font:500 11px/1.8 ui-monospace,"SFMono-Regular",monospace;color:#c1d3e8;white-space:nowrap}
+.formula-symbols strong small{margin-left:4px;font:9px/1.6 system-ui,sans-serif;color:#8fa8c2}
+.formula-substitution{margin-top:12px;padding-top:10px;border-top:1px solid #718da51c;min-width:0}
+.formula-substitution .math-renderer{--math-size:14px!important}
+.formula-substitution .math-scroll{padding:6px 0 10px}
+.formula-explanation .formula-detail-note{margin:8px 0 0!important;font:10px/1.85 system-ui,"PingFang SC",sans-serif!important;color:#95acc4!important}
+.formula-explanation.is-unavailable .formula-detail-note{padding-left:8px;border-left:2px solid #a693bf;color:#b0a8c7!important}
+.math-dialog[open]{display:flex;flex-direction:column}
+.math-dialog-heading,.math-dialog-footer{flex-shrink:0}
+.math-dialog-body{overflow-y:auto;min-height:0}
+.math-dialog-body .formula-explanation{margin-top:20px;padding-top:18px}
+.math-dialog-body .formula-symbols{gap:7px}
+.math-dialog-body .formula-symbols>div{grid-template-columns:72px minmax(0,1fr)}
+.math-dialog-body .formula-substitution .math-renderer{--math-size:18px!important}
+@media(max-width:767px){.formula-symbols dd>span{font-size:11px}.math-dialog-body .formula-symbols>div{grid-template-columns:48px minmax(0,1fr)}.math-dialog-body .formula-substitution .math-renderer{--math-size:16px!important}}
+
+.formula-rounding-note{margin:8px 0 0;font-size:10px;color:#8fa8c2;text-align:right;}

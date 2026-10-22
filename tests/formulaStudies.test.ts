@@ -1,0 +1,23 @@
+import {describe,it,expect} from 'vitest';
+import katex from 'katex';
+import {FORMULA_STUDIES,studyDefaults,evaluateStudy} from '../mechanics/formulaStudies';
+const run=(id:string,patch:Record<string,number>={})=>{const c=FORMULA_STUDIES[id];const r=evaluateStudy(c,{...studyDefaults(c),...patch});if(r.ok===false)throw Error(r.error);return r;};
+describe('公式目录的独立教学计算',()=>{
+ it('补齐 17 个基础条目和 4 个截面条目，全部默认值、图形和代入式有效',()=>{
+  expect(Object.keys(FORMULA_STUDIES)).toHaveLength(21);
+  for(const id of Object.keys(FORMULA_STUDIES)){const r=run(id);expect(r.rows.length,id).toBeGreaterThan(1);for(const row of r.rows){if(row.value!==null)expect(Number.isFinite(row.value),`${id}/${row.key}`).toBe(true);expect(()=>katex.renderToString(row.substitution,{throwOnError:true})).not.toThrow();}for(const line of r.plot.series)for(const p of line.points)expect(p.every(Number.isFinite),id).toBe(true);}
+ });
+ it('简单剪切从平均应力、剪切模量推到相对错动',()=>{const r=run('shear-stress',{V:8,A:100,E:200,nu:.25,h:50});expect(r.values.tau).toBe(80);expect(r.values.G).toBe(80000);expect(r.values.gamma).toBe(.001);expect(r.values.slip).toBe(.05);});
+ it('双端固定杆满足节点平衡、两段协调和轴力符号',()=>{const r=run('statically-indeterminate',{P:10,L1:1000,L2:1000,A1:100,A2:100,E1:200,E2:200});expect(r.values.u).toBe(.25);expect(r.values.N1).toBe(5000);expect(r.values.N2).toBe(-5000);expect(r.values.RA+r.values.RB+10000).toBeCloseTo(0);expect(r.values.d1+r.values.d2).toBe(0);});
+ it('圆轴扭转剪应力、转角采用 N mm MPa，实心与空心分开',()=>{const r=run('torsion-basic',{T:100,R:10,rho:5,L:1000,G:80});expect(r.values.Ip).toBeCloseTo(Math.PI*10000/2);expect(r.values.tau).toBeCloseTo(100000*5/r.values.Ip);expect(r.values.phi).toBeCloseTo(100000*1000/(80000*r.values.Ip));expect(run('torsion-section',{D:20,d:0}).values.Ip).toBeCloseTo(r.values.Ip);});
+ it('矩形弯曲边缘和剪应力自由边界正确',()=>{const b=run('bending-stress',{M:1,b:100,h:100,y:50});expect(b.values.sigma).toBeCloseTo(6);const s=run('shear-stress-beam',{V:10,b:100,h:100,y:50});expect(s.values.tau).toBeCloseTo(0);expect(s.values.tauMax).toBe(1.5);});
+ it('纯弯曲挠曲线满足固定端位移和转角为零',()=>{const r=run('deflection',{M:1,L:1000,E:200,I:1e6,x:1000});expect(r.values.v).toBe(2.5);expect(r.values.theta).toBe(.005);expect(run('deflection',{x:0}).values.v).toBe(0);});
+ it('三种常用挠度和能量法与解析解一致',()=>{const p={P:10,q:10,L:3,E:200,I:1e8};expect(run('deflection-common',{...p,case:0}).values.v).toBe(4.5);expect(run('deflection-common',{...p,case:1}).values.v).toBe(.28125);expect(run('deflection-common',{...p,case:2}).values.v).toBeCloseTo(.52734375);const e=run('energy-method',p);expect(e.values.delta).toBe(4.5);expect(e.values.U).toBe(22.5);expect(e.values.work).toBe(45);});
+ it('纯剪切莫尔圆、主应力和 von Mises 对应同一应力状态',()=>{for(const id of ['stress-transform','principal-stress','von-mises']){const r=run(id,{sx:0,sy:0,tau:50,angle:45});expect(r.values.s1).toBeCloseTo(50);expect(r.values.s2).toBeCloseTo(-50);expect(r.values.tx).toBeCloseTo(0);expect(r.values.vm).toBeCloseTo(50*Math.sqrt(3));}});
+ it('三向静水应力的第三、第四强度理论等效应力为零',()=>{const r=run('strength-theory',{s1:100,s2:100,s3:100});expect(r.values.eq3).toBe(0);expect(r.values.eq4).toBe(0);});
+ it('组合正应力在同一点叠加再求等效应力，不拼接不同位置的极值',()=>{const r=run('combined',{N:10,M:1,b:100,h:100,y:50,tau:2});expect(r.values.sigma).toBeCloseTo(7);expect(r.values.equivalent).toBeCloseTo(Math.sqrt(65));});
+ it('Euler 临界力遵循长度平方与端部约束，不生成虚假后屈曲位移',()=>{const a=run('buckling',{L:2000,mu:1}),b=run('buckling',{L:4000,mu:1}),c=run('buckling-factor',{L:2000,mu:2});expect(a.values.Pcr/b.values.Pcr).toBeCloseTo(4);expect(a.values.Pcr/c.values.Pcr).toBeCloseTo(4);expect(a.values).not.toHaveProperty('deflection');});
+ it('疲劳循环有均值、幅值，零最大应力时不编造应力比',()=>{const r=run('fatigue',{max:100,min:-50});expect(r.values.amplitude).toBe(75);expect(r.values.mean).toBe(25);expect(r.values.ratio).toBe(-.5);expect(run('fatigue',{max:0,min:-50}).rows.find(r=>r.key==='ratio')?.value).toBeNull();});
+ it('截面放大后的面积、惯性矩和截面模量分别按二三四次方变化',()=>{const a=run('section:rect',{b:100,h:200}),b=run('section:rect',{b:200,h:400});expect(b.values.A/a.values.A).toBeCloseTo(4);expect(b.values.Ix/a.values.Ix).toBeCloseTo(16);expect(b.values.Wx/a.values.Wx).toBeCloseTo(8);expect(run('section:circle',{r:10}).values.Ix).toBeCloseTo(Math.PI*10000/4);});
+ it('非法几何、范围、非有限值和溢出均阻止结果与图形输出',()=>{for(const [id,p] of [['torsion-basic',{rho:30,R:10}],['shear-stress',{nu:.5}],['section:hollow',{R:10,r:20}],['section:i-beam',{H:10,tf:12}],['strength-theory',{s1:0,s2:100}],['fatigue',{max:0,min:1}],['bending-stress',{y:1000}],['energy-method',{P:1e308}],['deflection',{E:1e308}],['section:rect',{b:1e-100,h:1e-100}]] as const){const c=FORMULA_STUDIES[id];expect(evaluateStudy(c,{...studyDefaults(c),...p}).ok,id).toBe(false);}});
+});

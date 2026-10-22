@@ -1,0 +1,29 @@
+/* 压杆保持竖向展示，控制台和结果栏复用现有实验语言。 */
+.taste-lab.buckling-lab .buckling-grid{min-height:min(650px,calc(100dvh - 162px))}
+.taste-lab.buckling-lab .fundamentals-main{grid-template-rows:minmax(370px,1fr) max-content;min-height:min-content}
+.taste-lab.buckling-lab .poisson-figure{min-height:370px}
+.taste-lab.buckling-lab .poisson-canvas-wrap{min-height:240px}
+.buckling-stage{background:radial-gradient(ellipse at 50% 65%,#163c483b,transparent 70%),#0b1725!important}
+.buckling-scene .axial-deformation-bar>div{max-width:70%}
+.buckling-control-console [role=tabpanel][hidden]{display:none}
+.buckling-control-console label{font-size:10px!important;color:#a8c6d6!important;white-space:nowrap}
+.buckling-control-console input[type=text]{width:78px!important;min-height:29px!important;height:29px!important;background:#102637!important;border:1px solid #426075!important;color:#ddf3ed!important;border-radius:5px!important;padding:4px 6px!important;font:14px ui-monospace,monospace!important}
+.buckling-control-console .text-xs{font-size:9px}
+.buckling-load-controls{padding:12px 15px 11px}
+.buckling-load-presets{display:flex;gap:6px;align-items:center;margin-top:12px;font-size:9px;color:#92afc1;flex-wrap:wrap}
+.buckling-load-presets button{font:10px ui-monospace,monospace;padding:4px 7px;border-radius:4px;background:#1b3a48;border:1px solid #375765;color:#b7dfd7}
+.buckling-load-presets button:nth-last-of-type(2){color:#cfb9e2;border-color:#5c516c}
+.buckling-load-presets output{margin-left:auto;font:10px ui-monospace,monospace;color:#afd9d1}
+.buckling-imperfection-row,.buckling-length-row{display:flex;align-items:center;gap:17px;border-top:1px solid #39596877;margin-top:11px;padding-top:10px;min-width:0}
+.buckling-imperfection-row>div{width:200px;flex-shrink:0}
+.buckling-imperfection-row>button{font-size:9px;color:#9dc7cf;padding:4px 6px;white-space:nowrap}.buckling-imperfection-row>button:last-child{margin-left:auto;color:#b7afd0}
+.buckling-length-row{border:0;margin:0;padding-top:13px}
+.buckling-length-row>div{width:200px;flex-shrink:0}.buckling-length-row>input{width:100%;min-width:30px;flex:1;accent-color:#9be0ce;height:15px;cursor:ew-resize}.buckling-length-row>span{font-size:9px;color:#9ab9cb;white-space:nowrap}
+.buckling-capacity-meter{height:3px;background:#2a4054;margin:14px 0 17px;overflow:hidden}.buckling-capacity-meter i{display:block;height:100%;background:#92d9c7}.buckling-capacity-meter.is-exceeded i{background:#c0a4dd}
+.buckling-lab button:focus-visible,.buckling-lab select:focus-visible{outline:2px solid #9bcdea;outline-offset:2px}
+.buckling-control-console .section-explorer-heading>select{background:#102638;color:#cee3ed;border:1px solid #375369;border-radius:4px;padding:3px 5px;font-size:10px;max-width:105px}
+@container(max-width:620px){.buckling-imperfection-row{gap:8px}.buckling-imperfection-row>div,.buckling-length-row>div{width:173px}.buckling-control-console .bending-control-tabs>span{display:none}.buckling-length-row{gap:10px}.buckling-length-row>span{display:none}}
+@container(max-width:440px){.buckling-control-console .bending-control-tabs button{padding:5px 7px;font-size:9px;gap:4px}.buckling-load-controls{padding:10px}.buckling-imperfection-row{flex-wrap:wrap}.buckling-imperfection-row>div{width:100%}.buckling-load-presets{gap:4px}.buckling-load-presets output{flex-basis:100%;margin-top:4px}.buckling-length-row{flex-wrap:wrap}.buckling-length-row>div{width:100%}.buckling-length-row>input{flex-basis:100%}.buckling-control-console .section-impact-summary{font-size:8px;gap:9px}}
+@media(max-width:767px){.taste-lab.buckling-lab .fundamentals-main{grid-template-rows:480px max-content}.buckling-stage .scene-caption{font-size:8px}.buckling-scene .axial-deformation-bar>div{max-width:65%}}
+
+@media(min-width:768px) and (max-height:800px){.buckling-stage .scene-camera-dock{left:18px;transform:none}}

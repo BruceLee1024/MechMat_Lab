@@ -38,7 +38,7 @@ export interface SectionProperties {
 
 export interface SimulationState {
   // Material Props (Shared)
-  materialName: string; // For display
+  materialName: string; // 材料名称；与参数共同匹配轴向教学模型
   materialYield: number; // MPa (Yield Strength)
   poissonRatio: number; // Ratio (0.0 - 0.5)
   
@@ -66,6 +66,7 @@ export interface SimulationState {
   
   // Buckling (压杆稳定)
   buckleLoad: number; // N
+  buckleInitialBow: number; // mm，一阶正弦初弯曲幅值，0 为理想直杆
   buckleLength: number; // m
   buckleModulus: number; // GPa
   buckleWidth: number; // mm
@@ -95,6 +96,7 @@ export interface SimulationState {
   bendTorqueSection: SectionProperties; // 截面属性
   bendTorqueBendLoad: number; // N 弯矩载荷
   bendTorqueBendPos: number; // m 弯矩载荷位置
+  bendTorqueShearModulus: number; // GPa，组合变形的独立剪切模量
   bendTorqueModulus: number; // GPa 弹性模量
 }
 
@@ -123,6 +125,7 @@ export const DEFAULT_STATE: SimulationState = {
   torqLoadRatio: 0.6,
   // Buckling
   buckleLoad: 1000,
+  buckleInitialBow: 1,
   buckleLength: 2.0,
   buckleModulus: 200,
   buckleWidth: 40,
@@ -150,6 +153,7 @@ export const DEFAULT_STATE: SimulationState = {
   bendTorqueBendLoad: 5000,
   bendTorqueBendPos: 0.5,
   bendTorqueModulus: 200,
+  bendTorqueShearModulus: 77,
 };
 
 export const THEORY_INFO = {
@@ -214,7 +218,7 @@ export const THEORY_INFO = {
   },
   stress: {
     title: "应力状态 (Stress Transformation)",
-    definition: "同一点在不同方位的截面上，应力的大小和性质随截面方位而变。三维应力状态可以通过应力张量或莫尔圆来描述。",
+    definition: "观察平面应力在旋转截面上的变化，让三维单元体、莫尔圆与应力计算同步对应。",
     formulas: [
       { label: "应力张量 (Stress Tensor)", latex: "\\sigma_{ij} = \\begin{bmatrix} \\sigma_x & \\tau_{xy} & \\tau_{xz} \\\\ \\tau_{yx} & \\sigma_y & \\tau_{yz} \\\\ \\tau_{zx} & \\tau_{zy} & \\sigma_z \\end{bmatrix}", desc: "描述同一点各个方向受力的矩阵。" },
       { label: "第一不变量 (First Invariant)", latex: "I_1 = \\sigma_x + \\sigma_y + \\sigma_z", desc: "应力张量的迹，在坐标变换下保持不变。" },
@@ -269,9 +273,9 @@ export const THEORY_INFO = {
   },
   resources: {
     title: "学习资源库 (Learning Resources)",
-    definition: "精选的材料力学学习资料，包括教材、视频、论文和在线工具。",
+    definition: "从官方课程、教材讲义到练习与计算工具，连接学习与实验。",
     formulas: [],
-    insight: "系统学习材料力学，从基础到进阶，这里有你需要的所有资源。"
+    insight: "阅读资源的适用范围，并结合可视化实验核对自己的理解。"
   },
   settings: {
     title: "设置 (Settings)",

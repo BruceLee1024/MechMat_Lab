@@ -1,0 +1,243 @@
+/* 深空实验舱：外观与计算分开；所有绘图、表单和存档仍使用实际模型。 */
+:root[data-theme=deepSpace]{--lab-bg:#050f1c;--lab-surface:#081727;--lab-border:#1c3c5b;--lab-muted:#8ca9c8;--lab-text:#cee1f6;--lab-accent:#3389ff}
+[data-theme=deepSpace] body{background:var(--lab-bg);color:var(--lab-text)}
+[data-theme=deepSpace] .app-shell{background:var(--lab-bg);color:var(--lab-text);font-family:Inter,"PingFang SC","Microsoft YaHei",sans-serif}
+[data-theme=deepSpace] .app-header{background:var(--lab-bg);border-color:#17314a;padding:18px 24px;min-height:84px}
+[data-theme=deepSpace] .app-header h2{color:#d9eaff;font-size:22px;letter-spacing:.3px}
+[data-theme=deepSpace] .app-header p{color:#86a5c6;font-size:12px;line-height:1.7;max-width:850px}
+[data-theme=deepSpace] .app-content{padding:14px 16px 16px}
+[data-theme=deepSpace] .app-sidebar{width:240px;background:#061322;border-right:1px solid #16314a;color:#afc9e7}
+.sidebar-brand p{font-size:13px;letter-spacing:.8px;color:#97bde9;margin-top:8px}
+.sidebar-lab-art{display:none}
+[data-theme=deepSpace] .app-sidebar>div:first-child{background:transparent;border-color:#17314a;padding:23px 20px;min-height:104px}
+[data-theme=deepSpace] .sidebar-brand h1{font-size:17px;white-space:nowrap;letter-spacing:-.6px}
+[data-theme=deepSpace] .app-sidebar nav{padding:10px 11px;flex:1;min-height:0}
+[data-theme=deepSpace] .app-sidebar nav button{height:46px;padding:10px 14px;border-radius:7px;font-size:14px;color:#9bb9da;margin-top:4px;gap:13px}
+[data-theme=deepSpace] .app-sidebar nav button svg{width:19px;height:19px;stroke-width:1.6}
+[data-theme=deepSpace] .app-sidebar nav button[data-module=stress],[data-theme=deepSpace] .app-sidebar nav button[data-module=resources]{border-top:1px solid #17314a;margin-top:12px;padding-top:17px;height:55px;border-radius:0}
+[data-theme=deepSpace] .app-sidebar nav button:hover{background:#0e2540;color:#deedff}
+[data-theme=deepSpace] .app-sidebar nav button[aria-current=page]{background:#102c52!important;border:1px solid #24548a;color:#d0e4ff;box-shadow:inset 3px 0 #348bff!important}
+[data-theme=deepSpace] .app-sidebar nav button[aria-current=page] svg{stroke:#b7daff}
+[data-theme=deepSpace] .sidebar-lab-art{display:flex;align-items:center;height:130px;flex-shrink:0;overflow:hidden;position:relative}
+[data-theme=deepSpace] .sidebar-lab-art img{width:145px;height:110px;object-fit:cover;mix-blend-mode:screen;opacity:.8;margin-left:-4px}
+[data-theme=deepSpace] .sidebar-lab-art>div{font-size:14px;line-height:1.7;margin-left:-12px;position:relative;color:#a7c9f0}
+.sidebar-lab-art small{display:block;font-size:8px;letter-spacing:.3px;white-space:nowrap;color:#6e8eb1;margin-top:6px}
+[data-theme=deepSpace] .app-sidebar>div:has(>p){background:transparent;padding:8px 12px;border-color:#17314a}
+[data-theme=deepSpace] .app-sidebar>div:has(>p)>p{display:none}
+[data-theme=deepSpace] .app-sidebar>div:has(>p) button,[data-theme=deepSpace] .app-sidebar>div:has(>p) a{width:28px;height:28px;background:transparent}
+[data-theme=deepSpace] .app-sidebar>div:has(>p) svg{width:16px;height:16px}
+[data-theme=deepSpace] .experiment-toolbar{background:#071423;border-color:#17314a;padding:8px 22px;gap:7px;min-height:49px}
+[data-theme=deepSpace] .experiment-title{background:#0b1e32;border-color:#1e405f;color:#a5c4e8;max-width:200px;font-size:12px;border-radius:5px;padding:7px 10px}
+[data-theme=deepSpace] .tool-button{background:#0b1c2f;border-color:#24415f;color:#b7d3f0;border-radius:5px;min-height:32px;font-size:12px;transition:background .15s,border-color .15s}
+[data-theme=deepSpace] .tool-button:hover{background:#143052;border-color:#477aaf}
+[data-theme=deepSpace] .tool-button.primary{background:#227bfa;border-color:#398eff;color:#f4f9ff;box-shadow:0 3px 12px #0c55c333}
+[data-theme=deepSpace] .save-status{color:#81a1c3;font-size:10px}
+[data-theme=deepSpace] .menu-toggle{background:#10243a;border-color:#284663;color:#bbd9fb}
+[data-theme=deepSpace] :is(button,input,select,summary):focus-visible{outline:2px solid #6abbff;outline-offset:3px}
+[data-theme=deepSpace] input[type=range]::-webkit-slider-runnable-track{background:#1d3959;height:5px}
+[data-theme=deepSpace] input[type=range]::-webkit-slider-thumb{background:#348cff;box-shadow:0 0 10px #257bff55;width:18px;height:18px;margin-top:-6px}
+[data-theme=deepSpace] input[type=range]::-moz-range-track{background:#1d3959;height:5px;border-radius:3px}
+[data-theme=deepSpace] input[type=range]::-moz-range-thumb{background:#348cff;width:16px;height:16px;border:0;border-radius:50%}
+[data-theme=deepSpace] :is(.bg-white,.bg-slate-50){background-color:#0b1a2c!important}
+[data-theme=deepSpace] :is(.bg-slate-100,.bg-slate-200){background-color:#122b44!important}
+[data-theme=deepSpace] :is(.text-slate-900,.text-slate-800,.text-slate-700,.text-indigo-900,.text-indigo-800){color:#d3e5fa!important}
+[data-theme=deepSpace] :is(.text-slate-600,.text-slate-500,.text-slate-400){color:#8facca!important}
+[data-theme=deepSpace] :is(.text-indigo-600,.text-indigo-700,.text-blue-700){color:#80b7ff!important}
+[data-theme=deepSpace] :is(.text-rose-600,.text-rose-700){color:#ff9bae!important}
+[data-theme=deepSpace] :is(.text-emerald-600,.text-emerald-700,.text-green-700){color:#6fe7b7!important}
+[data-theme=deepSpace] :is(.border-slate-100,.border-slate-200,.border-slate-300){border-color:#23415e!important}
+[data-theme=deepSpace] :is(.bg-indigo-50,.bg-blue-50,.bg-purple-50){background-color:#112946!important}
+[data-theme=deepSpace] :is(.bg-rose-50,.bg-red-50){background-color:#321d30!important}
+[data-theme=deepSpace] :is(.bg-green-50,.bg-emerald-50){background-color:#102e2a!important}
+[data-theme=deepSpace] .ai-panel>div{background-image:none!important;background-color:#0b1a2c!important}
+[data-theme=deepSpace] .workspace-modal{background:#0b1a2c;color:#d0e4fc;border:1px solid #2c4b6c;box-shadow:0 24px 100px #0009}
+[data-theme=deepSpace] .workspace-modal header,[data-theme=deepSpace] .manager-tabs,[data-theme=deepSpace] .comparison-table :is(th,td),[data-theme=deepSpace] .archive-card{border-color:#23415e}
+[data-theme=deepSpace] .comparison-table th{background:#10273f}
+[data-theme=deepSpace] .manager-tabs button[aria-selected=true],[data-theme=deepSpace] .panel-tabs button[aria-selected=true]{background:#153a65;color:#a2d0ff}
+[data-theme=deepSpace] .panel-tabs{background:#0c1d31;border-color:#264761}
+[data-theme=deepSpace] .panel-divider span{background:#254867}
+[data-theme=deepSpace] .custom-scrollbar::-webkit-scrollbar-track{background:#091726}
+[data-theme=deepSpace] *{scrollbar-width:thin;scrollbar-color:#284766 transparent}
+[data-theme=deepSpace] .workspace-alert{background:#361d2e;color:#ffbdcd}
+.fundamentals-workbench{height:100%;overflow:auto;min-width:0}
+.fundamentals-lab{min-height:100%;display:flex;flex-direction:column;gap:12px;color:#cbe0f7}
+.lab-chapter-tabs{display:flex;align-items:stretch;gap:4px;border:1px solid #1c3c5b;border-radius:6px;background:#071625;padding:3px;min-height:45px;flex-shrink:0;overflow-x:auto}
+.lab-chapter-tabs button{display:flex;align-items:center;justify-content:center;gap:8px;flex:1;white-space:nowrap;font-size:12px;color:#98b5d6;padding:10px 12px;border:1px solid transparent;border-radius:4px}
+.lab-chapter-tabs button:first-child{font-size:11px}
+.lab-chapter-tabs button[aria-selected=true]{color:#d6e9ff;background:#102e54;border-color:#2b65a4;box-shadow:inset 0 -2px #2686ff}
+.lab-chapter-tabs button:hover{background:#10243c}
+.fundamentals-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(290px,31%);gap:12px;flex:1;min-height:780px}
+.fundamentals-main{display:grid;grid-template-rows:minmax(440px,1.45fr) minmax(280px,1fr);gap:12px;min-width:0}
+.fundamentals-inspector{display:flex;flex-direction:column;gap:12px;min-width:0}
+.lab-surface{background:#081727;border:1px solid #1f4161;border-radius:7px;min-width:0;overflow:hidden;box-shadow:inset 0 1px #2d547611}
+.lab-section-head{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:16px 17px 12px;min-width:0}
+.lab-section-head h3{font-size:15px;color:#d6e9ff;font-weight:600;display:flex;align-items:center;gap:7px;line-height:1.4;letter-spacing:.2px}
+.lab-section-head h3>svg{color:#87bcff;flex-shrink:0}
+.lab-section-head h3 small{font-size:11px;color:#9dbcdc;font-weight:400;letter-spacing:0}
+.poisson-figure .lab-section-head h3:before,.fundamentals-chart .lab-section-head h3:before{content:"";width:3px;height:20px;border-radius:3px;background:#408dff;box-shadow:0 0 8px #2e85ff55;margin-left:-5px;margin-right:4px}
+.lab-section-head p{font-size:11px;color:#8faed0;margin-top:5px;line-height:1.5}
+.scene-view-controls{display:flex;gap:4px;align-items:center}
+.scene-view-controls button{display:flex;align-items:center;gap:4px;border:1px solid #1e3a56;padding:7px 6px;border-radius:4px;color:#789bbc;font-size:10px;white-space:nowrap;min-height:29px}
+.scene-view-controls button[aria-pressed=true]{background:#0d315d;color:#b9dcff;border-color:#3477bf}
+.scene-view-controls button:hover{background:#163253;color:#b9dcff}
+.poisson-figure{display:flex;flex-direction:column;min-height:440px}
+.poisson-figure:fullscreen{background:#061322;padding:24px}
+.poisson-figure:fullscreen .poisson-canvas-wrap{height:calc(100vh - 120px)}
+.poisson-canvas-wrap{position:relative;flex:1;min-height:350px;overflow:hidden;background:#061526}
+.poisson-canvas-wrap canvas{width:100%;height:100%;position:absolute;inset:0;touch-action:pan-y;cursor:grab}
+.poisson-canvas-wrap canvas:active{cursor:grabbing}
+.scene-legend{position:absolute;top:12px;left:18px;display:flex;flex-direction:column;gap:8px;padding:10px 12px;border:1px solid #1d3954;border-radius:4px;background:#071523bd;font-size:10px;z-index:1;pointer-events:none;color:#9cbbdb}
+.scene-legend span,.chart-legend span{display:flex;align-items:center;gap:7px}
+.scene-legend i,.chart-legend i{width:26px;height:2px;background:#55b5ff;display:inline-block}
+.scene-legend i.original-line{height:0;border-top:1px dashed #a1b4ca;background:transparent}
+.scene-caption{position:absolute;bottom:12px;left:18px;right:18px;display:flex;justify-content:space-between;font-size:10px;color:#6e93b7;pointer-events:none}
+.fundamentals-chart{display:flex;flex-direction:column;min-height:280px}
+.fundamentals-chart canvas{width:100%;flex:1;min-height:200px;height:230px;max-height:320px}
+.fundamentals-chart .lab-section-head{align-items:flex-start}
+.title-vs{font-size:12px;font-weight:400;color:#88a9ca;padding:0 2px}
+.chart-legend{display:flex;flex-direction:column;gap:6px;color:#91afcf;font-size:10px;white-space:nowrap}
+.chart-legend i{background:#398bff;width:20px}
+.chart-legend i.true-line{background:transparent;border-top:2px dashed #ff788a}
+.lab-unit-system{font-size:10px;color:#739ac3;white-space:nowrap}
+.parameter-panel .lab-section-head,.result-panel .lab-section-head,.compact-theory .lab-section-head,.compact-ai .lab-section-head{border-bottom:1px solid #17334f;padding:14px 15px 12px}
+.lab-panel-body{padding:14px 16px}
+.lab-panel-body h4{color:#9bc6fa;font-size:12px;font-weight:600;margin-bottom:12px;border-left:2px solid #3389ff;padding-left:9px}
+.lab-panel-body h4.load-heading{margin-top:19px}
+.lab-panel-body .mb-2{margin-bottom:10px}
+.lab-panel-body input[type=text]{width:100px!important;max-width:100%;border-color:#2b4a69!important;background:#0d2138!important;color:#d7e9ff!important;border-radius:4px;font-family:Inter,"SFMono-Regular",monospace;padding:6px 9px!important;font-size:13px!important;min-height:31px}
+.lab-panel-body label{color:#a0bcda!important;font-size:11px;line-height:1.5;max-width:180px}
+.lab-panel-body label+div>span{min-width:23px;color:#789bbc!important}
+.lab-material-library{font-size:10px;color:#829fbd;margin-top:9px}
+.lab-material-library summary,.lab-secondary-results summary{cursor:pointer;padding:3px 0}
+.lab-material-library[open] summary{margin-bottom:12px}
+.lab-material-library .mb-4{margin-bottom:12px}
+.parameter-panel input[type=range]{height:20px;margin-top:6px}
+.slider-ticks{display:flex;justify-content:space-between;color:#698cb1;font-size:9px}
+.result-panel .lab-panel-body{padding:10px 15px 12px}
+.result-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:8px 0;font-size:11px;color:#abc7e7}
+.result-row em{font-family:Georgia,serif;font-size:15px;font-style:italic;padding-left:7px;color:#c6d9f2}
+.result-row sub{font-size:9px}
+.result-row output{display:block;min-width:135px;text-align:right;background:#0a253e;border:1px solid #2c5a88;color:#69c7ff;font-family:Inter,monospace;font-size:17px;letter-spacing:.5px;border-radius:4px;padding:7px 10px;white-space:nowrap;line-height:1.3;font-variant-numeric:tabular-nums}
+.result-row output small{font-size:12px;margin-left:4px}
+.result-row.transverse output{color:#63dfed;border-color:#28616e;background:#092b34}
+.result-row.stress output{color:#7ceab6;border-color:#29634c;background:#0a2928}
+.lab-secondary-results{font-size:10px;color:#819cba;margin-top:10px}
+.lab-secondary-results p{font-size:11px;line-height:1.7;margin-top:6px;color:#b4cce4}
+.lab-warning{font-size:11px;line-height:1.6;color:#ffc77f;background:#4b341b55;border:1px solid #6d4d28;padding:7px 8px;border-radius:4px;margin-top:10px}
+.compact-theory .lab-section-head button{display:flex;gap:3px;color:#63b6ff;font-size:10px;align-items:center;white-space:nowrap}
+.compact-theory h4{border:0;padding:0;margin:0 0 9px;color:#bdd6f3;font-size:11px}
+.compact-theory h4 span{color:#90acc9;font-weight:400}
+.compact-theory .lab-panel-body{padding:12px 15px}
+.compact-theory p{font-size:10px;color:#91aecb;line-height:1.8;margin-top:9px}
+.lab-formula{border:1px solid #2b4b6b;border-radius:4px;padding:0 12px;color:#d7e8fc;background:#0b2035}
+.lab-formula .katex-display{margin:.7em 0}
+.compact-ai{flex:1;min-height:145px}
+.compact-ai .lab-section-head h3{color:#c4b5fd;font-size:13px}
+.compact-ai .lab-section-head h3 svg{color:#ac9cf8}
+.compact-ai .lab-section-head>div{display:flex;gap:9px}
+.compact-ai .lab-section-head button{color:#92aaca;font-size:11px}
+.unconfigured-badge,.configured-badge{font-size:10px;background:#4c3719;color:#f3cf82;border:1px solid #755625;padding:2px 6px;border-radius:3px;font-weight:400;white-space:nowrap}
+.configured-badge{background:#15392e;color:#7ceab6;border-color:#2a694c}
+.ai-empty{display:flex;flex-direction:column;gap:6px;align-items:center;justify-content:center;padding:17px 10px;color:#91a9c7;font-size:12px}
+.ai-empty>svg{color:#506c8b;margin-bottom:2px}
+.ai-empty button{display:flex;gap:3px;align-items:center;color:#7291b3;font-size:10px}
+.ai-empty button:hover{color:#9eccff}
+.compact-ai-content{height:460px;padding:8px}
+.lab-concept-reader{background:#081727;min-width:0;padding:15px;border:1px solid #1f4161;border-radius:7px}
+.lab-concept-reader>.tool-button{margin-bottom:12px}
+.fundamentals-grid.is-reading{display:none}
+.fundamental-concepts>div:nth-child(3){min-height:300px}
+.is-focused .fundamentals-grid{grid-template-columns:1fr}
+.is-focused .fundamentals-inspector{display:none}
+.lab-error{padding:30px;line-height:2;color:#ffb7c4}
+/* 旧配色仍可从设置选择，新实验工作台也保持可读。 */
+:root:not([data-theme=deepSpace]) .fundamentals-lab{color:#263a52}
+:root:not([data-theme=deepSpace]) .lab-surface,:root:not([data-theme=deepSpace]) .lab-chapter-tabs{background:#0a192c}
+@media(min-width:1600px){.fundamentals-grid{min-height:850px}.fundamentals-main{grid-template-rows:minmax(480px,1.5fr) minmax(300px,1fr)}.lab-section-head h3{font-size:16px}}
+@media(max-height:920px) and (min-width:901px){[data-theme=deepSpace] .sidebar-lab-art{height:80px}[data-theme=deepSpace] .app-sidebar nav button{height:40px;padding-top:8px;padding-bottom:8px}.fundamentals-grid{min-height:720px}.fundamentals-main{grid-template-rows:minmax(400px,1.4fr) minmax(270px,1fr)}}
+@media(max-width:1250px){.scene-view-controls button span{display:none}.lab-section-head h3{font-size:14px}.lab-section-head{padding:14px}.fundamentals-grid{grid-template-columns:minmax(0,1fr) 300px}.lab-unit-system{display:none}}
+@media(max-width:1199px){[data-theme=deepSpace] .app-sidebar{width:260px}[data-theme=deepSpace] .app-header{padding:15px 18px;min-height:76px}.lab-chapter-tabs button{font-size:11px;padding:9px}.lab-chapter-tabs button:first-child{display:none}}
+@media(max-width:900px){.fundamentals-grid{grid-template-columns:1fr;min-height:0}.fundamentals-main,.fundamentals-inspector{display:contents}.poisson-figure{order:1;min-height:420px}.parameter-panel{order:2}.result-panel{order:3}.fundamentals-chart{order:4;height:320px}.compact-theory{order:5}.compact-ai{order:6}.poisson-canvas-wrap{min-height:340px}.lab-unit-system{display:inline}.scene-view-controls button span{display:inline}.is-focused .fundamentals-inspector{display:contents}.is-focused :is(.parameter-panel,.result-panel,.compact-theory,.compact-ai){display:none}.lab-panel-body label{max-width:none}.parameter-panel .lab-panel-body{padding:16px 20px}.result-row output{min-width:170px}}
+@media(max-width:600px){[data-theme=deepSpace] .app-content{padding:10px}[data-theme=deepSpace] .app-header{min-height:66px;padding:12px}[data-theme=deepSpace] .app-header h2{font-size:17px}[data-theme=deepSpace] .experiment-toolbar{padding:8px 10px;gap:5px}[data-theme=deepSpace] .experiment-title{max-width:none;flex-basis:140px}[data-theme=deepSpace] .save-status{font-size:9px}.lab-chapter-tabs{min-height:40px}.lab-chapter-tabs button{font-size:10px;padding:7px}.lab-chapter-tabs button svg{display:none}.fundamentals-lab{gap:10px}.fundamentals-grid{gap:10px}.poisson-figure{min-height:340px}.poisson-canvas-wrap{min-height:265px}.poisson-figure .lab-section-head{align-items:flex-start;gap:5px;padding:12px}.lab-section-head h3{font-size:13px}.lab-section-head p{font-size:9px;max-width:180px}.scene-view-controls{gap:3px;flex-wrap:wrap;max-width:115px;justify-content:flex-end}.scene-view-controls button{padding:5px;font-size:10px;min-height:24px}.scene-view-controls button span{display:none}.scene-legend{top:6px;left:10px;font-size:8px;padding:7px;gap:5px}.scene-caption{font-size:8px;left:10px;right:10px;bottom:9px}.chart-legend{font-size:9px}.fundamentals-chart{height:300px}.lab-concept-reader{padding:10px}.sidebar-lab-art{display:none!important}}
+@media(prefers-reduced-motion:reduce){.scene-view-controls button,.tool-button{transition:none}}
+/* 常用操作与标题同排，次要操作在“更多”中保留。 */
+.app-main{position:relative}
+.toolbar-more{position:relative}
+.toolbar-more>summary{list-style:none;cursor:pointer;min-width:46px}
+.toolbar-more>summary::-webkit-details-marker{display:none}
+.toolbar-more-menu{position:absolute;right:0;top:calc(100% + 10px);z-index:30;width:240px;padding:15px;display:flex;flex-direction:column;gap:10px;background:#0d2035;border:1px solid #305577;border-radius:8px;box-shadow:0 12px 40px #0009;color:#aec8e7}
+.toolbar-more-menu .tool-button{justify-content:flex-start}
+.toolbar-name-label{font-size:11px;display:flex;flex-direction:column;gap:6px}
+.toolbar-more-menu .experiment-title{width:100%;max-width:none!important;flex:initial}
+.toolbar-history-actions{display:flex;gap:8px}.toolbar-history-actions button{flex:1}
+.toolbar-more-menu .save-status{margin:0;font-size:10px}
+.toolbar-save{min-width:126px}
+[data-theme=deepSpace] .toolbar-more-menu{background:#0d2035}
+@media(min-width:1200px){
+  [data-theme=deepSpace] .app-header{padding:18px 460px 18px 24px;min-height:84px}
+  [data-theme=deepSpace] .app-header p{max-width:720px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  [data-theme=deepSpace] .experiment-toolbar{position:absolute;right:24px;top:23px;background:transparent;border:0;padding:0;min-height:0;z-index:20;gap:9px}
+  [data-theme=deepSpace] .experiment-toolbar>.tool-button{height:39px;padding:10px 13px;font-size:12px}
+  [data-theme=deepSpace] .toolbar-more>summary{height:39px;padding:10px 9px}
+  [data-theme=deepSpace] .toolbar-save{margin-left:8px}
+}
+.lab-section-head h3{font-size:16px}
+.lab-section-head p{font-size:12px}
+.parameter-panel .lab-section-head,.result-panel .lab-section-head,.compact-theory .lab-section-head,.compact-ai .lab-section-head{padding:12px 15px 10px}
+.parameter-panel .lab-panel-body{padding:11px 16px}
+.lab-panel-body h4{margin-bottom:8px}
+.lab-panel-body h4.load-heading{margin-top:11px}
+.lab-panel-body .mb-2{margin-bottom:6px}
+.lab-panel-body input[type=text]{min-height:28px;padding:4px 9px!important}
+.lab-panel-body label{font-size:12px}
+.lab-material-library{margin-top:5px;line-height:1.3}
+.parameter-panel input[type=range]{display:block;height:18px;margin-top:5px}
+.result-row{margin:5px 0;font-size:12px}
+.result-row output{font-size:17px;padding:5px 10px;line-height:1.2}
+.result-panel .lab-panel-body{padding:7px 15px 9px}
+.lab-secondary-results{margin-top:6px;font-size:10px;line-height:1.3}
+.compact-theory .lab-panel-body{padding:10px 15px}
+.compact-theory p{font-size:11px;line-height:1.6;margin-top:7px}
+.compact-theory h4{font-size:12px;margin-bottom:7px}
+.lab-formula .katex-display{font-size:15px;margin:.5em 0}
+.compact-ai{min-height:130px}
+.ai-empty{padding:12px 10px;gap:5px}
+.ai-empty>svg{width:20px;height:20px}
+@media(min-width:901px){.fundamentals-grid{min-height:780px}.fundamentals-main{grid-template-rows:minmax(440px,1.45fr) minmax(290px,1fr)}}
+@media(max-width:600px){[data-theme=deepSpace] .experiment-toolbar{justify-content:space-between;padding:8px 12px}[data-theme=deepSpace] .experiment-toolbar>.tool-button{font-size:11px;padding:8px}.toolbar-save{min-width:95px}.toolbar-more-menu{right:-104px}.lab-section-head h3{font-size:13px}.lab-section-head p{font-size:10px}.result-row{font-size:12px}.lab-panel-body label{font-size:12px}}
+/* 给画布明确的可用高度，避免 Canvas 固有尺寸撑高 fr 网格。 */
+@media(min-width:901px){
+  .fundamentals-lab{height:100%;min-height:0}
+  .fundamentals-grid{min-height:820px}
+  .fundamentals-main{min-height:0;grid-template-rows:minmax(430px,1.45fr) minmax(280px,1fr)}
+  .fundamentals-chart canvas{height:0;min-height:0;max-height:none;flex:1}
+}
+@media(min-width:1200px){
+  [data-theme=deepSpace] .app-sidebar{width:254px}
+  [data-theme=deepSpace] .app-header{min-height:80px;padding-top:15px;padding-bottom:15px}
+  [data-theme=deepSpace] .app-content{padding:12px}
+  [data-theme=deepSpace] .app-sidebar nav button{font-size:15px}
+  .lab-section-head h3{font-size:17px}
+  .lab-section-head p{font-size:12px}
+  .lab-panel-body label,.result-row{font-size:13px}
+  .lab-panel-body h4{font-size:13px}
+  .lab-panel-body input[type=text]{font-size:14px!important}
+  .result-row output{font-size:18px}
+  .scene-view-controls button{font-size:11px}
+  .scene-legend{font-size:11px}
+  .slider-ticks{font-size:10px}
+  .lab-secondary-results,.lab-material-library{font-size:11px}
+  .compact-theory h4{font-size:12px}
+  .compact-theory p{font-size:12px}
+}
+.toolbar-feedback{position:absolute;right:4px;top:calc(100% + 8px);z-index:22;background:#113c31;color:#9de6c8;border:1px solid #2b6e58;padding:7px 12px;font-size:12px;border-radius:5px;box-shadow:0 4px 20px #0004}
+@media(max-width:1199px){.experiment-toolbar{position:relative}}
+.scene-mobile-dimensions{display:none}
+@media(max-width:600px){.scene-mobile-dimensions{position:absolute;top:16px;right:12px;z-index:1;display:flex;flex-direction:column;gap:3px;font-size:10px;color:#9ccdf5;pointer-events:none;text-align:right;font-variant-numeric:tabular-nums}.scene-caption{font-size:9px}}
+@media(min-width:1200px){
+  [data-theme=deepSpace] .app-sidebar nav button{font-size:16px}
+  .lab-panel-body label,.result-row{font-size:14px}
+  .lab-panel-body input[type=text]{font-size:16px!important}
+  .result-row output{font-size:20px}
+  .compact-theory .lab-panel-body{padding-bottom:13px}
+}

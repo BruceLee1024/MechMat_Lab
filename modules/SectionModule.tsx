@@ -1,5 +1,7 @@
+import "../section-draw.css";
+import {NumericInput} from "../components/NumericInput";
+import {SectionWorkspace} from "../components/SectionWorkspace";
 import type { SectionModel } from "../experiments/schema";
-import { SectionSVG } from "../components/SectionPreview";
 import React, { useState, useMemo, useRef, useCallback } from "react";
 import {
   Circle,
@@ -496,8 +498,8 @@ const SectionDrawModal: React.FC<{
     }
   }
 
-  // 缩放（支持以鼠标位置为中心缩放）
-  const handleZoom = useCallback((delta: number, centerX?: number, centerY?: number) => {
+  // 以视图中心缩放，适合画布用于完整显示所有轮廓。
+  const handleZoom = useCallback((delta: number) => {
     setZoom(prev => {
       const newZoom = Math.max(0.1, Math.min(10, prev + delta));
       return newZoom;
@@ -511,7 +513,7 @@ const SectionDrawModal: React.FC<{
   }, []);
 
   // 鼠标滚轮缩放
-  const handleWheel = useCallback((e: React.WheelEvent<SVGSVGElement>) => {
+  const handleWheel = useCallback((e: WheelEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
@@ -520,11 +522,20 @@ const SectionDrawModal: React.FC<{
     handleZoom(delta);
   }, [handleZoom]);
 
+  // 指针和偏移均转换为 SVG 单位，缩放显示时平移仍精确。
+  const pointerInSvg=(e:React.MouseEvent<SVGSVGElement>)=>{
+    const svg=svgRef.current,ctm=svg?.getScreenCTM();
+    if(!svg||!ctm)return {x:0,y:0};
+    const pt=svg.createSVGPoint();pt.x=e.clientX;pt.y=e.clientY;
+    return pt.matrixTransform(ctm.inverse());
+  };
   // 鼠标按下
   const handleMouseDown = (e: React.MouseEvent<SVGSVGElement>) => {
     if (tool === 'pan' || e.button === 1) { // 中键平移
+      e.preventDefault();
+      const point=pointerInSvg(e);
       setIsPanning(true);
-      setPanStart({ x: e.clientX - panOffset.x, y: e.clientY - panOffset.y });
+      setPanStart({ x: point.x - panOffset.x, y: point.y - panOffset.y });
       return;
     }
   };
@@ -533,10 +544,8 @@ const SectionDrawModal: React.FC<{
   const handleMouseMove = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
     // 平移优先处理
     if (isPanning) {
-      setPanOffset({
-        x: e.clientX - panStart.x,
-        y: e.clientY - panStart.y
-      });
+      const point=pointerInSvg(e);
+      setPanOffset({x:point.x-panStart.x,y:point.y-panStart.y});
       return;
     }
     
@@ -546,8 +555,6 @@ const SectionDrawModal: React.FC<{
       if (prev.x === coords.x && prev.y === coords.y) return prev;
       return coords;
     });
-    setNewX(coords.x);
-    setNewY(coords.y);
   }, [isPanning, panStart, getMouseCoords]);
 
   // 鼠标松开
@@ -557,7 +564,7 @@ const SectionDrawModal: React.FC<{
 
   // 点击画布
   const handleCanvasClick = (e: React.MouseEvent<SVGSVGElement>) => {
-    if (tool !== 'draw' || isPanning) return;
+    if (tool !== 'draw' || isPanning || e.button!==0 || e.detail>1) return;
     
     const coords = getMouseCoords(e);
     
@@ -615,7 +622,7 @@ const SectionDrawModal: React.FC<{
 
   // 添加顶点（通过输入框）
   const addVertex = () => {
-    if (!selectedPathId) {
+    if (!paths.some(p=>p.id===selectedPathId&&!p.isClosed)) {
       const newPath: PolygonPath = {
         id: `path_${Date.now()}`,
         vertices: [{ x: newX, y: newY }],
@@ -692,364 +699,100 @@ const SectionDrawModal: React.FC<{
 
   // 保存并关闭
   const handleSave = () => {
+    if(paths.some(p=>!p.isClosed)||sectionResult.A<=0||![sectionResult.A,sectionResult.Ix,sectionResult.Iy].every(Number.isFinite))return;
     onSave(paths, sectionResult);
     onClose();
   };
 
-  // ESC 键取消当前绘制
-  const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      // 如果有未闭合的轮廓，删除它
-      const currentPath = paths.find(p => p.id === selectedPathId && !p.isClosed);
-      if (currentPath) {
-        setPaths(prev => prev.filter(p => p.id !== selectedPathId));
-        setSelectedPathId(null);
-      }
-    } else if (e.key === 'Enter') {
-      // 回车闭合轮廓
-      closePath();
-    }
-  }, [paths, selectedPathId]);
+  // 输入框保留 Enter / Escape 的数值编辑语义，快捷键仅作用于画布工具。
+  const handleKeyDown = useCallback((e:KeyboardEvent)=>{
+    if(e.target instanceof HTMLElement&&e.target.closest('input,select,textarea,[contenteditable="true"]'))return;
+    if(e.ctrlKey||e.metaKey||e.altKey)return;
+    if(e.key==='Escape'){setTool('select');setIsPanning(false);}
+    else if(e.key==='Enter'){if(e.target instanceof HTMLElement&&e.target.closest('button'))return;e.preventDefault();closePath();}
+    else if(e.key.toLowerCase()==='s')setTool('select');
+    else if(e.key.toLowerCase()==='d')setTool('draw');
+    else if(e.key.toLowerCase()==='p')setTool('pan');
+  },[paths,selectedPathId]);
 
   // 键盘事件监听
   React.useEffect(() => {
     if (isOpen) {
+      const svg=svgRef.current;
       window.addEventListener('keydown', handleKeyDown);
-      return () => window.removeEventListener('keydown', handleKeyDown);
+      svg?.addEventListener('wheel',handleWheel,{passive:false});
+      return () => {window.removeEventListener('keydown',handleKeyDown);svg?.removeEventListener('wheel',handleWheel);};
     }
-  }, [isOpen, handleKeyDown]);
+  }, [isOpen, handleKeyDown, handleWheel]);
 
   const selectedPath = paths.find(p => p.id === selectedPathId);
   const currentDrawingPath = paths.find(p => p.id === selectedPathId && !p.isClosed);
 
   if (!isOpen) return null;
 
+  const tickStep=gridSize*Math.max(1,Math.ceil(70/(gridSize*scale)));
+  const xTicks=Array.from({length:Math.ceil(svgWidth/scale/tickStep)+2},(_,i)=>(Math.floor(-originX/scale/tickStep)+i)*tickStep);
+  const yTicks=Array.from({length:Math.ceil(svgHeight/scale/tickStep)+2},(_,i)=>(Math.floor((originY-svgHeight)/scale/tickStep)+i)*tickStep);
+  const pointCount = paths.reduce((sum,p)=>sum+p.vertices.length,0);
+  const unfinished = paths.some(p=>!p.isClosed);
+  const canSave = !unfinished && sectionResult.A>0 && [sectionResult.A,sectionResult.Ix,sectionResult.Iy].every(Number.isFinite);
+  const saveHint = unfinished ? '请先闭合或删除未完成的轮廓' : sectionResult.A>0 ? '外轮廓与内孔按净截面计算' : '绘制并闭合外轮廓后，即可计算截面';
+  const formatValue=(value:number)=>!Number.isFinite(value)?'—':value===0?'0':Math.abs(value)>=1e7||Math.abs(value)<.001?value.toExponential(3):value.toLocaleString('zh-CN',{maximumFractionDigits:3});
+  const fitDrawing=()=>{
+    const vertices=paths.flatMap(p=>p.vertices);
+    if(!vertices.length){resetView();return;}
+    const xs=vertices.map(v=>v.x),ys=vertices.map(v=>v.y);
+    const minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys);
+    const rect=svgRef.current?.getBoundingClientRect();
+    const screenRatio=rect?Math.max(rect.width/svgWidth,rect.height/svgHeight):1;
+    const visibleW=rect?rect.width/screenRatio:svgWidth,visibleH=rect?rect.height/screenRatio:svgHeight;
+    const next=Math.max(0.1,Math.min(10,Math.min(visibleW/Math.max(40,maxX-minX)/baseScale,visibleH/Math.max(40,maxY-minY)/baseScale)*0.65));
+    setZoom(next);setPanOffset({x:-(minX+maxX)/2*baseScale*next,y:(minY+maxY)/2*baseScale*next});
+  };
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-slate-900">
-      {/* 头部 */}
-      <div className="flex items-center justify-between px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-700 shadow-lg">
-        <div className="flex items-center gap-3">
-          <Hexagon className="w-6 h-6 text-white" />
-          <h2 className="text-lg font-bold text-white">截面绘制器</h2>
-          <span className="text-white/60 text-sm hidden md:inline">CAD风格绘制 · 支持缩放平移 · 网格吸附</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={clearAll}
-            className="px-3 py-1.5 rounded-lg bg-white/10 text-white text-sm hover:bg-white/20 transition-colors flex items-center gap-1"
-          >
-            <Trash2 className="w-4 h-4" /> 清空
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={sectionResult.A <= 0}
-            className="px-4 py-1.5 rounded-lg bg-white text-indigo-600 text-sm font-medium hover:bg-indigo-50 transition-colors flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Save className="w-4 h-4" /> 保存并使用
-          </button>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg bg-white/10 text-white hover:bg-white/20 transition-colors"
-            title="关闭 (ESC)"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-      </div>
-
-      {/* 主体 */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* 左侧面板 */}
-        <div className="w-64 border-r border-slate-700 bg-slate-800 p-3 overflow-y-auto space-y-3">
-          {/* 添加顶点 */}
-          <div className="bg-slate-700 p-3 rounded-lg">
-            <h4 className="font-semibold text-slate-200 mb-2 flex items-center gap-2 text-sm">
-              <Circle className="w-3.5 h-3.5 text-indigo-400" /> 添加顶点
-            </h4>
-            <div className="grid grid-cols-2 gap-2 mb-2">
-              <div>
-                <label className="text-[10px] text-slate-400 mb-1 block">X (mm)</label>
-                <input
-                  type="number"
-                  value={newX}
-                  onChange={(e) => setNewX(parseFloat(e.target.value) || 0)}
-                  className="w-full px-2 py-1.5 bg-slate-600 border border-slate-500 rounded text-sm text-white focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] text-slate-400 mb-1 block">Y (mm)</label>
-                <input
-                  type="number"
-                  value={newY}
-                  onChange={(e) => setNewY(parseFloat(e.target.value) || 0)}
-                  className="w-full px-2 py-1.5 bg-slate-600 border border-slate-500 rounded text-sm text-white focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
-                />
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={addVertex}
-                className="flex-1 px-3 py-1.5 bg-indigo-600 text-white rounded text-xs font-medium hover:bg-indigo-700 transition-colors"
-              >
-                添加
-              </button>
-              <button
-                onClick={closePath}
-                disabled={!selectedPath || selectedPath.vertices.length < 3 || selectedPath.isClosed}
-                className="px-3 py-1.5 bg-green-600 text-white rounded text-xs font-medium hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                闭合
-              </button>
-            </div>
+    <div className="section-draw-editor" role="dialog" aria-modal="true" aria-labelledby="section-draw-title" onKeyDown={e=>{
+      if(e.key!=='Tab')return;
+      const items=Array.from(e.currentTarget.querySelectorAll<HTMLElement>('button:not(:disabled),input,select,[tabindex="0"]')).filter(el=>el.getClientRects().length);
+      if(!items.length)return;
+      if(e.shiftKey&&document.activeElement===items[0]){e.preventDefault();items[items.length-1].focus();}
+      else if(!e.shiftKey&&document.activeElement===items[items.length-1]){e.preventDefault();items[0].focus();}
+    }}>
+      <header className="draw-header">
+        <div className="draw-brand"><span className="draw-brand-mark"><Hexagon size={23}/></span><div><h2 id="section-draw-title">截面绘制器</h2><p>定义轮廓，探索截面的几何特性</p></div></div>
+        <div className="draw-document-state"><span className="draw-status-dot"/>本地草稿<span>单位 mm</span></div>
+        <div className="draw-header-actions"><button className="draw-quiet" onClick={clearAll} disabled={!paths.length}><Trash2 size={15}/>清空</button><button className="draw-primary" onClick={handleSave} disabled={!canSave} title={saveHint}><Save size={15}/>保存并使用</button><button className="draw-icon" onClick={onClose} aria-label="关闭截面绘制器"><X size={19}/></button></div>
+      </header>
+      <div className="draw-workspace">
+        <aside className="draw-inspector" aria-label="轮廓与顶点编辑">
+          <section className="draw-coordinate-section">
+            <div className="draw-section-heading"><h3><Crosshair size={15}/>精确落点</h3><span>mm</span></div>
+            <div className="draw-coordinate-inputs"><NumericInput compact domain="signed" label="X 坐标" value={newX} onChange={setNewX}/><NumericInput compact domain="signed" label="Y 坐标" value={newY} onChange={setNewY}/></div>
+            <div className="draw-point-actions"><button className="draw-secondary" onClick={addVertex}><Plus size={15}/>添加顶点</button><button className="draw-quiet" onClick={closePath} disabled={!selectedPath||selectedPath.isClosed||selectedPath.vertices.length<3}><Hexagon size={14}/>闭合</button></div>
+          </section>
+          <section className="draw-contours-section">
+            <div className="draw-section-heading"><h3><Hexagon size={15}/>轮廓</h3><span>{paths.length.toString().padStart(2,'0')}</span></div>
+            <div className="draw-contour-create"><label><input type="checkbox" checked={isHoleMode} onChange={e=>setIsHoleMode(e.target.checked)}/>新轮廓为内孔</label><button className="draw-icon" onClick={createPath} aria-label="新建轮廓"><Plus size={17}/></button></div>
+            {!paths.length?<div className="draw-outline-empty"><Hexagon size={28}/><p>从第一个顶点开始</p><span>点击画布，或输入精确坐标</span></div>:<div className="draw-contour-list">{paths.map((path,index)=><div key={path.id} className={`draw-contour-item ${path.id===selectedPathId?'is-selected':''}`}>
+              <button className="draw-contour-select" onClick={()=>{setSelectedPathId(path.id);setSelectedVertexIdx(null);}} aria-pressed={path.id===selectedPathId}><span className={`draw-contour-symbol ${path.isHole?'is-hole':''}`}><Hexagon size={17}/></span><span><strong>轮廓 {index+1}</strong><small>{path.vertices.length} 个顶点 · {path.isClosed?'已闭合':'绘制中'}</small></span></button>
+              <button className={`draw-kind ${path.isHole?'is-hole':''}`} onClick={()=>toggleHole(path.id)} aria-label={`轮廓 ${index+1} 切换实体或内孔`}>{path.isHole?'内孔':'实体'}</button><button className="draw-icon" onClick={()=>deletePath(path.id)} aria-label={`删除轮廓 ${index+1}`}><Trash2 size={13}/></button>
+            </div>)}</div>}
+          </section>
+          {selectedPath&&<section className="draw-vertices-section"><div className="draw-section-heading"><h3><Edit3 size={15}/>顶点坐标</h3><span>{selectedPath.vertices.length} 点</span></div><div className="draw-vertex-list">{selectedPath.vertices.map((v,i)=><div key={i} className={`draw-vertex-row ${selectedVertexIdx===i?'is-selected':''}`} onClick={()=>setSelectedVertexIdx(i)}><span>P{i+1}</span><NumericInput compact domain="signed" label={`P${i+1} X`} value={v.x} onChange={x=>updateVertex(selectedPath.id,i,x,v.y)}/><NumericInput compact domain="signed" label={`P${i+1} Y`} value={v.y} onChange={y=>updateVertex(selectedPath.id,i,v.x,y)}/><button className="draw-icon" onClick={()=>deleteVertex(selectedPath.id,i)} aria-label={`删除顶点 P${i+1}`}><X size={13}/></button></div>)}</div></section>}
+          <div className="draw-inspector-note"><Info size={14}/><p>外轮廓之间保持分离，内孔应完全位于实体内部。截面特性按闭合多边形积分。</p></div>
+        </aside>
+        <main className="draw-main" ref={containerRef}>
+          <div className="draw-toolbar">
+            <div className="draw-tool-switch" role="group" aria-label="绘图工具">{([{id:'select',label:'选择',key:'S',Icon:MousePointer},{id:'draw',label:'绘制',key:'D',Icon:Edit3},{id:'pan',label:'平移',key:'P',Icon:Move}] as const).map(t=><button key={t.id} autoFocus={t.id==='draw'} onClick={()=>setTool(t.id)} aria-pressed={tool===t.id} title={`${t.label}工具 (${t.key})`}><t.Icon size={15}/><span>{t.label}</span><kbd>{t.key}</kbd></button>)}</div>
+            <div className="draw-snap-settings"><label><input type="checkbox" checked={snapToGrid} onChange={e=>setSnapToGrid(e.target.checked)}/>网格吸附</label><select aria-label="网格间距" value={gridSize} onChange={e=>setGridSize(Number(e.target.value))}><option value={5}>5 mm</option><option value={10}>10 mm</option><option value={20}>20 mm</option></select></div>
+            <div className="draw-cursor-position"><Crosshair size={14}/><span>X <b>{mousePos.x.toFixed(1)}</b></span><span>Y <b>{mousePos.y.toFixed(1)}</b></span><small>mm</small></div>
           </div>
-
-          {/* 轮廓管理 */}
-          <div className="bg-slate-700 p-3 rounded-lg">
-            <h4 className="font-semibold text-slate-200 mb-2 flex items-center gap-2 text-sm">
-              <Hexagon className="w-3.5 h-3.5 text-indigo-400" /> 轮廓管理
-            </h4>
-            <label className="flex items-center gap-2 cursor-pointer mb-2">
-              <input
-                type="checkbox"
-                checked={isHoleMode}
-                onChange={(e) => setIsHoleMode(e.target.checked)}
-                className="rounded text-indigo-500 bg-slate-600 border-slate-500 w-3.5 h-3.5"
-              />
-              <span className="text-xs text-slate-300">内孔模式</span>
-            </label>
-            <button
-              onClick={createPath}
-              className="w-full px-3 py-1.5 bg-slate-600 text-slate-200 rounded text-xs font-medium hover:bg-slate-500 transition-colors"
-            >
-              + 新建轮廓
-            </button>
-          </div>
-
-          {/* 轮廓列表 */}
-          <div className="bg-slate-700 p-3 rounded-lg">
-            <h4 className="font-semibold text-slate-200 mb-2 text-sm">轮廓 ({paths.length})</h4>
-            {paths.length === 0 ? (
-              <div className="text-center py-4 text-slate-400 text-xs">
-                点击画布或输入坐标添加顶点
-              </div>
-            ) : (
-              <div className="space-y-1.5 max-h-36 overflow-y-auto">
-                {paths.map((path, idx) => (
-                  <div 
-                    key={path.id}
-                    onClick={() => { setSelectedPathId(path.id); setSelectedVertexIdx(null); }}
-                    className={`p-2 rounded cursor-pointer transition-all ${
-                      path.id === selectedPathId 
-                        ? 'bg-indigo-600/30 border border-indigo-500' 
-                        : 'bg-slate-600 hover:bg-slate-500 border border-transparent'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium text-xs text-slate-200">
-                        轮廓 {idx + 1}
-                        {path.isHole && <span className="text-red-400 ml-1">[孔]</span>}
-                      </span>
-                      <div className="flex items-center gap-1">
-                        {path.isClosed && (
-                          <span className="text-green-400 text-[10px]">
-                            {calculatePolygonArea(path.vertices).toFixed(0)}mm²
-                          </span>
-                        )}
-                        <button
-                          onClick={(e) => { e.stopPropagation(); toggleHole(path.id); }}
-                          className={`px-1.5 py-0.5 rounded text-[10px] ${path.isHole ? 'bg-red-500/30 text-red-300' : 'bg-slate-500 text-slate-300'}`}
-                        >
-                          {path.isHole ? '孔' : '实'}
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); deletePath(path.id); }}
-                          className="p-0.5 rounded bg-red-500/30 text-red-300 hover:bg-red-500/50"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      </div>
-                    </div>
-                    <div className="text-[10px] text-slate-400 mt-0.5">
-                      {path.vertices.length} 点
-                      {!path.isClosed && <span className="text-amber-400 ml-1">[未闭合]</span>}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* 顶点列表 */}
-          {selectedPath && (
-            <div className="bg-amber-900/30 p-3 rounded-lg border border-amber-700/50">
-              <h4 className="font-semibold text-amber-300 mb-2 flex items-center gap-2 text-sm">
-                <Edit3 className="w-3.5 h-3.5" /> 顶点编辑
-              </h4>
-              <div className="space-y-1 max-h-40 overflow-y-auto">
-                {selectedPath.vertices.map((v, idx) => (
-                  <div 
-                    key={idx}
-                    className={`flex items-center gap-1.5 p-1.5 rounded ${
-                      selectedVertexIdx === idx ? 'bg-amber-600/30' : 'bg-slate-700 hover:bg-slate-600'
-                    }`}
-                  >
-                    <span className="w-6 text-amber-400 font-medium text-xs">P{idx + 1}</span>
-                    <input
-                      type="number"
-                      value={v.x}
-                      onChange={(e) => updateVertex(selectedPath.id, idx, parseFloat(e.target.value) || 0, v.y)}
-                      className="w-14 px-1.5 py-0.5 bg-slate-600 border border-slate-500 rounded text-xs text-white"
-                      onClick={() => setSelectedVertexIdx(idx)}
-                    />
-                    <input
-                      type="number"
-                      value={v.y}
-                      onChange={(e) => updateVertex(selectedPath.id, idx, v.x, parseFloat(e.target.value) || 0)}
-                      className="w-14 px-1.5 py-0.5 bg-slate-600 border border-slate-500 rounded text-xs text-white"
-                      onClick={() => setSelectedVertexIdx(idx)}
-                    />
-                    <button
-                      onClick={() => deleteVertex(selectedPath.id, idx)}
-                      className="p-0.5 rounded bg-red-500/30 text-red-300 hover:bg-red-500/50"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* 计算结果摘要 */}
-          {sectionResult.A > 0 && (
-            <div className="bg-green-900/30 p-3 rounded-lg border border-green-700/50">
-              <h4 className="font-semibold text-green-300 mb-2 text-sm">计算结果</h4>
-              <div className="grid grid-cols-2 gap-1.5 text-xs">
-                <div className="bg-slate-700 p-1.5 rounded">
-                  <div className="text-slate-400 text-[10px]">面积 A</div>
-                  <div className="text-green-400 font-mono">{sectionResult.A.toFixed(1)}</div>
-                </div>
-                <div className="bg-slate-700 p-1.5 rounded">
-                  <div className="text-slate-400 text-[10px]">Ix</div>
-                  <div className="text-green-400 font-mono">{sectionResult.Ix.toFixed(0)}</div>
-                </div>
-                <div className="bg-slate-700 p-1.5 rounded">
-                  <div className="text-slate-400 text-[10px]">Iy</div>
-                  <div className="text-green-400 font-mono">{sectionResult.Iy.toFixed(0)}</div>
-                </div>
-                <div className="bg-slate-700 p-1.5 rounded">
-                  <div className="text-slate-400 text-[10px]">形心</div>
-                  <div className="text-green-400 font-mono text-[10px]">({centroidX.toFixed(1)},{centroidY.toFixed(1)})</div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-          {/* 中间绘图区 */}
-          <div className="flex-1 flex flex-col bg-slate-800" ref={containerRef}>
-            {/* CAD 工具栏 */}
-            <div className="flex items-center justify-between px-4 py-2 bg-slate-700 border-b border-slate-600">
-              <div className="flex items-center gap-1">
-                {/* 工具选择 */}
-                <div className="flex items-center bg-slate-600 rounded-lg p-0.5 mr-2">
-                  <button
-                    onClick={() => setTool('select')}
-                    className={`p-2 rounded-md transition-colors ${tool === 'select' ? 'bg-indigo-500 text-white' : 'text-slate-300 hover:text-white'}`}
-                    title="选择工具 (S)"
-                  >
-                    <MousePointer className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => setTool('draw')}
-                    className={`p-2 rounded-md transition-colors ${tool === 'draw' ? 'bg-indigo-500 text-white' : 'text-slate-300 hover:text-white'}`}
-                    title="绘制工具 (D) - 点击画布添加顶点"
-                  >
-                    <Edit3 className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => setTool('pan')}
-                    className={`p-2 rounded-md transition-colors ${tool === 'pan' ? 'bg-indigo-500 text-white' : 'text-slate-300 hover:text-white'}`}
-                    title="平移工具 (P) - 拖拽移动画布"
-                  >
-                    <Move className="w-4 h-4" />
-                  </button>
-                </div>
-
-                {/* 缩放控制 */}
-                <div className="flex items-center gap-1 bg-slate-600 rounded-lg p-0.5">
-                  <button
-                    onClick={() => handleZoom(-0.2)}
-                    className="p-2 text-slate-300 hover:text-white rounded-md transition-colors"
-                    title="缩小"
-                  >
-                    <ZoomOut className="w-4 h-4" />
-                  </button>
-                  <span className="text-xs text-slate-300 w-14 text-center font-mono">
-                    {(zoom * 100).toFixed(0)}%
-                  </span>
-                  <button
-                    onClick={() => handleZoom(0.2)}
-                    className="p-2 text-slate-300 hover:text-white rounded-md transition-colors"
-                    title="放大"
-                  >
-                    <ZoomIn className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={resetView}
-                    className="p-2 text-slate-300 hover:text-white rounded-md transition-colors"
-                    title="重置视图"
-                  >
-                    <ResetIcon className="w-4 h-4" />
-                  </button>
-                </div>
-
-                {/* 网格吸附 */}
-                <div className="flex items-center gap-2 ml-2 bg-slate-600 rounded-lg px-3 py-1">
-                  <label className="flex items-center gap-1.5 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={snapToGrid}
-                      onChange={(e) => setSnapToGrid(e.target.checked)}
-                      className="rounded text-indigo-500 w-3 h-3"
-                    />
-                    <span className="text-xs text-slate-300">吸附网格</span>
-                  </label>
-                  <select
-                    value={gridSize}
-                    onChange={(e) => setGridSize(Number(e.target.value))}
-                    className="bg-slate-700 text-slate-300 text-xs rounded px-1 py-0.5 border-none"
-                  >
-                    <option value={5}>5mm</option>
-                    <option value={10}>10mm</option>
-                    <option value={20}>20mm</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* 坐标显示 */}
-              <div className="flex items-center gap-4 text-xs">
-                <div className="flex items-center gap-2 text-slate-300">
-                  <Crosshair className="w-4 h-4" />
-                  <span className="font-mono">X: {mousePos.x.toFixed(1)}</span>
-                  <span className="font-mono">Y: {mousePos.y.toFixed(1)}</span>
-                </div>
-                {currentDrawingPath && (
-                  <div className="text-amber-400 text-xs">
-                    绘制中: {currentDrawingPath.vertices.length} 点 | 双击或回车闭合 | ESC取消
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* 画布 */}
-            <div className="flex-1 overflow-hidden relative">
+          <div className="draw-canvas">
               <svg 
                 ref={svgRef}
+                role="img" aria-label="截面绘图画布，坐标单位毫米"
                 className={`absolute inset-0 w-full h-full ${tool === 'draw' ? 'cursor-crosshair' : tool === 'pan' ? 'cursor-grab' : 'cursor-default'} ${isPanning ? 'cursor-grabbing' : ''}`}
                 viewBox={`0 0 ${svgWidth} ${svgHeight}`} 
                 preserveAspectRatio="xMidYMid slice"
-                onWheel={handleWheel}
                 onMouseDown={handleMouseDown}
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
@@ -1058,7 +801,7 @@ const SectionDrawModal: React.FC<{
                 onDoubleClick={handleDoubleClick}
               >
                 {/* 背景 */}
-                <rect width="100%" height="100%" fill="#1e293b" />
+                <rect width="100%" height="100%" fill="#0b1723" />
                 
                 {/* 动态网格 */}
                 <defs>
@@ -1069,7 +812,7 @@ const SectionDrawModal: React.FC<{
                     patternUnits="userSpaceOnUse"
                     patternTransform={`translate(${originX % (gridSize * scale)}, ${originY % (gridSize * scale)})`}
                   >
-                    <path d={`M ${gridSize * scale} 0 L 0 0 0 ${gridSize * scale}`} fill="none" stroke="#334155" strokeWidth="0.5"/>
+                    <path d={`M ${gridSize * scale} 0 L 0 0 0 ${gridSize * scale}`} fill="none" stroke="#1a3040" strokeWidth="0.6"/>
                   </pattern>
                   <pattern 
                     id="cadGridLarge" 
@@ -1078,7 +821,7 @@ const SectionDrawModal: React.FC<{
                     patternUnits="userSpaceOnUse"
                     patternTransform={`translate(${originX % (gridSize * scale * 5)}, ${originY % (gridSize * scale * 5)})`}
                   >
-                    <path d={`M ${gridSize * scale * 5} 0 L 0 0 0 ${gridSize * scale * 5}`} fill="none" stroke="#475569" strokeWidth="1"/>
+                    <path d={`M ${gridSize * scale * 5} 0 L 0 0 0 ${gridSize * scale * 5}`} fill="none" stroke="#274250" strokeWidth="0.8"/>
                   </pattern>
                 </defs>
                 <rect width="100%" height="100%" fill="url(#cadGridSmall)" />
@@ -1090,56 +833,34 @@ const SectionDrawModal: React.FC<{
                 
                 {/* 原点标记 */}
                 <circle cx={originX} cy={originY} r="4" fill="#64748b" />
-                <text x={originX + 8} y={originY - 8} fill="#94a3b8" fontSize="10">O</text>
+                <text x={originX + 8} y={originY - 8} fill="#94a3b8" fontSize="16">O</text>
 
-                {/* 动态刻度 */}
-                {Array.from({ length: Math.ceil(200 / gridSize) }, (_, i) => (i - Math.ceil(100 / gridSize)) * gridSize).map(v => {
-                  if (v === 0) return null;
-                  const svgX = toSvgX(v);
-                  const svgY = toSvgY(v);
-                  if (svgX < 0 || svgX > svgWidth) return null;
-                  return (
-                    <g key={`tick-${v}`}>
-                      {svgX > 0 && svgX < svgWidth && (
-                        <>
-                          <line x1={svgX} y1={originY - 3} x2={svgX} y2={originY + 3} stroke="#64748b" strokeWidth="1" />
-                          {v % (gridSize * 2) === 0 && (
-                            <text x={svgX} y={originY + 14} fill="#64748b" fontSize="9" textAnchor="middle">{v}</text>
-                          )}
-                        </>
-                      )}
-                      {svgY > 0 && svgY < svgHeight && (
-                        <>
-                          <line x1={originX - 3} y1={svgY} x2={originX + 3} y2={svgY} stroke="#64748b" strokeWidth="1" />
-                          {v % (gridSize * 2) === 0 && (
-                            <text x={originX - 8} y={svgY + 3} fill="#64748b" fontSize="9" textAnchor="end">{v}</text>
-                          )}
-                        </>
-                      )}
-                    </g>
-                  );
-                })}
+                {/* 刻度随视图范围更新，坐标始终为毫米。 */}
+                {xTicks.filter(v=>v!==0).map(v=><g key={`x-${v}`}><line x1={toSvgX(v)} y1={originY-4} x2={toSvgX(v)} y2={originY+4} stroke="#486376"/><text x={toSvgX(v)} y={originY+23} fill="#6d879b" fontSize="15" textAnchor="middle">{v}</text></g>)}
+                {yTicks.filter(v=>v!==0).map(v=><g key={`y-${v}`}><line x1={originX-4} y1={toSvgY(v)} x2={originX+4} y2={toSvgY(v)} stroke="#486376"/><text x={originX-12} y={toSvgY(v)+5} fill="#6d879b" fontSize="15" textAnchor="end">{v}</text></g>)}
 
                 {/* 绘制轮廓 */}
-                {paths.map(path => {
+                {[...paths].sort((a,b)=>Number(a.isHole)-Number(b.isHole)).map(path => {
                   const isSelected = path.id === selectedPathId;
-                  const fillColor = path.isHole ? 'rgba(239, 68, 68, 0.3)' : 'rgba(99, 102, 241, 0.4)';
-                  const strokeColor = path.isHole ? '#f87171' : '#818cf8';
+                  const fillColor = path.isHole ? 'rgba(11, 23, 35, 0.95)' : 'rgba(102, 190, 231, 0.13)';
+                  const strokeColor = path.isHole ? '#edab93' : '#80c8ed';
                   const points = path.vertices.map(v => `${toSvgX(v.x)},${toSvgY(v.y)}`).join(' ');
                   
                   return (
                     <g key={path.id}>
                       {path.isClosed && path.vertices.length >= 3 && (
                         <polygon
+                          onClick={e=>{if(tool==='select'){e.stopPropagation();setSelectedPathId(path.id);setSelectedVertexIdx(null);}}}
+                          style={{cursor:tool==='select'?'pointer':undefined}}
                           points={points}
                           fill={fillColor}
-                          stroke={isSelected ? '#fbbf24' : strokeColor}
+                          stroke={isSelected ? '#82d9c6' : strokeColor}
                           strokeWidth={isSelected ? 3 : 2}
                           strokeDasharray={path.isHole ? '8,4' : 'none'}
                         />
                       )}
                       {!path.isClosed && path.vertices.length >= 2 && (
-                        <polyline points={points} fill="none" stroke={isSelected ? '#fbbf24' : strokeColor} strokeWidth={2} strokeLinecap="round" />
+                        <polyline points={points} fill="none" stroke={isSelected ? '#82d9c6' : strokeColor} strokeWidth={2} strokeLinecap="round" />
                       )}
                       
                       {/* 绘制中的预览线 */}
@@ -1149,7 +870,7 @@ const SectionDrawModal: React.FC<{
                           y1={toSvgY(path.vertices[path.vertices.length - 1].y)}
                           x2={toSvgX(mousePos.x)}
                           y2={toSvgY(mousePos.y)}
-                          stroke="#fbbf24"
+                          stroke="#82d9c6"
                           strokeWidth="1.5"
                           strokeDasharray="5,5"
                         />
@@ -1162,11 +883,12 @@ const SectionDrawModal: React.FC<{
                             cx={toSvgX(v.x)}
                             cy={toSvgY(v.y)}
                             r={isSelected && selectedVertexIdx === idx ? 8 : 5}
-                            fill={isSelected && selectedVertexIdx === idx ? '#fbbf24' : (path.isHole ? '#f87171' : '#818cf8')}
+                            fill={isSelected && selectedVertexIdx === idx ? '#82d9c6' : (path.isHole ? '#edab93' : '#80c8ed')}
                             stroke="#fff"
                             strokeWidth="2"
                             style={{ cursor: tool === 'select' ? 'pointer' : 'default' }}
                             onClick={(e) => {
+                              if(tool==='draw'&&isSelected&&idx===0&&!path.isClosed&&path.vertices.length>=3){e.stopPropagation();closePath();return;}
                               if (tool === 'select') {
                                 e.stopPropagation();
                                 setSelectedPathId(path.id);
@@ -1175,7 +897,7 @@ const SectionDrawModal: React.FC<{
                             }}
                           />
                           {isSelected && (
-                            <text x={toSvgX(v.x) + 10} y={toSvgY(v.y) - 8} fill="#94a3b8" fontSize="10" fontWeight="500">
+                            <text x={toSvgX(v.x) + 10} y={toSvgY(v.y) - 8} fill="#94a3b8" fontSize="16" fontWeight="500">
                               P{idx + 1}
                             </text>
                           )}
@@ -1191,22 +913,27 @@ const SectionDrawModal: React.FC<{
                     <line x1={toSvgX(centroidX) - 10} y1={toSvgY(centroidY)} x2={toSvgX(centroidX) + 10} y2={toSvgY(centroidY)} stroke="#10b981" strokeWidth="2" />
                     <line x1={toSvgX(centroidX)} y1={toSvgY(centroidY) - 10} x2={toSvgX(centroidX)} y2={toSvgY(centroidY) + 10} stroke="#10b981" strokeWidth="2" />
                     <circle cx={toSvgX(centroidX)} cy={toSvgY(centroidY)} r="6" fill="#10b981" stroke="#fff" strokeWidth="2" />
-                    <text x={toSvgX(centroidX) + 12} y={toSvgY(centroidY) - 10} fill="#10b981" fontSize="11" fontWeight="bold">C</text>
+                    <text x={toSvgX(centroidX) + 12} y={toSvgY(centroidY) - 10} fill="#10b981" fontSize="16" fontWeight="bold">C</text>
                   </g>
                 )}
 
                 {/* 鼠标位置十字线 */}
                 {tool === 'draw' && (
                   <g>
-                    <line x1={toSvgX(mousePos.x)} y1="0" x2={toSvgX(mousePos.x)} y2={svgHeight} stroke="#fbbf24" strokeWidth="0.5" strokeDasharray="4,4" opacity="0.5" />
-                    <line x1="0" y1={toSvgY(mousePos.y)} x2={svgWidth} y2={toSvgY(mousePos.y)} stroke="#fbbf24" strokeWidth="0.5" strokeDasharray="4,4" opacity="0.5" />
-                    <circle cx={toSvgX(mousePos.x)} cy={toSvgY(mousePos.y)} r="5" fill="none" stroke="#fbbf24" strokeWidth="2" />
+                    <line x1={toSvgX(mousePos.x)} y1="0" x2={toSvgX(mousePos.x)} y2={svgHeight} stroke="#82d9c6" strokeWidth="0.5" strokeDasharray="4,4" opacity="0.5" />
+                    <line x1="0" y1={toSvgY(mousePos.y)} x2={svgWidth} y2={toSvgY(mousePos.y)} stroke="#82d9c6" strokeWidth="0.5" strokeDasharray="4,4" opacity="0.5" />
+                    <circle cx={toSvgX(mousePos.x)} cy={toSvgY(mousePos.y)} r="5" fill="none" stroke="#82d9c6" strokeWidth="2" />
                   </g>
                 )}
               </svg>
-            </div>
+            {!pointCount&&<div className="draw-canvas-empty"><span><Hexagon size={42}/></span><h3>绘制你的截面</h3><p>沿边界依次落点，回到起点即可闭合</p><small>也可以在左侧输入 X / Y 坐标精确绘制</small></div>}
+            <div className="draw-canvas-caption"><span className={tool==='draw'?'is-drawing':''}/>{tool==='draw'?(currentDrawingPath?`轮廓绘制中 · ${currentDrawingPath.vertices.length} 点`:'点击画布添加顶点'):tool==='select'?'点击轮廓或顶点，编辑精确坐标':'拖动画布平移视图'}</div>
+            <div className="draw-zoom-controls"><button className="draw-icon" onClick={()=>handleZoom(-0.2)} aria-label="缩小画布"><ZoomOut size={16}/></button><span>{Math.round(zoom*100)}%</span><button className="draw-icon" onClick={()=>handleZoom(0.2)} aria-label="放大画布"><ZoomIn size={16}/></button><i/><button className="draw-icon" onClick={fitDrawing} aria-label="适合画布" title="适合画布"><Crosshair size={16}/></button><button className="draw-icon" onClick={resetView} aria-label="重置画布" title="重置画布"><ResetIcon size={16}/></button></div>
+            <div className="draw-canvas-help"><span>Enter 闭合</span><span>Esc 结束工具</span><span>滚轮缩放 · 中键平移</span></div>
           </div>
-
+          <footer className="draw-results" aria-label="截面实时计算结果"><div className="draw-results-heading"><Calculator size={18}/><span>截面特性<small>{unfinished?'待闭合':'实时计算'}</small></span></div><div><span>净面积 A</span><strong>{sectionResult.A>0?formatValue(sectionResult.A):'—'}<small>mm²</small></strong></div><div><span>惯性矩 Iₓ</span><strong>{sectionResult.A>0?formatValue(sectionResult.Ix):'—'}<small>mm⁴</small></strong></div><div><span>惯性矩 Iᵧ</span><strong>{sectionResult.A>0?formatValue(sectionResult.Iy):'—'}<small>mm⁴</small></strong></div><div><span>形心 Cₓ / Cᵧ</span><strong>{sectionResult.A>0?`${formatValue(centroidX)} / ${formatValue(centroidY)}`:'—'}<small>mm</small></strong></div></footer>
+          <div className="draw-statusbar"><span>{saveHint}</span><span>{paths.length} 轮廓 <i/> {pointCount} 顶点</span></div>
+        </main>
       </div>
     </div>
   );
@@ -1630,417 +1357,15 @@ const CalculationSteps: React.FC<{
 };
 
 // 主组件
-export const SectionModule = ({ model, onModelChange }: { model: SectionModel; onModelChange: (model: SectionModel) => void }) => {
-  const sectionType = model.sectionType;
-  const unitSystem = model.displayUnit;
-  const params = model.parameters;
-  const drawPaths = model.paths;
-  const setUnitSystem = (unit: UnitSystem) => onModelChange({ ...model, displayUnit: unit });
-  const setParams = (update: React.SetStateAction<SectionParams>) => onModelChange({ ...model, parameters: typeof update === 'function' ? update(params) : update });
-  const setDrawPaths = (update: React.SetStateAction<PolygonPath[]>) => onModelChange({ ...model, paths: typeof update === 'function' ? update(drawPaths) : update });
-  const [selectedPathId, setSelectedPathId] = useState<string | null>(null);
-  const [selectedVertexIdx, setSelectedVertexIdx] = useState<number | null>(null);
-  const [isDrawModalOpen, setIsDrawModalOpen] = useState(false);
-
-  // 切换截面类型时重置参数
-  const handleTypeChange = (type: SectionType) => {
-    const config = SECTION_CONFIGS[type];
-    const newParams: SectionParams = {};
-    config.params.forEach(p => { newParams[p.key] = p.default; });
-    onModelChange({ ...model, sectionType: type, parameters: newParams });
-    // 如果选择绘制截面，打开模态框
-    if (type === 'draw' && drawPaths.length === 0) {
-      setIsDrawModalOpen(true);
-    }
+export const SectionModule = ({model,onModelChange}:{model:SectionModel;onModelChange:(model:SectionModel)=>void})=>{
+  const [isDrawModalOpen,setIsDrawModalOpen]=useState(false);
+  const config=SECTION_TOOL_CONFIGS[model.sectionType];
+  const rawResult=useMemo(()=>model.sectionType==='draw'?calculatePolygonSection(model.paths):config.calculate(model.parameters),[model.sectionType,model.parameters,model.paths]);
+  const handleTypeChange=(type:SectionType)=>{
+    onModelChange({...model,sectionType:type,parameters:Object.fromEntries(SECTION_TOOL_CONFIGS[type].params.map(p=>[p.key,p.default]))});
+    if(type==='draw'&&!model.paths.length)setIsDrawModalOpen(true);
   };
-
-  // 保存绘制结果
-  const handleSaveDrawing = (paths: PolygonPath[], result: SectionResult) => {
-    setDrawPaths(paths);
-  };
-
-  // 计算结果（内部始终用mm计算）
-  const rawResult = useMemo(() => {
-    if (sectionType === 'draw') {
-      return calculatePolygonSection(drawPaths);
-    }
-    const config = SECTION_CONFIGS[sectionType];
-    return config.calculate(params);
-  }, [sectionType, params, drawPaths]);
-
-  // 转换后的结果
-  const unitConfig = UNIT_CONFIG[unitSystem];
-  const result = useMemo(() => ({
-    A: rawResult.A * unitConfig.areaFactor,
-    Ix: rawResult.Ix * unitConfig.inertiaFactor,
-    Iy: rawResult.Iy * unitConfig.inertiaFactor,
-    Ip: rawResult.Ip * unitConfig.inertiaFactor,
-    ix: rawResult.ix * unitConfig.lengthFactor,
-    iy: rawResult.iy * unitConfig.lengthFactor,
-    Wx: rawResult.Wx * unitConfig.modulusFactor,
-    Wy: rawResult.Wy * unitConfig.modulusFactor,
-  }), [rawResult, unitConfig]);
-
-  const config = SECTION_CONFIGS[sectionType];
-
-  return (
-    <div className="flex flex-col h-full space-y-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* 左侧：截面类型选择 */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <h2 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
-              <Square className="w-5 h-5" style={{ color: 'var(--color-2)' }} />
-              截面类型
-            </h2>
-            <div className="grid grid-cols-2 gap-2">
-              {(Object.keys(SECTION_CONFIGS) as SectionType[]).map((type) => {
-                const cfg = SECTION_CONFIGS[type];
-                const Icon = cfg.icon;
-                return (
-                  <button
-                    key={type}
-                    onClick={() => handleTypeChange(type)}
-                    className={`p-3 rounded-lg border transition-all duration-200 text-left
-                      ${sectionType === type
-                        ? "border-indigo-500 bg-indigo-50 text-indigo-700"
-                        : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 hover:border-slate-300"
-                      }`}
-                  >
-                    <Icon className={`w-4 h-4 mb-1 ${sectionType === type ? 'text-indigo-500' : 'text-slate-400'}`} />
-                    <span className="text-xs font-medium block">{cfg.name}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* 截面说明 */}
-            <div className="mt-4 p-3 bg-slate-50 rounded-lg border border-slate-200">
-              <div className="flex items-start gap-2">
-                <Info className="w-4 h-4 text-indigo-400 mt-0.5 flex-shrink-0" />
-                <p className="text-sm text-slate-400">{config.description}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* 中间：参数输入和截面预览 */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <h2 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
-              <RectangleHorizontal className="w-5 h-5" style={{ color: 'var(--color-2)' }} />
-              {sectionType === 'draw' ? '截面绘制' : '截面参数'}
-            </h2>
-
-            {sectionType === 'draw' ? (
-              /* 绘制模式 - 显示已保存的截面或打开绘制器按钮 */
-              <div className="space-y-4">
-                {drawPaths.length > 0 ? (
-                  (() => {
-                    // 计算截面的边界框
-                    const allVertices = drawPaths.flatMap(p => p.vertices);
-                    const minX = Math.min(...allVertices.map(v => v.x));
-                    const maxX = Math.max(...allVertices.map(v => v.x));
-                    const minY = Math.min(...allVertices.map(v => v.y));
-                    const maxY = Math.max(...allVertices.map(v => v.y));
-                    const width = maxX - minX;
-                    const height = maxY - minY;
-                    const centerX = (minX + maxX) / 2;
-                    const centerY = (minY + maxY) / 2;
-                    
-                    // 计算缩放比例，使截面适应预览区域（留出边距用于标注）
-                    const svgSize = 200;
-                    const margin = 40;
-                    const availableSize = svgSize - margin * 2;
-                    const scaleX = width > 0 ? availableSize / width : 1;
-                    const scaleY = height > 0 ? availableSize / height : 1;
-                    const previewScale = Math.min(scaleX, scaleY, 2); // 最大缩放2倍
-                    
-                    // 坐标转换函数
-                    const toSvgX = (x: number) => svgSize / 2 + (x - centerX) * previewScale;
-                    const toSvgY = (y: number) => svgSize / 2 - (y - centerY) * previewScale;
-                    
-                    return (
-                      <>
-                        {/* 已保存的截面预览 */}
-                        <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
-                          <svg viewBox={`0 0 ${svgSize} ${svgSize}`} className="w-full max-w-[200px] mx-auto" style={{ height: '180px' }}>
-                            <defs>
-                              <pattern id="previewGrid" width="20" height="20" patternUnits="userSpaceOnUse">
-                                <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#f1f5f9" strokeWidth="1"/>
-                              </pattern>
-                            </defs>
-                            <rect width="100%" height="100%" fill="url(#previewGrid)" />
-                            
-                            {/* 坐标轴 */}
-                            <line x1="0" y1={toSvgY(0)} x2={svgSize} y2={toSvgY(0)} stroke="#cbd5e1" strokeWidth="1" />
-                            <line x1={toSvgX(0)} y1="0" x2={toSvgX(0)} y2={svgSize} stroke="#cbd5e1" strokeWidth="1" />
-                            
-                            {/* 绘制截面 */}
-                            {drawPaths.map(path => {
-                              const fillColor = path.isHole ? 'rgba(239, 68, 68, 0.2)' : 'rgba(99, 102, 241, 0.3)';
-                              const strokeColor = path.isHole ? '#ef4444' : '#6366f1';
-                              const points = path.vertices.map(v => `${toSvgX(v.x)},${toSvgY(v.y)}`).join(' ');
-                              return path.isClosed && path.vertices.length >= 3 ? (
-                                <polygon
-                                  key={path.id}
-                                  points={points}
-                                  fill={fillColor}
-                                  stroke={strokeColor}
-                                  strokeWidth="2"
-                                  strokeDasharray={path.isHole ? '4,2' : 'none'}
-                                />
-                              ) : null;
-                            })}
-                            
-                            {/* 宽度标注 */}
-                            <line 
-                              x1={toSvgX(minX)} y1={toSvgY(minY) + 15} 
-                              x2={toSvgX(maxX)} y2={toSvgY(minY) + 15} 
-                              stroke="#94a3b8" strokeWidth="1" 
-                            />
-                            <line x1={toSvgX(minX)} y1={toSvgY(minY) + 10} x2={toSvgX(minX)} y2={toSvgY(minY) + 20} stroke="#94a3b8" strokeWidth="1" />
-                            <line x1={toSvgX(maxX)} y1={toSvgY(minY) + 10} x2={toSvgX(maxX)} y2={toSvgY(minY) + 20} stroke="#94a3b8" strokeWidth="1" />
-                            <text 
-                              x={(toSvgX(minX) + toSvgX(maxX)) / 2} 
-                              y={toSvgY(minY) + 28} 
-                              textAnchor="middle" 
-                              fill="#64748b" 
-                              fontSize="10"
-                            >
-                              {width.toFixed(1)} mm
-                            </text>
-                            
-                            {/* 高度标注 */}
-                            <line 
-                              x1={toSvgX(maxX) + 15} y1={toSvgY(maxY)} 
-                              x2={toSvgX(maxX) + 15} y2={toSvgY(minY)} 
-                              stroke="#94a3b8" strokeWidth="1" 
-                            />
-                            <line x1={toSvgX(maxX) + 10} y1={toSvgY(maxY)} x2={toSvgX(maxX) + 20} y2={toSvgY(maxY)} stroke="#94a3b8" strokeWidth="1" />
-                            <line x1={toSvgX(maxX) + 10} y1={toSvgY(minY)} x2={toSvgX(maxX) + 20} y2={toSvgY(minY)} stroke="#94a3b8" strokeWidth="1" />
-                            <text 
-                              x={toSvgX(maxX) + 25} 
-                              y={(toSvgY(maxY) + toSvgY(minY)) / 2 + 3} 
-                              fill="#64748b" 
-                              fontSize="10"
-                            >
-                              {height.toFixed(1)}
-                            </text>
-                            
-                            {/* 形心标记 */}
-                            {rawResult.A > 0 && (() => {
-                              const closedPaths = drawPaths.filter(p => p.isClosed && p.vertices.length >= 3);
-                              let sumAx = 0, sumAy = 0, totalA = 0;
-                              closedPaths.forEach(path => {
-                                const A = calculatePolygonArea(path.vertices);
-                                const { cx, cy } = calculatePolygonCentroid(path.vertices);
-                                const sign = path.isHole ? -1 : 1;
-                                totalA += sign * A;
-                                sumAx += sign * A * cx;
-                                sumAy += sign * A * cy;
-                              });
-                              if (totalA > 0) {
-                                const cx = sumAx / totalA;
-                                const cy = sumAy / totalA;
-                                return (
-                                  <g>
-                                    <circle cx={toSvgX(cx)} cy={toSvgY(cy)} r="5" fill="#10b981" stroke="white" strokeWidth="1.5" />
-                                    <text x={toSvgX(cx) + 8} y={toSvgY(cy) - 6} fill="#10b981" fontSize="9" fontWeight="bold">C</text>
-                                  </g>
-                                );
-                              }
-                              return null;
-                            })()}
-                          </svg>
-                        </div>
-                        
-                        {/* 截面信息 + 操作按钮 */}
-                        <div className="flex items-center justify-between gap-3 text-xs">
-                          <div className="flex items-center gap-3">
-                            <span className="text-slate-500">
-                              尺寸: <span className="text-slate-700 font-medium">{width.toFixed(1)}×{height.toFixed(1)}</span> mm
-                            </span>
-                            <span className="text-slate-500">
-                              面积: <span className="text-slate-700 font-medium">{rawResult.A.toFixed(1)}</span> mm²
-                            </span>
-                          </div>
-                          <div className="flex gap-1">
-                            <button
-                              onClick={() => setIsDrawModalOpen(true)}
-                              className="px-3 py-1.5 rounded bg-indigo-600 hover:bg-indigo-700 text-white transition-colors flex items-center gap-1"
-                            >
-                              <Edit3 className="w-3 h-3" />
-                              编辑
-                            </button>
-                            <button
-                              onClick={() => { setDrawPaths([]); }}
-                              className="px-2 py-1.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          </div>
-                        </div>
-                      </>
-                    );
-                  })()
-                ) : (
-                  /* 未绘制时显示引导 */
-                  <div className="text-center py-8">
-                    <Hexagon className="w-12 h-12 mx-auto text-slate-300 mb-3" />
-                    <p className="text-sm text-slate-400 mb-4">
-                      绘制任意多边形截面，支持内孔
-                    </p>
-                    <button
-                      onClick={() => setIsDrawModalOpen(true)}
-                      className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm transition-colors flex items-center justify-center gap-2 mx-auto"
-                    >
-                      <Edit3 className="w-4 h-4" />
-                      打开绘制器
-                    </button>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <>
-                {/* 参数输入 */}
-                <div className="space-y-4 mb-6">
-                  {config.params.map((param) => (
-                    <div key={param.key}>
-                      <div className="flex justify-between items-center mb-1">
-                        <label className="text-sm font-medium text-slate-700">{param.label}</label>
-                        <div className="flex items-center gap-1">
-                          <input
-                            type="number"
-                            value={params[param.key]}
-                            onChange={(e) => {
-                              const val = parseFloat(e.target.value);
-                              if (!isNaN(val) && val > 0) {
-                                setParams(p => ({ ...p, [param.key]: val }));
-                              }
-                            }}
-                            className="w-24 px-2 py-0.5 text-sm font-mono text-right border rounded outline-none focus:ring-1"
-                            style={{ color: 'var(--color-1)', borderColor: '#e2e8f0' }}
-                            step={param.max > 1000 ? 100 : param.max > 100 ? 1 : 0.1}
-                          />
-                          <span className="text-xs text-slate-500 w-12">{param.unit}</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => setParams(p => ({ ...p, [param.key]: Math.max(param.min, p[param.key] - param.max / 20) }))}
-                          className="p-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-500"
-                        >
-                          <Minus className="w-4 h-4" />
-                        </button>
-                        <input
-                          type="range"
-                          min={param.min}
-                          max={Math.max(param.max, params[param.key] * 1.5)}
-                          value={params[param.key]}
-                          onChange={(e) => setParams(p => ({ ...p, [param.key]: parseFloat(e.target.value) }))}
-                          className="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
-                        />
-                        <button
-                          onClick={() => setParams(p => ({ ...p, [param.key]: Math.min(param.max * 2, p[param.key] + param.max / 20) }))}
-                          className="p-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-500"
-                        >
-                          <Plus className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* 截面预览 */}
-                <div className="bg-slate-50 rounded-xl p-4 aspect-square border border-slate-200">
-                  <SectionSVG type={sectionType} params={params} />
-                </div>
-
-                {/* 重置按钮 */}
-                <button
-                  onClick={() => handleTypeChange(sectionType)}
-                  className="mt-4 w-full py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors flex items-center justify-center gap-2"
-                >
-                  <RotateCcw className="w-4 h-4" />
-                  重置参数
-                </button>
-              </>
-            )}
-          </div>
-
-          {/* 右侧：计算结果 */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
-                <Calculator className="w-5 h-5" style={{ color: 'var(--color-2)' }} />
-                计算结果
-              </h2>
-              {/* 单位切换 */}
-              <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-1">
-                {(Object.keys(UNIT_CONFIG) as UnitSystem[]).map((unit) => (
-                  <button
-                    key={unit}
-                    onClick={() => setUnitSystem(unit)}
-                    className={`px-3 py-1 rounded-md text-xs font-medium transition-all
-                      ${unitSystem === unit
-                        ? "bg-indigo-500 text-white"
-                        : "text-slate-500 hover:text-slate-700"
-                      }`}
-                  >
-                    {unit}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <div className="text-xs text-slate-500 uppercase tracking-wider mb-2">基本参数</div>
-              <ResultItem label="截面面积 A" value={result.A} unit={unitConfig.area} />
-              
-              <div className="text-xs text-slate-500 uppercase tracking-wider mt-4 mb-2">惯性矩</div>
-              <ResultItem label="对x轴惯性矩 Ix" value={result.Ix} unit={unitConfig.inertia} />
-              <ResultItem label="对y轴惯性矩 Iy" value={result.Iy} unit={unitConfig.inertia} />
-              <ResultItem label="极惯性矩 Ip" value={result.Ip} unit={unitConfig.inertia} formula="Ix+Iy" />
-              
-              <div className="text-xs text-slate-500 uppercase tracking-wider mt-4 mb-2">惯性半径</div>
-              <ResultItem label="对x轴惯性半径 ix" value={result.ix} unit={unitConfig.length} formula="√(Ix/A)" />
-              <ResultItem label="对y轴惯性半径 iy" value={result.iy} unit={unitConfig.length} formula="√(Iy/A)" />
-              
-              <div className="text-xs text-slate-500 uppercase tracking-wider mt-4 mb-2">抗弯截面模量</div>
-              <ResultItem label="对x轴抗弯模量 Wx" value={result.Wx} unit={unitConfig.modulus} formula="Ix/ymax" />
-              <ResultItem label="对y轴抗弯模量 Wy" value={result.Wy} unit={unitConfig.modulus} formula="Iy/xmax" />
-            </div>
-
-            {/* 公式说明 */}
-            <div className="mt-6 p-4 rounded-lg border" style={{ backgroundColor: 'rgba(var(--color-5-rgb), 0.1)', borderColor: 'var(--color-5)' }}>
-              <h3 className="text-sm font-semibold mb-2" style={{ color: 'var(--color-5)' }}>惯性半径的意义</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                惯性半径 i = √(I/A) 是衡量截面质量分布的参数。在压杆稳定计算中，
-                柔度 λ = L/i，惯性半径越大，压杆越不容易失稳。
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* 计算过程演示 */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-          <h2 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
-            <FileText className="w-5 h-5" style={{ color: 'var(--color-2)' }} />
-            计算过程演示
-          </h2>
-          
-          <CalculationSteps 
-            type={sectionType} 
-            params={params} 
-            rawResult={rawResult}
-          />
-        </div>
-
-        {/* 截面绘制模态对话框 */}
-        <SectionDrawModal key={isDrawModalOpen ? "open" : "closed"}
-          isOpen={isDrawModalOpen}
-          onClose={() => setIsDrawModalOpen(false)}
-          onSave={handleSaveDrawing}
-          initialPaths={drawPaths}
-        />
-    </div>
-  );
+  return <><SectionWorkspace model={model} onModelChange={onModelChange} rawResult={rawResult} onTypeChange={handleTypeChange} onDraw={()=>setIsDrawModalOpen(true)} steps={<CalculationSteps type={model.sectionType} params={model.parameters} rawResult={rawResult}/>}/>
+    <SectionDrawModal key={isDrawModalOpen?'open':'closed'} isOpen={isDrawModalOpen} onClose={()=>setIsDrawModalOpen(false)} onSave={paths=>onModelChange({...model,paths})} initialPaths={model.paths}/>
+  </>;
 };

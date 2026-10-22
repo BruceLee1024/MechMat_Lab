@@ -1,0 +1,76 @@
+/* 克制的功能配色：蓝色应力、青色变形、珊瑚色真应力、淡紫色知识入口。 */
+:root[data-theme=deepSpace]{
+ --accent-blue:#82b8ff;
+ --accent-mint:#74ddc9;
+ --accent-coral:#f6ac9d;
+ --accent-lilac:#bba9ee;
+ --plot-engineering:#82b8ff;
+ --plot-true:#f6ac9d;
+}
+[data-theme=deepSpace] .app-shell,[data-theme=deepSpace] .app-main .app-content{background:#09121f}
+[data-theme=deepSpace] .app-sidebar{background:#0d1b27;border-color:#263b49}
+[data-theme=deepSpace] .app-main .app-header{background:#101c2b;border-color:#2a3b51}
+[data-theme=deepSpace] .sidebar-brand h1>span{color:var(--accent-mint)!important}
+[data-theme=deepSpace] .app-sidebar nav button[aria-current=page]{background:#183b42!important;border:1px solid #2a565b;color:#ddf7f1;box-shadow:none!important}
+[data-theme=deepSpace] .app-sidebar nav button[aria-current=page]>svg:first-child{stroke:var(--accent-mint)}
+[data-theme=deepSpace] .app-sidebar nav button:hover{background:#162d3c}
+[data-theme=deepSpace] .experiment-toolbar>.toolbar-save{background:#3e75d5;border-color:#618fe2;color:#fff;box-shadow:0 3px 12px #1a4b8a26}
+[data-theme=deepSpace] .experiment-toolbar>.toolbar-save:hover{background:#4c85e5}
+[data-theme=deepSpace] .taste-lab .fundamentals-main{background:#0b1928;border-color:#2b4055}
+[data-theme=deepSpace] .taste-lab .poisson-figure{background:#0b1928}
+[data-theme=deepSpace] .taste-lab .poisson-canvas-wrap{background:radial-gradient(ellipse at 48% 55%,#102c3c 0%,#0b1928 65%)}
+[data-theme=deepSpace] .taste-lab .topic-nav{background:#111f30;border-color:#2c4059}
+[data-theme=deepSpace] .taste-lab .topic-nav button[aria-selected=true]{background:#233d5e;border-color:#466a93;color:#e4f1ff}
+[data-theme=deepSpace] .taste-lab .topic-nav button[aria-selected=true]>svg{color:var(--accent-blue)}
+[data-theme=deepSpace] .taste-lab .scene-view-controls button[aria-pressed=true],
+[data-theme=deepSpace] .taste-lab .scene-camera-dock button[aria-pressed=true]{background:#1c454d;border-color:#356169;color:#a6eedf}
+[data-theme=deepSpace] .taste-lab .analysis-rail{--rail-line:#344358;--rail-inset:#1a2a40;background:#152031;border-color:#324255}
+[data-theme=deepSpace] .taste-lab .analysis-tabs{background:#0c1726;border-color:#2b4059}
+[data-theme=deepSpace] .taste-lab .analysis-tabs button[aria-selected=true]{background:#28415e;color:#e3efff}
+[data-theme=deepSpace] #analysis-tab-analysis>svg{color:var(--accent-blue)}
+[data-theme=deepSpace] #analysis-tab-theory>svg{color:var(--accent-lilac)}
+[data-theme=deepSpace] .taste-lab .analysis-rail .result-primary output{color:#a1ccff}
+[data-theme=deepSpace] .true-stress-reading output{color:var(--accent-coral)}
+[data-theme=deepSpace] .taste-lab .strain-result-pair .result-row{background:#182f46;border-color:#2c4c68}
+[data-theme=deepSpace] .taste-lab .strain-result-pair .result-row output{color:#a6d2ff}
+[data-theme=deepSpace] .taste-lab .strain-result-pair .result-row.transverse{background:#143437;border-color:#2a5353}
+[data-theme=deepSpace] .taste-lab .strain-result-pair .result-row.transverse output{color:var(--accent-mint)}
+[data-theme=deepSpace] .plot-series-readings i{border-top-color:var(--plot-engineering)}
+[data-theme=deepSpace] .plot-series-readings i.true-series{border-top-color:var(--plot-true)}
+[data-theme=deepSpace] .plot-series-readings output{color:#acd2ff}
+[data-theme=deepSpace] .plot-series-readings>div:last-child output{color:var(--accent-coral)}
+[data-theme=deepSpace] .reference-actions button:last-child>svg:first-child{color:var(--accent-lilac)}
+[data-theme=deepSpace] .reference-actions button:last-child:hover{background:#2a2c48;border-color:#4a4865}
+[data-theme=deepSpace] .reference-actions button[aria-expanded=true]{background:#253c56;border-color:#405d7d}
+[data-theme=deepSpace] .taste-lab .theory-reading .lab-formula{background:#23273f;border-color:#44425e;color:#dfd4ff}
+[data-theme=deepSpace] .taste-lab .tutor-empty .analysis-panel-heading h3{color:#cebef7}
+[data-theme=deepSpace] .taste-lab .tutor-empty .tool-button{background:#302e4b;border-color:#514e73;color:#dfd3ff}
+[data-theme=deepSpace] .taste-lab .experiment-control-dock.loading-strip{background:linear-gradient(110deg,#153439,#12263a 66%);border-color:#36575e;box-shadow:0 8px 24px #03091230}
+[data-theme=deepSpace] .taste-lab .loading-strip .loading-value input[type=text]{color:#a4efdd!important}
+[data-theme=deepSpace] .taste-lab .loading-strip .loading-value input[type=text]:focus{box-shadow:0 1px 0 var(--accent-mint)!important}
+[data-theme=deepSpace] .taste-lab .loading-strip .loading-value input[aria-invalid=true]{box-shadow:0 1px 0 #f1a4b3!important}
+[data-theme=deepSpace] .taste-lab .loading-strip .loading-track input[type=range]::-webkit-slider-runnable-track{background:linear-gradient(to right,#74ddc9 0%,#74ddc9 var(--load-progress),#355365 var(--load-progress),#355365 100%)}
+[data-theme=deepSpace] .taste-lab .loading-strip .loading-track input[type=range]::-webkit-slider-thumb{border-color:#baf3e6;background:#4aa591;box-shadow:0 0 0 4px #74ddc91a}
+[data-theme=deepSpace] .taste-lab .loading-strip .loading-track input[type=range]::-moz-range-progress{background:var(--accent-mint)}
+[data-theme=deepSpace] .taste-lab .loading-strip .loading-track input[type=range]::-moz-range-thumb{border-color:#baf3e6;background:#4aa591}
+[data-theme=deepSpace] .loading-stepper{border-color:#3a5a67}
+[data-theme=deepSpace] .loading-stepper button{background:#1c3946;color:#c2e4e9}
+[data-theme=deepSpace] .loading-stepper button+button{border-color:#3a5a67}
+[data-theme=deepSpace] .loading-stepper button:hover{background:#28505b}
+[data-theme=deepSpace] .loading-settings{border-color:#36505e}
+[data-theme=deepSpace] .loading-settings>svg{color:var(--accent-mint)}
+[data-theme=deepSpace] .loading-settings:hover{color:#abeddf}
+[data-theme=deepSpace] .specimen-dialog{background:#132333;border-color:#3b5966}
+[data-theme=deepSpace] .specimen-eyebrow{color:var(--accent-mint)}
+[data-theme=deepSpace] .specimen-footer>button{background:#22584f;border-color:#3f7c70;color:#ddfff4}
+[data-theme=deepSpace] .specimen-footer>button:hover{background:#2c6a60}
+/* 粒子是独立透明叠层，不截获旋转手势。 */
+.poisson-canvas-wrap .stress-flow-canvas{pointer-events:none;cursor:inherit}
+.scene-legend .stress-flow-key{color:#f5d1a7;margin-top:3px}
+.scene-legend .stress-flow-label{display:inline}
+.scene-legend .stress-flow-key i{width:22px;height:3px;border-radius:3px;background:linear-gradient(90deg,#ffc69000,#ffc690);box-shadow:3px 0 8px #ffc69066}
+.scene-legend .stress-flow-key.is-compression{color:#a4eade}
+.scene-legend .stress-flow-key.is-compression i{background:linear-gradient(90deg,#81eadb00,#81eadb);box-shadow:3px 0 8px #81eadb66}
+.scene-legend .stress-flow-note{font-size:9px;color:#8fa9c2}
+.taste-lab .scene-camera-dock button.stress-flow-toggle[aria-pressed=true]{color:#ffdaaf;background:#4a3829;border-color:#6c5135}
+@media(max-width:600px){.scene-legend .stress-flow-note{font-size:8px}.taste-lab .scene-camera-dock{gap:1px;padding-left:4px;padding-right:4px}}

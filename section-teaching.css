@@ -1,0 +1,82 @@
+/* 截面计算教学层：颜色表示几何分块及二次矩贡献，计算使用未展开的真实坐标。 */
+.section-teaching-canvas{position:relative;background:radial-gradient(ellipse at 50% 45%,#10283877 0%,#0b182700 65%)}
+.section-teaching-canvas .section-canvas-tools{position:absolute;bottom:9px;left:50%;transform:translateX(-50%);margin:0;background:#102234ef;box-shadow:0 4px 15px #0002;z-index:2}
+.teaching-scene-caption{position:absolute;left:20px;top:15px;display:flex;align-items:center;gap:10px;pointer-events:none}
+.teaching-scene-caption>span{display:flex;align-items:center;gap:6px;font-size:10px;color:#b0d3dd}
+.teaching-scene-caption>span:before{content:'';width:4px;height:4px;border-radius:50%;background:#8fd5c5}
+.teaching-scene-caption small{font-size:9px;color:#6d95aa}
+.teaching-part>path{cursor:pointer;stroke-linejoin:round;transition:fill-opacity .18s,stroke-width .18s}
+.teaching-part.is-selected>path{filter:drop-shadow(0 0 4px #7cbac822)}
+.teaching-part text{font:10px system-ui,sans-serif;letter-spacing:.02em}
+.teaching-leader{fill:none;stroke:var(--part-color);stroke-width:.6;stroke-dasharray:2 3;opacity:.65}
+.teaching-centroid-link{fill:none;stroke-width:1;stroke-dasharray:3 4;opacity:.6}
+.section-centroid-axes .teaching-active-axis{stroke-width:1.6;stroke-dasharray:none;opacity:1}
+.teaching-distance path{fill:none;stroke:#dfc18d;stroke-width:1;stroke-dasharray:3 2}
+.teaching-distance text{font:10px ui-monospace,monospace;fill:#dfc18d}
+.teaching-scan-line path{fill:none;stroke:#abefda;stroke-width:1.2}
+.teaching-scan-line circle{fill:#c5ffec}
+.teaching-axis-switch{position:absolute;right:20px;top:13px;display:flex;gap:3px;border:1px solid #325267;border-radius:5px;padding:3px;background:#0d1e2ed9}
+.teaching-axis-switch button{font:13px Georgia,serif;color:#95b6c9;padding:4px 10px;border-radius:3px}
+.teaching-axis-switch button[aria-pressed=true]{background:#244b51;color:#afe9d6}
+.teaching-scan-readout{position:absolute;left:20px;top:42px;display:flex;flex-direction:column;gap:6px;padding:9px 12px;border:1px solid #294858;border-radius:6px;background:#0b1a28e8;pointer-events:none}
+.teaching-scan-readout>span,.teaching-scan-readout>small{font-size:9px;color:#88a9ba}
+.teaching-scan-readout output{font:10px ui-monospace,monospace;color:#a7c5d9}
+.teaching-scan-readout b{font-weight:500;color:#a9e6d2;margin:0 5px}
+.teaching-heat-key{position:absolute;right:20px;bottom:22px;display:flex;align-items:center;gap:7px;font-size:8px;color:#89a8bb;pointer-events:none}
+.teaching-heat-key i{height:4px;width:52px;background:linear-gradient(90deg,#1e6f94,#77a48f,#f0bb80);border-radius:3px}
+.section-teaching-controls{margin:0 18px 13px;padding:11px 0 0;border-top:1px solid #253d50;flex-shrink:0}
+.teaching-control-top{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.teaching-mode-switch{display:flex;align-items:center;gap:3px}
+.teaching-mode-switch button{display:flex;align-items:center;gap:6px;border:1px solid transparent;border-radius:5px;padding:6px 9px;min-height:30px;font-size:10px;color:#8faec3;white-space:nowrap}
+.teaching-mode-switch button[aria-pressed=true]{background:#203e47;border-color:#355b62;color:#b1e8d9}
+.teaching-playback{display:flex;align-items:center;gap:5px}
+.teaching-playback>button,.teaching-play{display:flex;align-items:center;justify-content:center;gap:6px;padding:6px 10px;min-height:29px;border:1px solid #355369;border-radius:5px;font-size:10px;color:#b1d6df;white-space:nowrap}
+.teaching-playback>button:last-child{border-color:transparent;padding:5px}
+.teaching-playback>button:disabled{opacity:.35;cursor:default}
+.teaching-control-bottom{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-top:8px}
+.teaching-control-bottom p{font-size:9px;color:#7798af;line-height:1.6;margin:0}
+.teaching-progress{display:flex;align-items:center;gap:8px;width:130px;flex-shrink:0}
+.teaching-progress input{width:100%;min-width:0;height:3px;accent-color:#9cdecd;cursor:pointer}
+.teaching-progress output{font:9px ui-monospace,monospace;color:#92bdc5;width:30px;text-align:right;flex-shrink:0}
+.section-teaching-readout{background:#102b3455;border:1px solid #304e5d;border-radius:6px;padding:12px;margin-top:17px}
+.section-teaching-readout>header{display:flex;align-items:center;gap:7px;font-size:11px;color:#a4d8d0}
+.section-teaching-readout>header small{margin-left:auto;color:#7295aa;font-size:8px}
+.section-teaching-readout p{color:#8faec2;font-size:10px;line-height:1.8;margin:9px 0 0}
+.teaching-part-choices{display:flex;flex-wrap:wrap;gap:4px;margin-top:11px}
+.teaching-part-choices button{display:flex;align-items:center;gap:5px;font-size:9px;padding:4px 6px;color:#8ba9bb;border-radius:4px;border:1px solid transparent}
+.teaching-part-choices button[aria-pressed=true]{background:#20394a;border-color:#3a596b;color:#d1e4ed}
+.teaching-part-choices i{width:5px;height:5px;border-radius:1px;background:var(--part-color)}
+.section-teaching-readout .math-renderer{--math-size:15px;margin:10px 0;color:#d2e8f1}
+.section-teaching-readout .katex-display{margin:.4em 0}
+.section-teaching-readout .math-scroll{padding:5px 0}
+.teaching-contribution-terms{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:11px}
+.teaching-contribution-terms>span{display:block;font-size:9px;color:#7d9eb2}
+.teaching-contribution-terms b{display:block;margin-top:6px;font:12px ui-monospace,monospace;color:#a5cce4}
+.section-teaching-readout .teaching-numeric-substitution{font:9px/1.9 ui-monospace,monospace;overflow-wrap:anywhere;color:#7f9cad}
+.teaching-numeric-substitution strong{font-weight:500;color:#b6d9e8}
+.teaching-share{display:flex;flex-wrap:wrap;gap:12px;padding:10px 0;margin-top:9px;border-top:1px solid #2c4554}
+.teaching-share>span{font-size:9px;color:#92aebb}.teaching-share b{font:11px ui-monospace,monospace;color:#a6e2cd;margin-left:6px}
+.teaching-explanation{display:block;font-size:9px;line-height:1.8;color:#6e94aa}
+.teaching-centroid-values{display:flex;flex-direction:column;gap:9px;font-size:9px;color:#88a9bc}
+.teaching-centroid-values>span{display:flex;justify-content:space-between;align-items:baseline;gap:9px}
+.teaching-centroid-values b{color:#b7d9dc;font:11px ui-monospace,monospace}
+.teaching-area-sum{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:10px;color:#8faec2;padding-top:9px;border-top:1px solid #2c4554}
+.teaching-area-sum strong{color:#a6e2cf;font:14px ui-monospace,monospace}.teaching-area-sum strong small{font-size:9px;color:#88a9bd}
+.section-properties-body .teaching-result-focus{border-bottom-color:#538d8b;box-shadow:inset 2px 0 #80c9bc66;padding-left:10px}
+@media(min-width:901px){.section-geometry-canvas.section-teaching-canvas{height:clamp(275px,calc(100dvh - 650px),420px)}}
+@media(max-width:1150px){.teaching-mode-switch button{gap:4px;padding:5px 6px;font-size:9px}.teaching-control-top{gap:4px}.teaching-playback>button,.teaching-play{font-size:9px;padding:5px 7px}.teaching-control-bottom{gap:8px}.teaching-control-bottom p{font-size:8px}.teaching-progress{width:90px}.teaching-heat-key{right:12px;bottom:49px}.section-teaching-controls{margin-left:14px;margin-right:14px}.teaching-scene-caption{left:15px}}
+@media(max-width:900px){.section-geometry-canvas.section-teaching-canvas{height:350px;flex:none;min-height:0}.section-geometry-canvas.section-teaching-canvas>svg{height:100%;min-height:0}.section-teaching-readout{grid-column:1/-1;margin:15px 0 0}.teaching-part-choices{gap:8px}.teaching-mode-switch button{font-size:10px;padding:6px 10px}.teaching-progress{width:140px}}
+@media(max-width:520px){.section-geometry-canvas.section-teaching-canvas{height:290px}.section-geometry-canvas.section-teaching-canvas>svg{min-height:0;height:100%}.teaching-scene-caption{left:12px;top:12px;gap:7px}.teaching-scene-caption>span{font-size:9px}.teaching-scene-caption small{font-size:8px}.section-teaching-controls{padding-top:10px;margin:0 12px 13px}.teaching-mode-switch{gap:1px;flex:1}.teaching-mode-switch button{flex:1;font-size:9px;gap:4px;padding:6px 5px}.teaching-mode-switch button>svg{width:12px}.teaching-control-top{flex-wrap:wrap;gap:9px}.teaching-playback{margin-left:auto}.teaching-playback>button{font-size:9px;min-height:27px;padding:4px 8px}.teaching-control-bottom{flex-wrap:wrap;margin-top:8px;gap:7px}.teaching-control-bottom p{font-size:9px;flex:1 1 100%}.teaching-progress{width:100%;gap:12px}.teaching-progress input{min-height:15px}.teaching-part text{font-size:15px}.teaching-distance text{font-size:14px}.teaching-axis-switch{right:12px;top:9px}.teaching-scan-readout{left:12px;top:38px;padding:7px 9px;gap:4px}.teaching-scan-readout output{font-size:9px}.teaching-scan-readout>span,.teaching-scan-readout>small{font-size:8px}.teaching-heat-key{font-size:8px;bottom:50px;right:12px}.section-teaching-readout .math-renderer{--math-size:17px}.teaching-part-choices button{font-size:10px;min-height:29px}.section-teaching-readout>header{font-size:11px}.teaching-centroid-values{font-size:10px}.section-teaching-canvas .section-canvas-tools{bottom:8px}.teaching-contribution-terms b{font-size:13px}.teaching-contribution-terms>span{font-size:10px}.section-teaching-readout .teaching-numeric-substitution{font-size:10px}.teaching-share>span{font-size:10px}.teaching-share b{font-size:12px}}
+@media(prefers-reduced-motion:reduce){.teaching-part>path{transition:none;filter:none}}
+.teaching-area-change{opacity:.35;pointer-events:none;animation:teaching-area-flash .8s ease-out both}
+.teaching-difference-key{position:absolute;right:20px;bottom:23px;display:flex;gap:12px;pointer-events:none}
+.teaching-difference-key>span{display:flex;align-items:center;gap:5px;font-size:8px;color:#8faebb}
+.teaching-difference-key i{width:7px;height:5px;border-radius:1px;background:#8fdfc5}.teaching-difference-key>span:last-child i{background:#e6ab91}
+.teaching-flange-insight{display:flex;flex-wrap:wrap;gap:7px 12px;border-top:1px solid #2c4554;margin-top:10px;padding-top:10px;font-size:9px;color:#b7d9d7}.teaching-flange-insight>span{font-family:ui-monospace,monospace;color:#b7a8d4}
+@keyframes teaching-area-flash{from{opacity:.75}to{opacity:.28}}
+@media(max-width:1100px){.teaching-difference-key{bottom:49px;right:12px}}
+@media(prefers-reduced-motion:reduce){.teaching-area-change{animation:none}}
+.section-teaching-controls .teaching-progress input[type=range]{appearance:none;-webkit-appearance:none;outline:none;border:0;height:3px;min-height:3px;margin:0;border-radius:3px;background:linear-gradient(90deg,#92d8c7 0%,#92d8c7 var(--teaching-progress),#2a4558 var(--teaching-progress),#2a4558 100%)}
+.section-teaching-controls .teaching-progress input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:10px;height:10px;border-radius:50%;background:#9ce3d0;border:2px solid #2b6965;box-shadow:0 0 0 2px #9ce3d01c;cursor:ew-resize}
+.section-teaching-controls .teaching-progress input[type=range]::-moz-range-thumb{width:8px;height:8px;border-radius:50%;background:#9ce3d0;border:2px solid #2b6965;cursor:ew-resize}
+.section-teaching-controls .teaching-progress input[type=range]:focus-visible{outline:2px solid #96dccc;outline-offset:6px}

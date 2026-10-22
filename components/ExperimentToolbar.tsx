@@ -20,6 +20,14 @@ export function ExperimentToolbar({ store, focus, onFocus }: { store: Store; foc
   const [busy, setBusy] = useState(false);
   const closeButton = useRef<HTMLButtonElement>(null);
   const dialog = useRef<HTMLDivElement>(null);
+  const moreMenu = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    const outside = (event: PointerEvent) => { if (moreMenu.current && !moreMenu.current.contains(event.target as Node)) moreMenu.current.open = false; };
+    const escape = (event: KeyboardEvent) => { if (event.key === 'Escape' && moreMenu.current?.open) { moreMenu.current.open = false; moreMenu.current.querySelector('summary')?.focus(); } };
+    window.addEventListener('pointerdown', outside); window.addEventListener('keydown', escape);
+    return () => { window.removeEventListener('pointerdown', outside); window.removeEventListener('keydown', escape); };
+  }, []);
+  useEffect(() => { if (!notice || open) return; const timer = setTimeout(() => setNotice(''), 5000); return () => clearTimeout(timer); }, [notice, open]);
   useEffect(() => { setName(document?.name || ''); }, [document?.id, document?.name]);
   useEffect(() => {
     if (!open) return;
@@ -78,16 +86,19 @@ export function ExperimentToolbar({ store, focus, onFocus }: { store: Store; foc
   };
   return <>
     <div className="experiment-toolbar" aria-label="实验工具栏">
-      <input className="experiment-title" aria-label="实验名称" value={name} onChange={e => setName(e.target.value)} maxLength={120} onKeyDown={e => { if (e.key === 'Enter') store.save(document.module, name); }} />
-      <button className="tool-button primary" onClick={() => { if (store.save(document.module, name)) setNotice('实验已存档'); }}><Save size={14} />存档</button>
-      <button className="tool-button" onClick={() => manage()}><FolderOpen size={14} />实验管理</button>
-      <button className="tool-button" aria-label="撤销实验修改" title="撤销" disabled={!store.canUndo} onClick={store.undo}><Undo2 size={15} /></button>
-      <button className="tool-button" aria-label="重做实验修改" title="重做" disabled={!store.canRedo} onClick={store.redo}><Redo2 size={15} /></button>
-      <button className="tool-button" aria-label="重置当前实验" title="重置当前实验，可撤销" onClick={() => store.reset(document.module)}><RotateCcw size={15} /></button>
-      <button className="tool-button desktop-only" aria-pressed={focus} onClick={onFocus}><Maximize2 size={14} />{focus ? '退出专注' : '专注实验'}</button>
-      <button className="tool-button desktop-only" onClick={() => manage('compare')}><GitCompareArrows size={14} />对比</button>
-      <button className="tool-button desktop-only" onClick={() => manage('files')}><Download size={14} />导入导出</button>
-      <span role="status" className={`save-status ${store.status === 'error' ? 'error' : ''}`}>{store.status === 'saved' ? '已自动保存最近实验' : store.status === 'saving' ? '正在自动保存…' : '自动保存失败'}</span>
+      <button className="tool-button" onClick={() => manage()}><FolderOpen size={15} />实验管理</button>
+      <button className="tool-button" aria-label="重置当前实验" title="重置当前实验，可撤销" onClick={() => store.reset(document.module)}><RotateCcw size={15} />重置</button>
+      <details className="toolbar-more" ref={moreMenu}><summary className="tool-button">更多</summary><div className="toolbar-more-menu">
+        <label className="toolbar-name-label">实验名称<input className="experiment-title" aria-label="实验名称" value={name} onChange={e => setName(e.target.value)} maxLength={120} onKeyDown={e => { if (e.key === 'Enter') store.save(document.module, name); }} /></label>
+        <div className="toolbar-history-actions"><button className="tool-button" aria-label="撤销实验修改" title="撤销" disabled={!store.canUndo} onClick={store.undo}><Undo2 size={15} />撤销</button>
+        <button className="tool-button" aria-label="重做实验修改" title="重做" disabled={!store.canRedo} onClick={store.redo}><Redo2 size={15} />重做</button></div>
+        <button className="tool-button" aria-pressed={focus} onClick={onFocus}><Maximize2 size={14} />{focus ? '退出专注' : '专注实验'}</button>
+        <button className="tool-button" onClick={() => manage('compare')}><GitCompareArrows size={14} />工况对比</button>
+        <button className="tool-button" onClick={() => manage('files')}><Download size={14} />导入导出</button>
+        <span role="status" className={`save-status ${store.status === 'error' ? 'error' : ''}`}>{store.status === 'saved' ? '已自动保存最近实验' : store.status === 'saving' ? '正在自动保存…' : '自动保存失败'}</span>
+      </div></details>
+      <button className="tool-button primary toolbar-save" onClick={() => { if (store.save(document.module, name)) setNotice('实验已存档'); }}><Save size={15} />保存实验</button>
+      {notice && !open ? <span className="toolbar-feedback" role="status">{notice}</span> : null}
     </div>
     <div className="workspace-modal-backdrop" style={{ display: open ? undefined : 'none' }} onPointerDown={e => { if (e.target === e.currentTarget) setOpen(false); }}>
       <div ref={dialog} className="workspace-modal" role="dialog" aria-modal="true" aria-labelledby="workspace-dialog-title">

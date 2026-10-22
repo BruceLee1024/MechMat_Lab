@@ -7,9 +7,10 @@ export type ThemeColors = {
   color5: string;  // 高亮提示、警告
 };
 
-export type ThemeName = 'sunset' | 'vibrant' | 'warm' | 'cool';
+export type ThemeName = 'deepSpace' | 'sunset' | 'vibrant' | 'warm' | 'cool';
 
 export const THEMES: Record<ThemeName, ThemeColors> = {
+  deepSpace: { color1: '#73adff', color2: '#91c6ff', color3: '#24496c', color4: '#10253b', color5: '#f3bd67' },
   // 第一套：日落暖色
   sunset: {
     color1: '#D77186',  // 粉红 - 主标题、主要按钮
@@ -48,6 +49,7 @@ export const THEMES: Record<ThemeName, ThemeColors> = {
 };
 
 export const THEME_NAMES: Record<ThemeName, string> = {
+  deepSpace: '深空实验舱',
   sunset: '日落暖色',
   vibrant: '活力彩虹',
   warm: '温暖大地',
@@ -58,6 +60,8 @@ export const THEME_NAMES: Record<ThemeName, string> = {
 export const applyTheme = (themeName: ThemeName) => {
   const theme = THEMES[themeName];
   const root = document.documentElement;
+  root.dataset.theme = themeName;
+  root.style.colorScheme = themeName === 'deepSpace' ? 'dark' : 'light';
   
   // 应用 5 个颜色到不同的 CSS 变量
   root.style.setProperty('--color-1', theme.color1);
@@ -75,12 +79,14 @@ export const applyTheme = (themeName: ThemeName) => {
   
   // 保存到 localStorage
   localStorage.setItem('theme', themeName);
+  localStorage.setItem('mechmat-ui-version', 'deep-space-1');
 };
 
 // 获取当前主题
 export const getCurrentTheme = (): ThemeName => {
+  if (localStorage.getItem('mechmat-ui-version') !== 'deep-space-1') return 'deepSpace';
   const saved = localStorage.getItem('theme') as ThemeName;
-  return saved && THEMES[saved] ? saved : 'sunset';
+  return saved && THEMES[saved] ? saved : 'deepSpace';
 };
 
 // 将 hex 转换为 RGB（用于 Tailwind 的 rgb() 函数）

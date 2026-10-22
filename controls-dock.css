@@ -1,0 +1,82 @@
+/* 画布内的轻量加载条；低频参数放入独立设置窗口。 */
+.taste-lab .fundamentals-main{container-type:inline-size}
+.taste-lab .experiment-control-dock.loading-strip{display:grid;grid-template-columns:125px minmax(100px,1fr) 64px 78px;align-items:center;gap:23px;margin:0 18px 18px;padding:17px 20px;border:1px solid #30445d;border-radius:12px;background:linear-gradient(110deg,#14243a,#101e30 70%);box-shadow:0 8px 24px #03091230;overflow:visible}
+.loading-value{min-width:0}
+.taste-lab .loading-strip .loading-value>div>div{display:flex;flex-direction:column;align-items:flex-start;gap:5px;flex-wrap:nowrap}
+.taste-lab .loading-strip .loading-value>div>div>div{display:flex;align-items:baseline;gap:7px}
+.taste-lab .loading-strip .loading-value label{font-size:11px;color:#a6bbd3;font-weight:400}
+.taste-lab .loading-strip .loading-value input[type=text]{width:88px!important;height:32px;min-height:32px;padding:0!important;border:0!important;border-radius:0;background:transparent!important;box-shadow:none!important;font-size:27px;line-height:32px;letter-spacing:-.8px;text-align:left;color:#e0edff!important}
+.taste-lab .loading-strip .loading-value input[type=text]:focus{outline:none;box-shadow:0 1px 0 #9cc7fa!important}
+.taste-lab .loading-strip .loading-value input[aria-invalid=true]{box-shadow:0 1px 0 #e0909f!important}
+.taste-lab .loading-strip .loading-value input+span{font-size:13px;color:#9eb7d4}
+.loading-track{min-width:0}
+.loading-track-heading,.loading-track-scale{display:flex;align-items:center;justify-content:space-between;font-size:10px;color:#8da5c1;line-height:1.5}
+.loading-track-heading{margin-bottom:6px}.loading-track-heading span:first-child{color:#b7cce5}
+.loading-track-scale{font:10px ui-monospace,"SFMono-Regular",Consolas,monospace;line-height:1.5;margin-top:3px;color:#7e97b5}
+.taste-lab .loading-strip .loading-track input[type=range]{display:block;width:100%;height:20px;margin:0;appearance:none;-webkit-appearance:none;background:transparent;cursor:ew-resize}
+.taste-lab .loading-strip .loading-track input[type=range]::-webkit-slider-runnable-track{height:3px;border-radius:3px;background:linear-gradient(to right,#8abcf6 0%,#8abcf6 var(--load-progress),#314964 var(--load-progress),#314964 100%)}
+.taste-lab .loading-strip .loading-track input[type=range]::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:14px;height:14px;margin-top:-5.5px;border-radius:50%;border:3px solid #c9e4ff;background:#6195cf;box-shadow:0 0 0 4px #7daee51a}
+.taste-lab .loading-strip .loading-track input[type=range]::-moz-range-track{height:3px;background:#314964;border-radius:3px}
+.taste-lab .loading-strip .loading-track input[type=range]::-moz-range-progress{height:3px;background:#8abcf6}
+.taste-lab .loading-strip .loading-track input[type=range]::-moz-range-thumb{width:9px;height:9px;border:3px solid #c9e4ff;background:#6195cf;border-radius:50%}
+.loading-actions{display:flex;flex-direction:column;align-items:center;gap:5px}
+.loading-stepper{display:flex;border:1px solid #344e6a;border-radius:6px;overflow:hidden}
+.loading-stepper button{width:30px;height:28px;display:flex;align-items:center;justify-content:center;color:#bcd3ee;background:#172c44;border:0}
+.loading-stepper button+button{border-left:1px solid #344e6a}
+.loading-stepper button:hover{background:#254261}
+.loading-unload{display:flex;align-items:center;justify-content:center;gap:5px;min-height:22px;color:#a4bad3;font-size:10px;border:0}
+.loading-unload:hover{color:#d7e9ff}
+.loading-strip button:disabled{opacity:.3;cursor:not-allowed}
+.loading-settings{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;align-self:stretch;border:0;border-left:1px solid #30445b;padding-left:19px;min-width:0;font-size:10px;color:#a9c0dc;white-space:nowrap}
+.loading-settings:hover{color:#deeeff}
+.loading-strip button:focus-visible,.taste-lab .loading-strip input[type=range]:focus-visible{outline:2px solid #9ec6f5;outline-offset:4px;border-radius:4px}
+.specimen-dialog{width:min(520px,calc(100vw - 32px));max-width:none;max-height:calc(100dvh - 48px);padding:0;margin:auto;border:1px solid #3b526c;border-radius:14px;background:#101e30;color:#d8e6f9;box-shadow:0 24px 100px #0008;overflow:auto;color-scheme:dark}
+.specimen-dialog::backdrop{background:#030914a6;backdrop-filter:blur(5px)}
+.specimen-sheet{min-width:0}
+.specimen-header{display:flex;align-items:flex-start;justify-content:space-between;padding:25px 26px 22px;border-bottom:1px solid #2a3e55}
+.specimen-eyebrow{font-size:10px;letter-spacing:1px;color:#88a8cd}
+.specimen-header h2{font-size:21px;font-weight:500;letter-spacing:.3px;margin:7px 0 0}
+.specimen-header>button{display:flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:6px;color:#a9c0dc;background:#1b2d43;border:1px solid #344c67}
+.specimen-header>button:hover{background:#29415e;color:#e3f0ff}
+.specimen-body{padding:22px 26px}
+.specimen-body h3{font-size:12px;font-weight:500;color:#bbd0eb;margin:0 0 14px}
+.specimen-fields{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.specimen-fields>div>div{display:flex;flex-direction:column;align-items:stretch;gap:8px;flex-wrap:nowrap}
+.specimen-fields label{font-size:11px;color:#91abc9;font-weight:400}
+.specimen-fields>div>div>div{display:flex;align-items:center;padding:0 12px;gap:8px;min-height:41px;border:1px solid #344b65;border-radius:6px;background:#0a1728}
+.specimen-fields input[type=text]{width:100%;min-width:0;padding:8px 0!important;background:transparent!important;border:0!important;box-shadow:none!important;color:#dceaff!important;font-size:16px;text-align:left;font-variant-numeric:tabular-nums;border-radius:0;outline:none}
+.specimen-fields>div>div>div:focus-within{border-color:#8dbaf2}
+.specimen-fields input+span{color:#8eaaca;font-size:11px;white-space:nowrap}
+.specimen-fields p[role=alert]{font-size:10px;line-height:1.6;color:#f1a4b3}
+.specimen-yield{display:flex;justify-content:space-between;gap:16px;color:#8eaaca;font-size:11px;margin:6px 0 0}
+.specimen-yield span:last-child{color:#bdcee4;font-family:ui-monospace,Consolas,monospace}.specimen-yield small{font-size:10px;color:#8eaaca;margin-left:5px}
+.specimen-geometry{margin-top:23px;padding-top:21px;border-top:1px solid #2a3e55}
+.specimen-dialog .specimen-material>.mb-4{background:#14263b;border-color:#344b65;margin-bottom:19px;border-radius:7px}
+.specimen-dialog .specimen-material>.mb-4>button{padding:12px}
+.specimen-dialog .specimen-material .text-slate-700{color:#d6e6fc}.specimen-dialog .specimen-material .text-slate-500{color:#9eb5d2}.specimen-dialog .specimen-material .text-slate-400{color:#8ba8ca}
+.specimen-dialog .specimen-material [class*=bg-white],.specimen-dialog .specimen-material .bg-slate-100,.specimen-dialog .specimen-material .bg-slate-200{background:#192e46}
+.specimen-dialog .specimen-material [class*=border-slate]{border-color:#344b65}
+.specimen-dialog .specimen-material [class*=text-slate-6]{color:#aac2e1}
+.specimen-dialog .specimen-material button:hover{background:#233b57}
+.specimen-footer{display:flex;align-items:center;justify-content:space-between;padding:17px 26px;border-top:1px solid #2a3e55;gap:16px}
+.specimen-footer>span{font-size:10px;color:#8ba7c8}
+.specimen-footer>button{padding:8px 17px;border:1px solid #5278a2;border-radius:6px;background:#284c74;color:#e2efff;font-size:12px}
+.specimen-footer>button:hover{background:#365e8c}
+.specimen-dialog button:focus-visible{outline:2px solid #9ec6f5;outline-offset:3px}
+@container(max-width:620px){
+ .taste-lab .experiment-control-dock.loading-strip{grid-template-columns:108px minmax(90px,1fr) 56px 60px;gap:14px;margin:0 14px 14px;padding:14px 16px}
+ .loading-settings{padding-left:12px}.loading-stepper button{width:27px}
+ .loading-track-heading span:last-child{display:none}
+}
+@container(max-width:440px){
+ .taste-lab .experiment-control-dock.loading-strip{grid-template-columns:1fr auto auto;gap:13px 16px;margin:0 12px 12px;padding:15px 16px}
+ .loading-value{grid-row:1}.loading-actions{grid-column:2;grid-row:1;flex-direction:row;gap:9px}.loading-unload{padding:5px}
+ .loading-unload span{display:none}.loading-settings{grid-column:3;grid-row:1;padding-left:15px;gap:7px}
+ .loading-track{grid-column:1/-1;grid-row:2}.loading-track-heading{display:none}
+ .loading-track-scale{margin-top:2px}.loading-stepper button{width:28px;height:30px}
+}
+@media(max-width:480px){
+ .specimen-dialog{max-height:calc(100dvh - 32px)}
+ .specimen-header{padding:20px}.specimen-body{padding:20px}.specimen-footer{padding:16px 20px}
+ .specimen-fields{gap:13px}.specimen-fields>div>div>div{padding:0 10px}
+}

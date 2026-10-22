@@ -1,271 +1,53 @@
-import { calculateBending } from "../mechanics/calculations";
-import { InvalidCalculation, CalculationNotice } from "../components/CalculationNotice";
-import React from "react";
-import { Calculator, Sigma, Activity } from "lucide-react";
-import { SliderInputControl, LatexRenderer, MaterialSelector, SectionSelector } from "../components";
-import { SimulationState, DEFAULT_STATE } from "../types";
-import { CommonDefs } from "./CommonDefs";
+import {bendingFormulas} from '../mechanics/formulaExplanations';
+import {FormulaList} from '../components/FormulaCard';
+import React from 'react';
+import { MoveVertical } from 'lucide-react';
+import { calculateBendingTeaching } from '../mechanics/calculations';
+import { InvalidCalculation } from '../components/CalculationNotice';
+import { LatexRenderer } from '../components';
+import { AnalysisRail, AnalysisReadout, AnalysisSecondary, AnalysisPair, AnalysisCard } from '../components/AnalysisRail';
+import { TheoryLesson, TheoryRelation, TheoryArrow } from '../components/TheoryLesson';
+import { BendingControlDock } from '../components/BendingControlDock';
+import { BendingScene } from '../components/BendingScene';
+import { BeamSupportSymbol } from '../components/BeamSupportSymbol';
+import { BendingResultPlot } from '../components/BendingResultPlot';
+import { bendingProfile } from '../graphics/bendingGeometry';
+import { SimulationState, DEFAULT_STATE } from '../types';
 
-export const BendingModule = ({ state, onChange }: { state: SimulationState; onChange: (s: Partial<SimulationState>) => void }) => {
-  const result = calculateBending({ load: state.bendLoad, length: state.bendLength, position: state.bendLoadPos, modulus: state.bendModulus, section: state.bendSection });
-  if (result.ok === false) return <InvalidCalculation diagnostics={result.diagnostics} onReset={() => { onChange({ bendLoad: DEFAULT_STATE.bendLoad, bendLength: DEFAULT_STATE.bendLength, bendLoadPos: DEFAULT_STATE.bendLoadPos, bendModulus: DEFAULT_STATE.bendModulus, bendWidth: DEFAULT_STATE.bendWidth, bendHeight: DEFAULT_STATE.bendHeight, bendSection: DEFAULT_STATE.bendSection }); }} />;
-  const { L_mm, a_mm, b_mm, E_MPa, inertia, yMax, R1, R2, maxMoment, deflectionAtLoad, maxStress, strainEnergy, maxStrainEnergyDensity } = result.values;
-
-  const visualSag = Math.min(deflectionAtLoad * 2, 100); 
-  const startX = 60;
-  const endX = 540;
-  const beamPixelWidth = endX - startX;
-  
-  // Map physical position to pixels
-  const mapX = (pos_m: number) => startX + (pos_m / state.bendLength) * beamPixelWidth;
-  
-  const loadX = mapX(state.bendLoadPos);
-  const floorY = 220;
-  const supportHeight = 40;
-  const baselineY = floorY - supportHeight; 
-  
-  const sagY = baselineY + visualSag;
-  // Control point for quadratic curve? 
-  // For asymmetric load, simple Q is not accurate.
-  // We use two segments or just draw to the load point.
-  // Visual Approximation: curve from start to load point (sagY), then to end.
-  // Using simplified path for visual feedback.
-
-  // 根据截面类型生成惯性矩公式
-  const getInertiaFormula = () => {
-    switch (state.bendSection.type) {
-      case 'rectangle':
-        return `I_z = \\frac{b h^3}{12} = \\frac{${state.bendSection.width || 100} \\times ${state.bendSection.height || 150}^3}{12} = ${(inertia/10000).toFixed(2)} \\times 10^4 \\text{ mm}^4`;
-      case 'circle':
-        return `I_z = \\frac{\\pi r^4}{4} = \\frac{\\pi \\times ${state.bendSection.radius || 50}^4}{4} = ${(inertia/10000).toFixed(2)} \\times 10^4 \\text{ mm}^4`;
-      case 'hollow_circle':
-        return `I_z = \\frac{\\pi (R^4 - r^4)}{4} = ${(inertia/10000).toFixed(2)} \\times 10^4 \\text{ mm}^4`;
-      case 'i_beam':
-        return `I_z = \\frac{b_f h^3}{12} - \\frac{(b_f-t_w) h_w^3}{12} = ${(inertia/10000).toFixed(2)} \\times 10^4 \\text{ mm}^4`;
-      default:
-        return `I_z = ${(inertia/10000).toFixed(2)} \\times 10^4 \\text{ mm}^4`;
-    }
-  };
-  const formulaInertia = getInertiaFormula();
-  const formulaMoment = `M_{max} = \\frac{P \\cdot a \\cdot b}{L} = \\frac{${state.bendLoad} \\times ${(a_mm/1000).toFixed(1)} \\times ${(b_mm/1000).toFixed(1)}}{${state.bendLength}} = ${maxMoment.toFixed(1)} \\text{ Nm}`;
-  const formulaDeflection = `w_{load} = \\frac{P a^2 b^2}{3 E I L} = \\frac{${state.bendLoad} \\times ${a_mm.toFixed(0)}^2 \\times ${b_mm.toFixed(0)}^2}{3 \\times ${E_MPa} \\times ${inertia.toFixed(0)} \\times ${L_mm.toFixed(0)}} = ${deflectionAtLoad.toFixed(2)} \\text{ mm}`;
-  const formulaStress = `\\sigma_{max} = \\frac{M_{max} \\cdot y_{max}}{I_z} = \\frac{${(maxMoment*1000).toFixed(0)} \\times ${yMax.toFixed(0)}}{${inertia.toFixed(0)}} = ${maxStress.toFixed(2)} \\text{ MPa}`;
-  const formulaStrainEnergy = `U = \\frac{P^2 a^2 b^2}{6 E I L} = \\frac{${state.bendLoad}^2 \\times ${a_mm.toFixed(0)}^2 \\times ${b_mm.toFixed(0)}^2}{6 \\times ${E_MPa} \\times ${inertia.toFixed(0)} \\times ${L_mm.toFixed(0)}} = ${strainEnergy.toFixed(2)} \\text{ mJ}`;
-
-  const beamThick = Math.max(10, Math.min(100, 2 * yMax / 5));
-
-  return (
-    <div className="flex flex-col h-full space-y-6">
-      <CalculationNotice assumptions={result.assumptions} warnings={result.warnings} />
-      {/* TOP: Visualization */}
-      <div className="bending-figure bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex items-center justify-center relative">
-         <div className="absolute top-4 left-4 text-xs font-bold text-slate-400 uppercase flex items-center gap-2">
-             <Activity className="w-4 h-4"/> 梁变形、剪力与弯矩
-         </div>
-         <svg width="100%" height="100%" viewBox="0 65 600 490" preserveAspectRatio="xMidYMid meet">
-            <CommonDefs />
-            
-            {/* --- 1. Physical Beam --- */}
-            {/* Floor */}
-            <line x1="20" y1={floorY} x2="580" y2={floorY} stroke="#cbd5e1" strokeWidth="3" strokeLinecap="round" />
-            
-            {/* Left Support */}
-            <g transform={`translate(${startX}, ${floorY})`}>
-                <path d={`M0,0 L-15,-${supportHeight} L15,-${supportHeight} Z`} fill="url(#hatchPattern)" stroke="#94a3b8" strokeWidth="2" />
-                <circle cx="0" cy={`-${supportHeight}`} r="4" fill="white" stroke="#94a3b8" strokeWidth="2"/>
-                {/* Reaction Arrow */}
-                <line x1="-25" y1="0" x2="-25" y2={`-${supportHeight}`} stroke="#4f46e5" strokeWidth="2" markerEnd="url(#arrowForce)" />
-                <text x="-45" y="-15" fontSize="10" fill="#4f46e5">{Math.round(R1)} N</text>
-            </g>
-            
-            {/* Right Support */}
-            <g transform={`translate(${endX}, ${floorY})`}>
-                 <path d={`M0,-8 L-15,-${supportHeight} L15,-${supportHeight} Z`} fill="url(#hatchPattern)" stroke="#94a3b8" strokeWidth="2" />
-                 <circle cx="0" cy={`-${supportHeight}`} r="4" fill="white" stroke="#94a3b8" strokeWidth="2"/>
-                 <circle cx="-8" cy="-4" r="3" fill="#cbd5e1" />
-                 <circle cx="8" cy="-4" r="3" fill="#cbd5e1" />
-                 {/* Reaction Arrow */}
-                 <line x1="25" y1="0" x2="25" y2={`-${supportHeight}`} stroke="#4f46e5" strokeWidth="2" markerEnd="url(#arrowForce)" />
-                 <text x="30" y="-15" fontSize="10" textAnchor="end" fill="#4f46e5">{Math.round(R2)} N</text>
-            </g>
-
-            {/* Original Beam (Dashed Outline) */}
-            <path 
-              d={`M ${startX},${baselineY} L ${endX},${baselineY}`} 
-              stroke="#cbd5e1" 
-              strokeWidth={beamThick} 
-              strokeLinecap="butt" 
-              fill="none"
-              style={{ opacity: 0.5 }}
-            />
-             <path 
-              d={`M ${startX},${baselineY} L ${endX},${baselineY}`} 
-              stroke="#94a3b8" 
-              strokeWidth="1" 
-              strokeLinecap="butt" 
-              strokeDasharray="4 4"
-              fill="none"
-            />
-
-            {/* Deformed Beam (Transparent with Solid Outline Effect) */}
-            {/* Main Body - Transparent Indigo */}
-            {/* Approximation using two quadratic curves meeting at load point */}
-            <path 
-              d={`M ${startX},${baselineY} Q ${(startX+loadX)/2},${sagY} ${loadX},${sagY} Q ${(loadX+endX)/2},${sagY} ${endX},${baselineY}`} 
-              stroke="rgba(79, 70, 229, 0.15)" 
-              strokeWidth={beamThick} 
-              fill="none" 
-              strokeLinecap="butt" 
-              style={{ transition: "d 0.3s ease-out, stroke-width 0.3s" }}
-            />
-             {/* Centerline - Solid Indigo Dashed */}
-             <path 
-              d={`M ${startX},${baselineY} Q ${(startX+loadX)/2},${sagY} ${loadX},${sagY} Q ${(loadX+endX)/2},${sagY} ${endX},${baselineY}`} 
-              stroke="#4f46e5" 
-              strokeOpacity="0.5"
-              strokeWidth="1" 
-              fill="none" 
-              strokeDasharray="6 6"
-              style={{ transition: "d 0.3s ease-out" }}
-            />
-            {/* Cap Ends (Approximate) */}
-            <rect x={startX} y={baselineY - beamThick/2} width={2} height={beamThick} fill="#4f46e5" style={{ opacity: 0.5 }} />
-            <rect x={endX-2} y={baselineY - beamThick/2} width={2} height={beamThick} fill="#4f46e5" style={{ opacity: 0.5 }} />
-
-            {/* Force Arrow (Rose) */}
-            <g transform={`translate(${loadX}, ${sagY - beamThick/2 - 2})`} style={{ transition: "transform 0.3s ease-out" }}>
-                <line x1="0" y1="-60" x2="0" y2="-12" stroke="#e11d48" strokeWidth="2" markerEnd="url(#arrowForce)" />
-                <text x={state.bendLoadPos > state.bendLength / 2 ? -10 : 10} y="-35" textAnchor={state.bendLoadPos > state.bendLength / 2 ? 'end' : 'start'} fill="#e11d48" fontWeight="bold" fontSize="14">F = {state.bendLoad} N</text>
-            </g>
-            
-            {/* Deflection Measurement (Indigo) */}
-            <g style={{ opacity: visualSag > 5 ? 1 : 0, transition: "opacity 0.3s" }}>
-                 <line x1={loadX} y1={baselineY} x2={loadX} y2={sagY} stroke="#4f46e5" strokeWidth="2" strokeDasharray="4 2" />
-                 <text x={loadX + 10} y={(baselineY+sagY)/2} fill="#4f46e5" fontSize="12" fontWeight="bold">w</text>
-            </g>
-
-            {/* --- Drop Lines --- */}
-            <line x1={startX} y1={floorY + 10} x2={startX} y2={530} stroke="#e2e8f0" strokeDasharray="4 2" />
-            <line x1={loadX} y1={floorY + 10} x2={loadX} y2={530} stroke="#e2e8f0" strokeDasharray="4 2" />
-            <line x1={endX} y1={floorY + 10} x2={endX} y2={530} stroke="#e2e8f0" strokeDasharray="4 2" />
-
-            {/* --- 2. Shear Force Diagram (SFD) --- */}
-            <g transform="translate(0, 320)">
-                <line x1="20" y1="0" x2="580" y2="0" stroke="#94a3b8" strokeWidth="1" />
-                <text x="20" y="-60" fontSize="12" fill="#64748b" fontWeight="bold">剪力 V / N</text>
-                
-                {/* Left Positive Shear (+R1) */}
-                <rect x={startX} y="-40" width={loadX - startX} height="40" fill="rgba(79, 70, 229, 0.1)" stroke="#4f46e5" />
-                <text x={startX + 10} y="-20" fontSize="11" fill="#4f46e5">+{Math.round(R1)}</text>
-
-                {/* Right Negative Shear (-R2) */}
-                {/* Scale height? For simplicity keeping consistent height but could scale */}
-                <rect x={loadX} y="0" width={endX - loadX} height="40" fill="rgba(225, 29, 72, 0.1)" stroke="#e11d48" />
-                <text x={endX - 50} y="25" fontSize="11" fill="#e11d48">-{Math.round(R2)}</text>
-            </g>
-
-            {/* --- 3. Bending Moment Diagram (BMD) --- */}
-            <g transform="translate(0, 450)">
-                <line x1="20" y1="0" x2="580" y2="0" stroke="#94a3b8" strokeWidth="1" />
-                <text x="20" y="-20" fontSize="12" fill="#64748b" fontWeight="bold">弯矩 M / N·m</text>
-                
-                {/* Triangle (Positive Downwards) */}
-                <path d={`M ${startX},0 L ${loadX},60 L ${endX},0 Z`} fill="rgba(79, 70, 229, 0.1)" stroke="#4f46e5" strokeWidth="2" />
-                
-                <line x1={loadX} y1="0" x2={loadX} y2="60" stroke="#4f46e5" strokeDasharray="2 2" />
-                <text x={loadX + (state.bendLoadPos > state.bendLength / 2 ? -10 : 10)} y="30" textAnchor={state.bendLoadPos > state.bendLength / 2 ? 'end' : 'start'} fontSize="11" fill="#4f46e5" fontWeight="bold">{maxMoment.toFixed(0)} Nm</text>
-            </g>
-
-         </svg>
-      </div>
-
-      {/* MIDDLE: Parameters & Results */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 h-full">
-           <h3 className="font-semibold text-indigo-900 mb-4 flex items-center gap-2">
-             <Calculator className="w-4 h-4 text-indigo-500" /> 实验参数
-           </h3>
-           <div className="space-y-4">
-                <MaterialSelector 
-                  currentE={state.bendModulus} 
-                  currentYield={state.materialYield}
-                  currentPoisson={state.poissonRatio}
-                  onSelect={(mat) => onChange({ bendModulus: mat.E, materialYield: mat.yield, poissonRatio: mat.poisson })} 
-                />
-                <SectionSelector
-                  section={state.bendSection}
-                  onChange={(s) => onChange({ bendSection: s })}
-                />
-                <SliderInputControl label="载荷 (Load)" value={state.bendLoad} min={0} max={50000} step={100} unit="N" onChange={(v) => onChange({ bendLoad: v })} />
-                <div className="grid grid-cols-2 gap-4">
-                    <SliderInputControl label="梁跨度 (Length)" value={state.bendLength} min={0.1} max={20} step={0.1} unit="m" onChange={(v) => onChange({ bendLength: v })} />
-                    <SliderInputControl label="载荷位置 (a)" value={state.bendLoadPos} min={0} max={state.bendLength} minimum={0} maximum={state.bendLength} step={0.01} unit="m" onChange={(v) => onChange({ bendLoadPos: v })} />
-                </div>
-                <SliderInputControl label="弹性模量 (E)" value={state.bendModulus} min={1} max={500} step={1} unit="GPa" onChange={(v) => onChange({ bendModulus: v })} />
-           </div>
-        </div>
-        
-        <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 h-full">
-           <h3 className="font-semibold text-indigo-900 mb-4 flex items-center gap-2">
-             <Sigma className="w-4 h-4 text-indigo-500" /> 结果分析
-           </h3>
-          <div className="space-y-3">
-            <div className="flex justify-between items-center p-3 bg-white rounded border border-slate-200">
-              <span className="text-sm text-slate-600">截面惯性矩 (I_z)</span>
-              <span className="font-mono font-bold text-slate-700">{(inertia/10000).toFixed(1)} cm⁴</span>
-            </div>
-            <div className="flex justify-between items-center p-3 bg-white rounded border border-slate-200">
-              <span className="text-sm text-slate-600">加载点挠度 (w_load)</span>
-              <span className="font-mono font-bold text-indigo-600">{deflectionAtLoad.toFixed(2)} mm</span>
-            </div>
-             <div className="flex justify-between items-center p-3 bg-white rounded border border-slate-200">
-              <span className="text-sm text-slate-600">最大弯矩 (M_max)</span>
-              <span className="font-mono font-bold text-slate-600">{maxMoment.toFixed(0)} Nm</span>
-            </div>
-            <div className="flex justify-between items-center p-3 bg-white rounded border border-slate-200">
-              <span className="text-sm text-slate-600">最大正应力 (σ_max)</span>
-              <span className="font-mono font-bold text-rose-600">{maxStress.toFixed(1)} MPa</span>
-            </div>
-            <div className="flex justify-between items-center p-3 bg-white rounded border border-slate-200">
-              <span className="text-sm text-slate-600">弯曲应变能 (U)</span>
-              <span className="font-mono font-bold text-emerald-600">{strainEnergy.toFixed(2)} mJ</span>
-            </div>
-            <div className="flex justify-between items-center p-3 bg-white rounded border border-slate-200">
-              <span className="text-sm text-slate-600">最大应变能密度 (u_max)</span>
-              <span className="font-mono font-bold text-emerald-600">{(maxStrainEnergyDensity * 1000).toFixed(4)} μJ/mm³</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* BOTTOM: Calculation Process */}
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-        <h4 className="font-semibold text-indigo-900 mb-4 flex items-center gap-2">
-          <Sigma className="w-3 h-3 text-indigo-500" /> 计算过程演示
-        </h4>
-        <div className="bg-slate-50 rounded-lg border border-slate-200 p-4 space-y-3 overflow-x-auto">
-          <div className="p-3 bg-white rounded border border-slate-200">
-            <div className="text-xs text-slate-500 mb-1">① 截面惯性矩 (Moment of Inertia)</div>
-            <LatexRenderer formula={formulaInertia} />
-          </div>
-          <div className="p-3 bg-white rounded border border-slate-200">
-            <div className="text-xs text-slate-500 mb-1">② 最大弯矩 (Maximum Moment)</div>
-            <LatexRenderer formula={formulaMoment} />
-          </div>
-          <div className="p-3 bg-white rounded border border-slate-200">
-            <div className="text-xs text-slate-500 mb-1">③ 加载点挠度 (Deflection at Load)</div>
-            <LatexRenderer formula={formulaDeflection} />
-          </div>
-          <div className="p-3 bg-white rounded border border-slate-200">
-            <div className="text-xs text-slate-500 mb-1">④ 最大弯曲正应力 (Maximum Bending Stress)</div>
-            <LatexRenderer formula={formulaStress} />
-          </div>
-          <div className="p-3 bg-white rounded border border-slate-200">
-            <div className="text-xs text-slate-500 mb-1">⑤ 弯曲应变能 (Bending Strain Energy)</div>
-            <LatexRenderer formula={formulaStrainEnergy} />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+export const BendingModule = ({state,onChange}:{state:SimulationState;onChange:(s:Partial<SimulationState>)=>void}) => {
+  const result=calculateBendingTeaching({materialName:state.materialName,yieldStrength:state.materialYield,load:state.bendLoad,length:state.bendLength,position:state.bendLoadPos,modulus:state.bendModulus,section:state.bendSection});
+  if(result.ok === false)return <InvalidCalculation diagnostics={result.diagnostics} onReset={()=>onChange({bendLoad:DEFAULT_STATE.bendLoad,bendLength:DEFAULT_STATE.bendLength,bendLoadPos:DEFAULT_STATE.bendLoadPos,bendModulus:DEFAULT_STATE.bendModulus,bendSection:DEFAULT_STATE.bendSection})}/>;
+  const format=(value:number,digits=3)=>Math.abs(value)>=10000?value.toExponential(2):value.toFixed(digits);
+  const v=result.values,field={load:state.bendLoad,lengthMm:v.L_mm,positionMm:v.a_mm,modulusMPa:v.E_MPa,inertia:v.inertia};
+  const profile=bendingProfile(state.bendSection);
+  const {extrapolated,phase:status,notice}=v;
+  const scope=[...result.assumptions,...result.warnings].join(' ');
+  const formulas=bendingFormulas(state,v);
+  const theory=<TheoryLesson context="梁的弯曲" first="内力决定应力" second="刚度决定挠度" lead="同一简支梁，用受力、截面与材料把弯矩、纤维应力和整条挠曲线联系起来。"
+    diagram={<svg viewBox="0 0 280 145" role="img" aria-label="简支梁集中载荷、上压下拉与弹性中性轴"><path d="M25 62Q140 88 255 62L255 83Q140 110 25 83Z" fill="#68b5ee1a" stroke="#8ec9f5"/><path d="M25 73Q140 99 255 73" fill="none" stroke="#95dcca" strokeDasharray="4 4"/><TheoryArrow x1={140} y1={15} x2={140} y2={65}/><text x="151" y="33">P</text><BeamSupportSymbol kind="pinned" x={25} y={83} size={.8}/><BeamSupportSymbol kind="roller" x={255} y={83} size={.8}/><text x="25" y="128" textAnchor="middle">A</text><text x="255" y="128" textAnchor="middle">B</text><text x="140" y="56" textAnchor="middle">上缘受压</text><text x="140" y="125" textAnchor="middle">下缘受拉</text></svg>}
+    caption="A 为铰支座，B 为滚动支座。正弯矩区上压下拉，反向载荷时受拉、受压位置对换。"
+    readings={[{label:'最大弯矩绝对值',value:(Math.abs(v.maxMoment)/1000).toFixed(3),unit:'kN·m'},{label:'最大挠度绝对值',value:Math.abs(v.maxDeflection).toFixed(3),unit:'mm',accent:true}]} formulas={formulas} scope={scope}>
+    <TheoryRelation title="同一载荷，材料决定变形"><p>当前 {state.materialName} 的 E={state.bendModulus} GPa。保持截面与载荷不变，挠度与 E 成反比；静定梁的反力和弯矩不随 E 改变。</p></TheoryRelation>
+    <TheoryRelation title="截面高度影响刚度"><p>当前 Iz={(v.inertia/1e4).toFixed(2)} cm⁴。矩形截面 Iz=bh³/12，高度翻倍时挠度降为八分之一。三维截面轮廓与计算尺寸保持一致。</p></TheoryRelation>
+    <TheoryRelation title="最大挠度与加载点分开看"><p>加载点挠度为 {v.deflectionAtLoad.toFixed(3)} mm；全梁最大绝对挠度为 {Math.abs(v.maxDeflection).toFixed(3)} mm，位置 x={(v.maxDeflectionPosition/1000).toFixed(3)} m。</p></TheoryRelation>
+    <TheoryRelation title="弹性模型的边界"><p>{extrapolated?'当前只显示线弹性外推结果，不能据此判断真实塑性变形或断裂。':'采用均匀材料、等截面与小挠度假设。'} 混凝土开裂、复合材料方向性、剪切变形和塑性铰均未纳入该模型。</p></TheoryRelation>
+  </TheoryLesson>;
+  return <div className="fundamentals-lab taste-lab axial-lab bending-lab">
+    <div className="axial-workbench-heading"><div className="bending-workbench-context"><MoveVertical size={15}/><span>简支梁</span><i/><span>集中载荷</span></div><div className="axial-specimen-summary"><span>{state.materialName} · {profile.label}</span><span>E {state.bendModulus} GPa</span><span>Iz {(v.inertia/1e4).toFixed(1)} cm⁴</span><span>L {state.bendLength} m</span></div></div>
+    <div className="fundamentals-grid axial-grid bending-grid"><div className="fundamentals-main">
+      <BendingScene field={field} section={state.bendSection} material={state.materialName} status={status} notice={notice} geometryAvailable={v.geometryAvailable} extrapolated={extrapolated}/>
+      <BendingControlDock state={state} onChange={onChange}/>
+    </div><AnalysisRail title="梁的弯曲" className="axial-analysis bending-analysis" theory={theory} reference={<>
+      <FormulaList formulas={formulas}/>
+      <dl className="reference-geometry"><div><dt>惯性矩 Iz</dt><dd>{v.inertia.toExponential(4)} mm⁴</dd></div><div><dt>最大边缘距离</dt><dd>{v.yMax===null?'—（缺少边缘几何）':`${v.yMax.toFixed(2)} mm`}</dd></div><div><dt>弯曲应变能</dt><dd>{v.energyApplicable?`${(v.strainEnergy/1000).toFixed(4)} J`:'未验证适用性'}</dd></div><div><dt>最大应变能密度</dt><dd>{v.energyApplicable&&v.maxStrainEnergyDensity!==null?`${(v.maxStrainEnergyDensity*1000).toFixed(4)} kJ/m³`:'—（未验证）'}</dd></div></dl><p className="reference-assumption">{scope}</p>
+    </>} analysis={<>
+      <section className="result-panel"><div className="analysis-panel-heading"><h3>实时结果</h3><span className="result-model-status">{status}</span></div>
+        <AnalysisReadout label={extrapolated?"EB参考挠度 |w|max":"最大挠度 |w|max"} value={format(Math.abs(v.maxDeflection))} unit="mm"/>
+        <AnalysisSecondary label="最大挠度位置 x" value={(v.maxDeflectionPosition/1000).toFixed(3)} unit="m"/>
+        <AnalysisPair><AnalysisCard label="最大弯矩 |M|max" value={(Math.abs(v.maxMoment)/1000).toFixed(3)} unit="kN·m"/><AnalysisCard label="边缘应力 |σ|max" value={v.maxStress===null?'—':v.maxStress.toFixed(2)} unit="MPa" accent/></AnalysisPair>
+        <dl className="bending-secondary-readings">{v.spanDepthRatio!==null&&<div><dt>跨度 / 截面高</dt><dd>{v.spanDepthRatio.toFixed(2)}</dd></div>}<div><dt>左支反力 RA</dt><dd>{(v.R1/1000).toFixed(3)} <small>kN</small></dd></div><div><dt>右支反力 RB</dt><dd>{(v.R2/1000).toFixed(3)} <small>kN</small></dd></div><div><dt>加载点挠度 w(a)</dt><dd>{v.deflectionAtLoad.toFixed(3)} <small>mm</small></dd></div></dl>
+        <p className="bending-model-note">{notice}。{!profile.schematic&&'图形倍率只影响显示，计算数值不放大。'}</p>
+      </section><BendingResultPlot field={field}/>
+    </>}/></div>
+  </div>;
 };

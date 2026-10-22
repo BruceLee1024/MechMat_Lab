@@ -1,5 +1,6 @@
 import { DEFAULT_STATE, ModuleType, SimulationState, THEORY_INFO, SectionProperties } from '../types';
 import { validateSection, SECTION_FIELDS } from '../mechanics/sections';
+import { legacyCombinedG } from '../mechanics/combined';
 import { getCalculationContext } from '../mechanics/aiContext';
 import { updateSimulationState } from '../mechanics/simulationState';
 import { SECTION_TOOL_CONFIGS, SectionToolType, PolygonPath } from '../mechanics/sectionTool';
@@ -13,9 +14,9 @@ export const MODULE_FIELDS: Record<SimulationModule, readonly (keyof SimulationS
   axial: ['materialName', 'materialYield', 'poissonRatio', 'axialForce', 'axialArea', 'axialLength', 'axialObliqueAngle', 'bendModulus'],
   bending: ['materialName', 'materialYield', 'poissonRatio', 'bendLoad', 'bendLength', 'bendLoadPos', 'bendModulus', 'bendWidth', 'bendHeight', 'bendSection'],
   torsion: ['materialName', 'materialYield', 'poissonRatio', 'torqTorque', 'torqRadius', 'torqLength', 'torqModulus', 'torqLoadRatio'],
-  buckling: ['materialName', 'materialYield', 'poissonRatio', 'buckleLoad', 'buckleLength', 'buckleModulus', 'buckleWidth', 'buckleHeight', 'buckleSection'],
+  buckling: ['materialName', 'materialYield', 'poissonRatio', 'buckleLoad', 'buckleInitialBow', 'buckleLength', 'buckleModulus', 'buckleWidth', 'buckleHeight', 'buckleSection'],
   stress: ['stressSigX', 'stressSigY', 'stressSigZ', 'stressTauXY', 'stressTauYZ', 'stressTauZX', 'stressAngle'],
-  combined: ['materialName', 'materialYield', 'poissonRatio', 'combinedLoad', 'combinedEccentricity', 'combinedWidth', 'combinedHeight', 'combinedLength', 'combinedSection', 'bendTorque', 'bendTorqueLength', 'bendTorqueSection', 'bendTorqueBendLoad', 'bendTorqueBendPos', 'bendTorqueModulus'],
+  combined: ['materialName', 'materialYield', 'poissonRatio', 'combinedLoad', 'combinedEccentricity', 'combinedWidth', 'combinedHeight', 'combinedLength', 'combinedSection', 'bendTorque', 'bendTorqueLength', 'bendTorqueSection', 'bendTorqueBendLoad', 'bendTorqueBendPos', 'bendTorqueModulus', 'bendTorqueShearModulus'],
 };
 
 export interface SimulationModel { kind: 'simulation'; parameters: Partial<SimulationState> }
@@ -35,7 +36,8 @@ export function simulationParameters(module: SimulationModule, state: Simulation
   return Object.fromEntries(MODULE_FIELDS[module].map(key => [key, state[key]]));
 }
 export function getSimulation(document: ExperimentDocument): SimulationState {
-  return { ...DEFAULT_STATE, ...(document.model.kind === 'simulation' ? document.model.parameters : {}) };
+  const parameters=document.model.kind==='simulation'?document.model.parameters:{};
+  return { ...DEFAULT_STATE, ...parameters, ...(document.module==='combined'&&parameters.bendTorqueShearModulus===undefined?{bendTorqueShearModulus:legacyCombinedG(parameters)}:{}), ...(document.module==='buckling'&&parameters.buckleInitialBow===undefined?{buckleInitialBow:0}:{}) };
 }
 export function defaultModel(module: ExperimentModule): ExperimentModel {
   if (module === 'solver') return { kind: 'solver', coordinateUnit: 'mm', nodes: [], elements: [], loads: [] };
@@ -66,7 +68,10 @@ function validateModel(module: ExperimentModule, value: unknown): ExperimentMode
   if (module !== 'solver' && module !== 'section') {
     keys(value, ['kind', 'parameters']);
     assert(value.kind === 'simulation' && record(value.parameters), '实验参数结构无效');
-    const parameters = value.parameters;
+    const parameters = {...value.parameters};
+    // 旧版压杆文档没有初弯曲参数，保持原理想直杆口径。
+    if(module==='buckling'&&parameters.buckleInitialBow===undefined)parameters.buckleInitialBow=0;
+    if(module==='combined'&&parameters.bendTorqueShearModulus===undefined)parameters.bendTorqueShearModulus=legacyCombinedG(parameters as Partial<SimulationState>);
     keys(parameters, MODULE_FIELDS[module]);
     for (const key of MODULE_FIELDS[module]) {
       const item = parameters[key];
@@ -77,7 +82,7 @@ function validateModel(module: ExperimentModule, value: unknown): ExperimentMode
     const candidate = { ...DEFAULT_STATE, ...parameters } as SimulationState;
     const checked = updateSimulationState(DEFAULT_STATE, parameters as Partial<SimulationState>);
     assert(checked !== DEFAULT_STATE && JSON.stringify(simulationParameters(module, checked)) === JSON.stringify(simulationParameters(module, candidate)), '实验参数超出范围或载荷位置越界');
-    if (['axialForce', 'bendLoad', 'torqTorque', 'combinedLoad', 'bendTorque', 'bendTorqueBendLoad'].some(key => finite(parameters[key]) && (parameters[key] as number) < 0)) throw new Error('载荷大小不能为负数');
+    if (['axialForce', 'bendLoad', 'torqTorque'].some(key => finite(parameters[key]) && (parameters[key] as number) < 0)) throw new Error('载荷大小不能为负数');
     const context = getCalculationContext(module, candidate);
     assert(!context?.includes('当前本地计算无效'), '参数量级超出可计算范围');
     return { kind: 'simulation', parameters: simulationParameters(module, candidate) };
@@ -143,7 +148,7 @@ export function parseExperiment(value: unknown): ExperimentDocument {
     keys(value, ['format', 'schemaVersion', 'module', 'name', 'state']);
     assert(value.format === 'mechmat-experiment' && isExperimentModule(String(value.module)) && !['solver', 'section'].includes(String(value.module)) && record(value.state), '旧版实验格式无效');
     const module = value.module as SimulationModule;
-    const model = validateModel(module, { kind: 'simulation', parameters: simulationParameters(module, { ...DEFAULT_STATE, ...value.state } as SimulationState) });
+    const model = validateModel(module, { kind: 'simulation', parameters: simulationParameters(module, { ...DEFAULT_STATE, ...value.state, ...(module==='combined'&&value.state.bendTorqueShearModulus===undefined?{bendTorqueShearModulus:legacyCombinedG(value.state as Partial<SimulationState>)}:{}), ...(module==='buckling'&&value.state.buckleInitialBow===undefined?{buckleInitialBow:0}:{}) } as SimulationState) });
     return createExperiment(module, text(value.name) ? value.name : undefined, model);
   }
   assert(value.format === 'mechmat-experiment' && value.schemaVersion === 1, '实验版本不受支持，请保留原文件并使用对应版本的应用');

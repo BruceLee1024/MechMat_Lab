@@ -1,0 +1,39 @@
+/* 圆轴扭转沿用轴向/弯曲实验的工作台与分析栏层级。 */
+.taste-lab.torsion-lab .torsion-grid{min-height:min(650px,calc(100dvh - 162px))}
+.taste-lab.torsion-lab .fundamentals-main{grid-template-rows:minmax(320px,1fr) max-content}
+.taste-lab.torsion-lab .poisson-figure{min-height:320px}
+.taste-lab.torsion-lab .poisson-canvas-wrap{min-height:180px}
+.torsion-stage{background:radial-gradient(ellipse at 50% 60%,#15364c44,transparent 65%),#0b1725!important}
+.torsion-scene .axial-deformation-bar>div{max-width:70%}
+.torsion-meridian-key i{background:#9ae5cc!important}
+.torsion-load-controls,.torsion-specimen-controls{padding:12px 15px 11px}
+.torsion-control-console [role=tabpanel][hidden]{display:none}
+.torsion-load-row,.torsion-ratio-row{display:flex;gap:18px;align-items:center;min-width:0}
+.torsion-load-row>div:first-child,.torsion-ratio-row>div:first-child{width:200px;flex-shrink:0}
+.torsion-ratio-row{border-top:1px solid #39596877;margin-top:11px;padding-top:11px}
+.torsion-load-row>input,.torsion-ratio-row>input{flex:1;min-width:35px;width:100%;accent-color:#91e6d1;height:15px;cursor:ew-resize}
+.torsion-ratio-row>span{font-size:9px;color:#b4a5d2;min-width:64px;text-align:right}
+.torsion-unload{display:flex;align-items:center;gap:5px;color:#a6becf;font-size:10px;min-width:64px;justify-content:flex-end}
+.torsion-unload:disabled{opacity:.4}
+.torsion-control-hint{font-size:9px;color:#8faaba;line-height:1.7;margin-top:9px}
+.torsion-control-console label{color:#a6c4d5!important;font-size:10px!important;white-space:nowrap}
+.torsion-control-console input[type=text]{width:80px!important;height:29px!important;min-height:29px!important;padding:4px 6px!important;background:#102637!important;border:1px solid #426075!important;color:#d7f1ef!important;border-radius:5px!important;font:14px ui-monospace,monospace!important}
+.torsion-control-console .text-xs{font-size:9px}
+.torsion-material-row{display:flex;align-items:center;gap:18px;padding-bottom:10px;border-bottom:1px solid #39596877}
+.torsion-material-row>label{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
+.torsion-material-row select{max-width:100%;min-width:0;background:#102638;color:#cee4ed;border:1px solid #3a596d;border-radius:4px;font-size:10px;padding:5px 7px;flex:1}
+.torsion-material-row>div{width:210px;flex-shrink:0}
+.torsion-dimension-grid{display:grid;grid-template-columns:78px minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:center;padding-top:7px}
+.torsion-radius-figure svg{display:block;width:78px;height:68px;overflow:visible}
+.torsion-radius-figure text{fill:#a8e9d4;font:10px ui-monospace,monospace}
+.torsion-radius-figure>span{display:block;font-size:8px;color:#91b4c8;text-align:center;white-space:nowrap;margin-top:-5px}
+.torsion-dimension-input{display:grid;gap:8px;min-width:0}
+.torsion-dimension-input>input{width:100%;min-width:30px;height:12px;accent-color:#92e4d0;cursor:ew-resize}
+.torsion-dimension-input>span{font:9px ui-monospace,monospace;color:#95b6c9}
+.torsion-section-impact{gap:16px;padding-top:7px}
+.torsion-section-impact button{font-size:9px;color:#abc7d7;margin-left:auto}.torsion-section-impact button+button{margin-left:0}
+.torsion-lab button:focus-visible,.torsion-lab select:focus-visible{outline:2px solid #96c8ef;outline-offset:2px}
+@container(max-width:620px){.torsion-load-row,.torsion-ratio-row{gap:10px}.torsion-load-row>div:first-child,.torsion-ratio-row>div:first-child{width:175px}.torsion-material-row{gap:12px}.torsion-material-row>div{width:175px}.torsion-dimension-grid{gap:10px;grid-template-columns:65px minmax(0,1fr) minmax(0,1fr)}.torsion-radius-figure svg{width:65px}.torsion-section-impact{gap:10px}}
+@container(max-width:440px){.torsion-load-controls,.torsion-specimen-controls{padding:10px}.torsion-load-row,.torsion-ratio-row{flex-wrap:wrap;gap:8px}.torsion-load-row>div:first-child,.torsion-ratio-row>div:first-child{width:100%}.torsion-load-row>input,.torsion-ratio-row>input{flex:1;min-width:100px}.torsion-material-row{flex-wrap:wrap;gap:9px}.torsion-material-row>label,.torsion-material-row>div{width:100%;flex-basis:100%}.torsion-dimension-grid{grid-template-columns:60px minmax(0,1fr);gap:10px}.torsion-dimension-input:last-child{grid-column:2}.torsion-radius-figure{grid-row:1/3;align-self:start}.torsion-section-impact{gap:10px}.torsion-section-impact>span:first-child{display:none}.torsion-control-hint{font-size:8px}}
+@media(max-width:767px){.taste-lab.torsion-lab .fundamentals-main{grid-template-rows:450px max-content}.torsion-scene .axial-deformation-bar>div{max-width:65%}.torsion-stage .scene-caption{font-size:8px}}
+@media(min-width:768px) and (max-height:800px){.torsion-stage .scene-legend,.torsion-stage .bending-scene-readings{display:none}}

@@ -2,43 +2,16 @@ import React, { useEffect, useState } from "react";
 import {
   ArrowRight, MoveVertical, RotateCw, Minimize2, MoveDiagonal,
   BookOpen, Lightbulb, X, Layers, Beaker, GraduationCap, Calculator, Home, Settings, Library, Shapes,
-  MessageCircle, Lock
+  MessageCircle, Lock, PanelLeftClose, PanelLeftOpen
 } from "lucide-react";
-import katex from "katex";
+import { LatexRenderer } from "./components/LatexRenderer";
+export { LatexRenderer } from "./components/LatexRenderer";
 import { ModuleType, THEORY_INFO, SectionType, SectionProperties } from "./types";
 import { NumericInput } from "./components/NumericInput";
 import { NumericConstraints, validateNumber } from "./mechanics/validation";
 import { calculateSectionProperties, validateSection, SECTION_FIELDS } from "./mechanics/sections";
 import { ThemeName } from "./theme";
 import { isActivated, isModuleAvailable } from "./activation";
-
-// --- Latex Renderer ---
-export const LatexRenderer = ({ formula }: { formula: string }) => {
-  const [html, setHtml] = useState<string>("");
-
-  useEffect(() => {
-    if (!formula) return;
-    try {
-      const rendered = katex.renderToString(formula, {
-        throwOnError: false,
-        displayMode: true,
-        output: "html",
-        strict: false,
-      });
-      setHtml(rendered);
-    } catch (e: any) {
-      console.error("KaTeX render error:", e);
-      setHtml(`<div class="font-mono text-sm text-rose-600 bg-rose-50 p-2 rounded">Error: ${formula}</div>`);
-    }
-  }, [formula]);
-
-  return (
-    <div 
-      className="overflow-x-auto overflow-y-hidden text-slate-800 py-1"
-      dangerouslySetInnerHTML={{ __html: html }} 
-    />
-  );
-};
 
 // --- Markdown Renderer ---
 export const MarkdownRenderer = ({ content }: { content: string }) => {
@@ -211,51 +184,9 @@ export const SectionSelector = ({
 };
 
 // --- 材料数据库 ---
-export interface MaterialData {
-  name: string;
-  E: number;      // 弹性模量 GPa
-  G: number;      // 剪切模量 GPa
-  yield: number;  // 屈服强度 MPa
-  poisson: number; // 泊松比
-  density?: number; // 密度 kg/m³
-  category: 'metal' | 'concrete' | 'wood' | 'polymer' | 'composite' | 'custom';
-}
-
-// 预设材料库（常见工程材料的真实参数）
-const DEFAULT_MATERIALS: MaterialData[] = [
-  // 钢材
-  { name: "Q235钢", E: 206, G: 79, yield: 235, poisson: 0.3, density: 7850, category: 'metal' },
-  { name: "Q345钢", E: 206, G: 79, yield: 345, poisson: 0.3, density: 7850, category: 'metal' },
-  { name: "Q460高强钢", E: 206, G: 79, yield: 460, poisson: 0.3, density: 7850, category: 'metal' },
-  { name: "304不锈钢", E: 193, G: 77, yield: 205, poisson: 0.29, density: 7930, category: 'metal' },
-  { name: "316不锈钢", E: 193, G: 77, yield: 290, poisson: 0.29, density: 7980, category: 'metal' },
-  // 铝合金
-  { name: "6061-T6铝合金", E: 68.9, G: 26, yield: 276, poisson: 0.33, density: 2700, category: 'metal' },
-  { name: "7075-T6铝合金", E: 71.7, G: 26.9, yield: 503, poisson: 0.33, density: 2810, category: 'metal' },
-  { name: "2024-T3铝合金", E: 73.1, G: 28, yield: 345, poisson: 0.33, density: 2780, category: 'metal' },
-  // 其他金属
-  { name: "Ti-6Al-4V钛合金", E: 113.8, G: 44, yield: 880, poisson: 0.34, density: 4430, category: 'metal' },
-  { name: "H62黄铜", E: 105, G: 39, yield: 250, poisson: 0.35, density: 8430, category: 'metal' },
-  { name: "T2紫铜", E: 108, G: 40, yield: 70, poisson: 0.34, density: 8900, category: 'metal' },
-  { name: "铸铁HT200", E: 100, G: 40, yield: 200, poisson: 0.26, density: 7200, category: 'metal' },
-  // 混凝土
-  { name: "C20混凝土", E: 25.5, G: 10.6, yield: 9.6, poisson: 0.2, density: 2400, category: 'concrete' },
-  { name: "C30混凝土", E: 30, G: 12.5, yield: 14.3, poisson: 0.2, density: 2400, category: 'concrete' },
-  { name: "C40混凝土", E: 32.5, G: 13.5, yield: 19.1, poisson: 0.2, density: 2400, category: 'concrete' },
-  { name: "C50混凝土", E: 34.5, G: 14.4, yield: 23.1, poisson: 0.2, density: 2450, category: 'concrete' },
-  // 木材
-  { name: "松木", E: 12, G: 0.7, yield: 30, poisson: 0.35, density: 500, category: 'wood' },
-  { name: "橡木", E: 12.5, G: 0.8, yield: 40, poisson: 0.35, density: 700, category: 'wood' },
-  { name: "胶合板", E: 8.5, G: 0.5, yield: 25, poisson: 0.3, density: 600, category: 'wood' },
-  // 高分子/复合材料
-  { name: "环氧树脂", E: 3.5, G: 1.3, yield: 80, poisson: 0.35, density: 1200, category: 'polymer' },
-  { name: "尼龙PA66", E: 3.0, G: 1.1, yield: 85, poisson: 0.4, density: 1140, category: 'polymer' },
-  { name: "GFRP玻璃钢", E: 25, G: 4, yield: 200, poisson: 0.25, density: 1900, category: 'composite' },
-  { name: "CFRP碳纤维", E: 135, G: 5, yield: 1500, poisson: 0.3, density: 1600, category: 'composite' },
-  // 其他
-  { name: "玻璃", E: 70, G: 28, yield: 50, poisson: 0.22, density: 2500, category: 'polymer' },
-  { name: "橡胶", E: 0.01, G: 0.003, yield: 15, poisson: 0.49, density: 1100, category: 'polymer' },
-];
+export type { MaterialData } from './mechanics/materials';
+import { DEFAULT_MATERIALS } from './mechanics/materials';
+import { getAxialMaterialResponse } from './mechanics/axialResponse';
 
 // --- Material Selector ---
 export const MaterialSelector = ({ 
@@ -263,13 +194,15 @@ export const MaterialSelector = ({
   currentE,
   currentG,
   currentYield,
-  currentPoisson
+  currentPoisson,
+  currentName
 }: { 
   onSelect: (mat: { name: string, E: number, G: number, yield: number, poisson: number }) => void;
   currentE?: number;
   currentG?: number;
   currentYield?: number;
   currentPoisson?: number;
+  currentName?: string;
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isCustomMode, setIsCustomMode] = useState(false);
@@ -288,6 +221,7 @@ export const MaterialSelector = ({
     { id: 'wood', label: '木材' },
     { id: 'polymer', label: '高分子' },
     { id: 'composite', label: '复合材料' },
+    { id: 'other', label: '其他' },
   ];
 
   const filteredMaterials = selectedCategory === 'all' 
@@ -295,9 +229,18 @@ export const MaterialSelector = ({
     : materials.filter(m => m.category === selectedCategory);
 
   const activeMat = materials.find(m => 
-    currentE && Math.abs(m.E - currentE) < 0.5 &&
-    currentYield && Math.abs(m.yield - currentYield) < 1
+    (currentName === undefined || m.name === currentName) &&
+    currentE && Math.abs(m.E - currentE) < (currentName ? 1e-8 : 0.5) &&
+    currentYield && Math.abs(m.yield - currentYield) < (currentName ? 1e-8 : 1)
   );
+
+  const referenceSymbol = (name?: string, E = currentE || 200, strength = currentYield || 250) => {
+    const response = getAxialMaterialResponse({ materialName: name, modulus: E, yieldStrength: strength });
+    if (response.family === 'smooth') return 'Rp0.2';
+    const role = response.referenceRole;
+    return role === 'yield' ? 'σy' : role === 'tensile' ? 'σt,ref' : role === 'compression' ? 'σc,ref' : '参考';
+  };
+  const strengthSymbol = referenceSymbol(activeMat?.name);
 
   // 当泊松比改变时自动计算剪切模量 G = E / (2(1+ν))
   const calculateG = (E: number, poisson: number) => {
@@ -339,7 +282,7 @@ export const MaterialSelector = ({
         </div>
         <div className="flex items-center gap-3">
           <span className="text-xs text-slate-500 font-mono hidden sm:inline">
-            E={currentE}GPa | σy={currentYield}MPa
+            E={currentE}GPa | {strengthSymbol}={currentYield}MPa
           </span>
           <svg 
             className={`w-4 h-4 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
@@ -420,7 +363,7 @@ export const MaterialSelector = ({
                     <div className="flex gap-3 mt-1 text-xs text-slate-500 font-mono">
                       <span>E:{mat.E}</span>
                       <span>G:{mat.G}</span>
-                      <span>σy:{mat.yield}</span>
+                      <span>{referenceSymbol(mat.name, mat.E, mat.yield)}:{mat.yield}</span>
                       <span>ν:{mat.poisson}</span>
                     </div>
                   </button>
@@ -456,7 +399,7 @@ export const MaterialSelector = ({
           <div className="mt-3 pt-2 border-t border-slate-200 grid grid-cols-4 gap-2 text-xs text-slate-500 font-mono">
             <span>E: {currentE} GPa</span>
             <span>G: {currentG || calculateG(currentE || 200, currentPoisson ?? 0.3).toFixed(1)} GPa</span>
-            <span>σy: {currentYield} MPa</span>
+            <span>{strengthSymbol}: {currentYield} MPa</span>
             <span>ν: {currentPoisson}</span>
           </div>
         </div>
@@ -482,6 +425,7 @@ export const Sidebar = ({
   onThemeChange: (theme: ThemeName) => void;
 }) => {
   const [showQRCode, setShowQRCode] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const activated = isActivated();
 
   const menuItems: { id: ModuleType; label: string; icon: React.ReactNode }[] = [
@@ -501,32 +445,38 @@ export const Sidebar = ({
   ];
 
   return (
-    <div className={`app-sidebar ${isMenuOpen ? "sidebar-open" : ""}`}>
+    <div className={`app-sidebar ${isMenuOpen ? "sidebar-open" : ""}`} data-collapsed={collapsed}>
       <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-950">
-        <h1 className="text-lg font-bold tracking-tight text-white">材料力学<span style={{ color: 'var(--color-1)' }}>可视化</span>实验室</h1>
+        <div className="sidebar-brand"><h1 className="text-lg font-bold tracking-tight text-white">材料力学<span style={{ color: 'var(--color-1)' }}>可视化</span>实验室</h1><p>MechMat Lab</p></div>
         <button type="button" aria-label="关闭导航菜单" onClick={() => setIsMenuOpen(false)} className="sidebar-close text-slate-400 hover:text-white">
            <X className="w-6 h-6" />
         </button>
       </div>
       
+      <div className="sidebar-workspace-heading"><span>课程模块</span><button className="sidebar-collapse-toggle" aria-label={collapsed ? '展开课程导航' : '折叠课程导航'} title={collapsed ? '展开课程导航' : '折叠课程导航'} aria-expanded={!collapsed} onClick={() => setCollapsed(!collapsed)}>{collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}</button></div>
       <nav className="flex-1 p-4 space-y-2 text-sm overflow-y-auto">
         {menuItems.map((item) => {
           const isLocked = !activated && !isModuleAvailable(item.id);
           return (
             <button
               key={item.id}
+              aria-current={activeModule === item.id ? 'page' : undefined}
+              data-module={item.id}
+              aria-label={`${item.label}${isLocked ? '（需激活）' : ''}`}
+              title={`${item.label}${isLocked ? '（需激活）' : ''}`}
               onClick={() => { setActiveModule(item.id); setIsMenuOpen(false); }}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors border border-transparent ${activeModule === item.id ? "text-white shadow-lg" : "hover:bg-slate-800 hover:text-slate-200 text-slate-400"}`}
               style={activeModule === item.id ? { backgroundColor: 'var(--color-1)', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.3)' } : {}}
             >
               {item.icon}
-              <span className="flex-1 text-left">{item.label}</span>
+              <span className="nav-item-label flex-1 text-left">{item.label}</span>
               {isLocked && <Lock className="w-4 h-4 text-slate-500" />}
             </button>
           );
         })}
       </nav>
 
+      <div className="sidebar-lab-art"><img src={`${import.meta.env.BASE_URL}images/lab-cube.png`} alt=""/><div>探索材料<br/>看见力学<small>From Theory to Insight</small></div></div>
       {/* 底部联系作者 */}
       <div className="p-3 border-t border-slate-800 bg-slate-950">
         <p className="text-xs text-slate-500 text-center mb-2">联系作者</p>

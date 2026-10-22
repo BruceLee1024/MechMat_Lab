@@ -1,0 +1,175 @@
+/* 三个概念实验沿用同一工作台、浮动操作台与分析栏。 */
+.taste-lab .study-figure{display:flex;flex-direction:column;min-height:370px;border:0;border-radius:0;background:#0b1928;box-shadow:none;overflow:hidden}
+.study-figure .lab-section-head{padding:20px 20px 12px;min-height:79px;align-items:center;flex-shrink:0}
+.study-figure .lab-section-head h3{font-size:17px;font-weight:500;color:#e2ebf7}
+.study-figure .lab-section-head p{font-size:11px;color:#a0b1c7;margin-top:5px;line-height:1.6}
+.study-figure-actions{display:flex;align-items:center;gap:4px;margin-left:12px;flex-shrink:0}
+.study-figure-actions button{display:flex;align-items:center;justify-content:center;width:29px;height:29px;border-radius:5px;color:#adc4e0}
+.study-figure-actions button:hover{background:#1c354f;color:#e0f0ff}
+.study-stage{position:relative;flex:1;min-height:260px;overflow:hidden;background:radial-gradient(ellipse at 48% 55%,#102c3c 0%,#0b1928 70%)}
+.study-legend{position:absolute;left:20px;top:12px;z-index:1;display:flex;gap:16px;font-size:10px;color:#a8c0dc;pointer-events:none}
+.study-legend>span{display:flex;align-items:center;gap:7px}
+.study-legend i{width:22px;height:0;border-top:2px solid #78c4ff}
+.study-legend .study-dashed{border-top:1px dashed #9bb0c7}
+.study-caption{position:absolute;bottom:15px;left:20px;right:20px;font-size:10px;line-height:1.6;color:#9bb4ce;pointer-events:none}
+.study-figure:fullscreen{height:100dvh;padding:20px;background:#0b1928}
+.study-figure:fullscreen .study-stage{min-height:0}
+.taste-lab .experiment-control-dock.study-controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));align-items:start;gap:23px;margin:0 18px 18px;padding:19px 20px 16px;border:1px solid #36575e;border-radius:12px;background:linear-gradient(110deg,#153439,#12263a 66%);box-shadow:0 8px 24px #03091230}
+.study-slider{min-width:0}
+.study-slider>div:first-child{display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.taste-lab .study-controls .study-slider label{font-size:11px;color:#b2cbdc;font-weight:400}
+.study-slider output{color:#a3eddb;font:15px ui-monospace,"SFMono-Regular",Consolas,monospace;white-space:nowrap}
+.study-slider output small{font:10px system-ui,sans-serif;color:#9bb6cc}
+.taste-lab .study-controls .study-slider input[type=range]{display:block;width:100%;height:22px;margin:0;padding:0;appearance:none;-webkit-appearance:none;background:transparent;cursor:ew-resize}
+.taste-lab .study-controls .study-slider input[type=range]::-webkit-slider-runnable-track{height:3px;border-radius:3px;background:linear-gradient(to right,#74ddc9 0%,#74ddc9 var(--study-progress),#355365 var(--study-progress),#355365 100%)}
+.taste-lab .study-controls .study-slider input[type=range]::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:14px;height:14px;margin-top:-5.5px;border-radius:50%;border:3px solid #baf3e6;background:#4aa591;box-shadow:0 0 0 4px #74ddc91a}
+.taste-lab .study-controls .study-slider input[type=range]::-moz-range-track{height:3px;background:#355365}
+.taste-lab .study-controls .study-slider input[type=range]::-moz-range-progress{height:3px;background:#74ddc9}
+.taste-lab .study-controls .study-slider input[type=range]::-moz-range-thumb{width:9px;height:9px;border:3px solid #baf3e6;background:#4aa591;border-radius:50%}
+.study-scale{display:flex;justify-content:space-between;gap:12px;font:9px ui-monospace,"SFMono-Regular",Consolas,monospace;color:#94abc5;margin-top:4px}
+.study-rail .study-analysis{gap:23px;padding-bottom:20px}
+.study-steps{padding-top:18px;border-top:1px solid var(--rail-line)}
+.study-steps h3{font-size:12px;font-weight:500;color:#c9dcee;margin-bottom:10px}
+.study-steps p,.study-theory p{font-size:12px;line-height:1.9;color:#a7bdd7}
+.study-steps p>span{color:#8bdcc8;margin:0 3px}
+.study-theory h3{font-size:14px;color:#d5e6f9;font-weight:500;margin-bottom:12px}
+.study-footnote{font-size:10px;line-height:1.9;color:#96aec9;margin-top:auto}
+.study-form-reading{padding-bottom:18px;display:flex;flex-direction:column;gap:10px}
+.study-form-reading>span{font-size:11px;color:#a4bdd7}
+.study-form-reading strong{font:500 44px Georgia,serif;color:#a4ceff;line-height:1}
+.study-form-reading p{font-size:13px;color:#c7def3;margin-top:3px}
+.taste-lab .experiment-control-dock.study-controls:has(.study-play){grid-template-columns:minmax(130px,1fr) auto;align-items:center;gap:10px 23px}
+.study-play{display:flex;align-items:center;justify-content:center;gap:7px;padding:10px 15px;border:1px solid #455375;border-radius:6px;background:#2c3150;color:#d7c9f7;font-size:11px;min-height:36px}
+.study-play:hover{background:#3c4164}.study-play:disabled{opacity:.45;cursor:not-allowed}
+.study-control-hint{grid-column:1/-1;font-size:10px;line-height:1.6;color:#98b1c9}
+.study-rail .overview-measurements output{white-space:normal;text-align:right}
+.study-figure :is(button,circle):focus-visible,.study-controls :is(button,input):focus-visible{outline:2px solid #8ddac8;outline-offset:3px}
+@container(max-width:550px){
+ .taste-lab .experiment-control-dock.study-controls{gap:15px 20px;margin:0 13px 13px;padding:16px}
+ .study-controls:has(>.study-slider:nth-child(3))>.study-slider:first-child{grid-column:1/-1}
+ .study-slider output{font-size:14px}
+ .study-form-tabs{gap:0;padding-left:12px;padding-right:12px}.study-form-tabs button{padding:7px 8px}
+}
+@media(max-width:767px){
+ .taste-lab .concept-study-grid .fundamentals-main{grid-template-rows:400px auto}
+ .taste-lab .study-figure{min-height:0}
+ .study-figure .lab-section-head{padding:15px 13px 8px;min-height:68px}
+ .study-figure .lab-section-head h3{font-size:14px}
+ .study-figure .lab-section-head p{font-size:10px;max-width:220px}
+ .study-stage{min-height:0}
+ .study-legend{left:13px;top:10px;font-size:9px;gap:13px}
+ .study-caption{left:13px;right:13px;bottom:12px;font-size:9px}
+ .study-rail{min-height:0!important}
+ .study-rail .study-analysis{padding-bottom:65px}
+ .study-rail .study-theory{padding-bottom:65px}
+}
+.study-footnote{padding-right:58px}
+/* 与泊松场景统一的相机、材质和空间辅助信息。 */
+.concept-scene-3d{background:radial-gradient(ellipse at 48% 57%,#102f4166 0%,#0b1928 68%)}
+.concept-scene-3d>canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+.concept-scene-3d>.concept-flow-canvas{pointer-events:none;cursor:inherit}
+.study-flow-legend{position:absolute;left:20px;top:35px;z-index:1;display:flex;align-items:center;gap:6px;max-width:calc(100% - 40px);font-size:9px;line-height:1.7;color:#c7b9ee;pointer-events:none}
+.study-flow-legend>svg{flex-shrink:0}
+.study-camera-dock button.concept-flow-toggle[aria-pressed=true]{background:#3a3150;color:#dbc6ff}
+@media(max-width:767px){.study-flow-legend{left:13px;top:45px;max-width:calc(100% - 26px);font-size:8px;gap:5px}}
+.study-scene-topline{position:absolute;top:9px;left:20px;right:20px;display:flex;justify-content:space-between;gap:12px;align-items:center;z-index:1;pointer-events:none}
+.study-scene-topline .study-legend{position:static;flex-wrap:wrap;gap:8px 16px;font-size:10px}
+.study-view-controls{display:flex;flex-shrink:0;gap:2px;pointer-events:auto}
+.study-view-controls button{display:flex;align-items:center;justify-content:center;gap:5px;font-size:10px;padding:6px 7px;min-height:29px;border:1px solid transparent;border-radius:4px;color:#9eb6ce}
+.study-view-controls button[aria-pressed=true]{color:#9bebd8;border-color:#33575d;background:#193f48}
+.study-view-controls button:hover{color:#d3ecff;background:#193448}
+.study-camera-dock{position:absolute;bottom:43px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:3px;padding:5px;background:#102438ed;border:1px solid #35536d;border-radius:7px;box-shadow:0 5px 18px #030c1833;z-index:1}
+.study-camera-dock button{display:flex;align-items:center;justify-content:center;width:29px;height:27px;border-radius:4px;color:#b6cee6}
+.study-camera-dock button:hover{background:#25435b;color:#e2f4ff}
+.study-camera-dock button[aria-pressed=true]{background:#1d454b;color:#9ce7d9}
+.study-camera-dock button:disabled{opacity:.35;cursor:default}
+.study-camera-dock output{font:10px ui-monospace,monospace;min-width:35px;text-align:center;color:#d4e6f9}
+.study-camera-dock>span{height:19px;width:1px;background:#35536d;margin:0 2px}
+.concept-scene-3d .study-caption{display:flex;justify-content:space-between;gap:12px;font-size:9px}
+@container(max-width:600px){.study-view-controls button span{display:none}.study-view-controls button{width:29px}.study-scene-topline .study-legend{gap:5px 10px;font-size:9px}.concept-scene-3d .study-caption{font-size:9px}}
+@media(max-width:767px){
+ .taste-lab .concept-study-grid .fundamentals-main{grid-template-rows:450px auto}
+ .study-scene-topline{left:13px;right:13px;top:8px}
+ .study-scene-topline .study-legend{flex-direction:column;align-items:flex-start;gap:5px;font-size:9px}
+ .study-view-controls button span{display:none}.study-view-controls button{width:30px}
+ .concept-scene-3d .study-caption span:last-child{display:none}
+ .study-camera-dock{bottom:39px;gap:1px;padding:4px}
+}
+/* 分析区统一采用泊松效应的读数、双列卡片和参考操作。 */
+.taste-lab .unified-analysis-rail .analysis-results{gap:20px;min-height:0}
+.taste-lab .unified-analysis-rail .analysis-reference{margin-top:auto;padding-bottom:12px}
+.unified-analysis-rail .reference-actions{padding-right:40px}
+.taste-lab .unified-analysis-rail .analysis-text-value output{font:500 14px/1.6 system-ui,"PingFang SC",sans-serif;letter-spacing:0;white-space:normal}
+.taste-lab .unified-analysis-rail .analysis-text-value{min-height:70px}
+.unified-analysis-rail .reference-formulas>div{flex-wrap:wrap}
+.study-result-chart{display:flex;flex-direction:column;min-width:0;overflow:hidden}
+.study-result-plot{position:relative;flex:1;min-height:180px}
+.study-result-plot svg{position:absolute;inset:0;width:100%;height:100%;display:block;overflow:visible}
+.study-result-plot svg text{font:9px ui-monospace,"SFMono-Regular",Consolas,monospace;fill:#94acc7}
+.study-result-plot svg .study-plot-axis{font-size:10px;fill:#b2c7df}
+.study-result-chart .plot-series-readings:has(>div:only-child){grid-template-columns:1fr}
+.study-result-chart .plot-series-readings>div:only-child{flex-direction:row;justify-content:space-between;align-items:baseline}
+.study-result-chart .plot-series-readings output{font-size:16px}
+.study-geometry-reading{border-top:1px solid var(--rail-line);padding-top:18px}
+.study-geometry-reading dl{display:flex;flex-direction:column}
+.study-geometry-reading dl>div{display:grid;grid-template-columns:48px 1fr;gap:12px;padding:15px 0;border-bottom:1px solid #263b5266;font-size:11px;line-height:1.8}
+.study-geometry-reading dt{color:#9db5cf}.study-geometry-reading dd{color:#c9dcee}
+.study-geometry-reading p{font-size:11px;line-height:1.9;color:#9fb5ce;margin-top:20px;padding-bottom:8px}
+@media(max-width:767px){
+ .taste-lab .unified-analysis-rail .analysis-results,.taste-lab .unified-analysis-rail .theory-reading{padding-bottom:54px}
+ .study-geometry-reading dl>div,.study-geometry-reading p{font-size:12px}
+}
+.unified-analysis-rail .theory-reading>h3{font-size:14px;font-weight:500;color:#d3e4f7;margin-bottom:12px}
+.unified-analysis-rail .theory-reading>p{font-size:12px;line-height:1.9;color:#a7bdd7}
+/* 为系统覆盖式滚动条和独立助教气泡留出阅读空间。 */
+.unified-analysis-rail .analysis-results:has(.reference-actions button[aria-expanded=true]),.unified-analysis-rail .theory-reading{padding-right:9px}
+.unified-analysis-rail .reference-assumption{padding-right:40px}
+/* 位移理论采用与实验联动的材料点图解，保留蓝、薄荷绿与珊瑚色的含义。 */
+.strain-theory{display:flex;flex-direction:column;gap:14px;min-width:0;padding:1px 0 14px;color:#c9dcee}
+.strain-theory-context{display:flex;align-items:center;gap:7px;font-size:10px;color:#9db3ce;letter-spacing:.04em}
+.strain-theory-context>span:last-child{margin-left:auto;color:#baaee5;font-size:10px;letter-spacing:0}
+.strain-theory-dot{width:5px;height:5px;border-radius:50%;background:#bbaaec}
+.strain-theory-intro h3{margin:12px 0 8px;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:.015em;color:#dbe9f8}
+.strain-theory-intro h3>span:first-child{color:#a5ceff}.strain-theory-intro h3>span:last-child{color:#8be2cd}
+.taste-lab .strain-theory p{font-size:11px;line-height:1.9;color:#9db3cc;margin:0}
+.strain-theory-figure{margin:0;padding:13px 13px 10px;border:1px solid #2c435b;border-radius:8px;background:#101f31}
+.strain-theory-legend{display:flex;gap:14px;align-items:center;color:#a5bad1;font-size:9px}
+.strain-theory-legend span{display:flex;align-items:center;gap:5px}
+.strain-theory-legend span:before{content:'';display:block;width:12px;border-top:1px dashed #7f98b1}
+.strain-theory-legend span:nth-child(2):before{border-top:2px solid #8be2cd}.strain-theory-legend span:nth-child(3):before{border-top:1px solid #f6ac9d}
+.strain-theory-figure>svg{display:block;width:100%;height:154px;margin:1px 0 9px;overflow:visible}
+.strain-theory-grid path{stroke:#284058;stroke-width:.5;fill:none}
+.strain-theory-ghost{stroke:#7f98b1;stroke-width:1;stroke-dasharray:3 4;fill:none}
+.strain-theory-unit{fill:#5caaff1a;stroke:#8be2cd;stroke-width:1.5;stroke-linejoin:round}
+.strain-theory-mesh path{stroke:#8bc1f0;stroke-width:.5;opacity:.35;fill:none}
+.strain-theory-vector{stroke:#f6ac9d;stroke-width:1.3;fill:none}
+.strain-theory-point{fill:#b8f4e4;stroke:#122c3b;stroke-width:1}
+.strain-theory-figure svg text{font:10px ui-monospace,"SFMono-Regular",monospace;fill:#b5eddf}
+.strain-theory-dimension{stroke:#617b97;stroke-width:.7;fill:none}
+.strain-theory-figure svg .strain-theory-dimension-label{font:9px system-ui,sans-serif;fill:#8fa8c2}
+.strain-theory-figure figcaption{display:flex;align-items:center;justify-content:center;gap:6px;color:#99b3ce;font-size:10px;border-top:1px solid #263b52;padding-top:10px}
+.strain-theory-section-title{display:flex;align-items:center;gap:7px;color:#9bc9fb;margin-bottom:13px}
+.taste-lab .strain-theory-section-title h4{font-size:12px;font-weight:500;margin:0;color:#d0e0f1}
+.strain-theory-section-title>span{margin-left:auto;font:10px ui-monospace,monospace;color:#8ca6c2}
+.strain-theory-coordinates{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.strain-theory-coordinates>div{display:flex;flex-direction:column;gap:7px;padding-left:11px;border-left:2px solid #577fbc}
+.strain-theory-coordinates>div:last-child{border-color:#b87872}
+.strain-theory-coordinates span{color:#9fb5cc;font-size:10px}
+.strain-theory-coordinates output{color:#a8cfff;font:500 22px/1.3 ui-monospace,"SFMono-Regular",monospace;letter-spacing:-.04em;white-space:nowrap}
+.strain-theory-coordinates>div:last-child output{color:#f6ac9d}
+.strain-theory output small{font:9px system-ui,sans-serif;color:#a6bbd0;margin-left:5px;letter-spacing:0}
+.strain-theory-relative{padding-top:19px;border-top:1px solid var(--rail-line)}
+.strain-theory-relative .strain-theory-section-title{color:#8be2cd;margin-bottom:8px}
+.strain-theory-relation{display:flex;flex-direction:column;gap:7px;padding:9px 0;border-bottom:1px solid #293d5266}
+.strain-theory-relation>div{display:flex;align-items:baseline;justify-content:space-between;gap:10px;font-size:10px;color:#9eb4cc}
+.strain-theory-relation output{font:11px ui-monospace,"SFMono-Regular",monospace;color:#c8d9ed}
+.strain-theory-relation>div:last-child{color:#b1c8dc}.strain-theory-relation>div:last-child output{color:#8be2cd;font-size:15px}
+.strain-theory-equations{border-top:1px solid var(--rail-line);border-bottom:1px solid var(--rail-line)}
+.strain-theory-equations summary{list-style:none;display:flex;align-items:center;justify-content:space-between;padding:14px 40px 14px 0;color:#c5b6ef;font-size:11px;cursor:pointer}
+.strain-theory-equations summary::-webkit-details-marker{display:none}
+.strain-theory-equations[open] summary svg{transform:rotate(180deg)}
+.strain-theory-equations summary:focus-visible{outline:2px solid #b9a5ed;outline-offset:3px}
+.strain-theory-equations>div{padding:0 0 13px}
+.strain-theory-equations .katex{font-size:1em}.strain-theory-equations .katex-display{margin:12px 0;color:#d1c6ed}
+.taste-lab .strain-theory .strain-theory-scope{font-size:10px;line-height:1.9;color:#8da5bf;padding-right:35px;margin-top:-8px}
+@media(max-width:767px){.strain-theory{gap:23px}.taste-lab .strain-theory p{font-size:12px}.strain-theory-context,.strain-theory-section-title>span,.strain-theory-coordinates span{font-size:11px}.strain-theory-relation>div{font-size:11px}}

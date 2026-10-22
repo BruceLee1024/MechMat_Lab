@@ -1,0 +1,99 @@
+/* 梁工作台与轴向实验共用分栏、读数和加载条，局部规则仅处理梁的附加控制。 */
+.bending-control-console{margin:0 18px 18px;border:1px solid #355466;border-radius:12px;background:linear-gradient(110deg,#14343b,#14273a);overflow:hidden;min-width:0;min-height:max-content}
+.bending-control-tabs{display:flex;align-items:center;gap:3px;min-height:34px;padding:4px 12px;border-bottom:1px solid #38576966}
+.bending-control-tabs button{display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:5px;color:#9db8cc;font-size:10px;white-space:nowrap}
+.bending-control-tabs button[aria-selected=true]{background:#294a56;color:#a3eddd}
+.bending-control-tabs>span{margin-left:auto;font-size:9px;color:#819fb3}
+.bending-control-panel[hidden]{display:none}
+.taste-lab .bending-control-console .experiment-control-dock.loading-strip{margin:0;border:0;border-radius:0;box-shadow:none;background:transparent;padding:10px 16px}
+.section-explorer{padding:7px 14px 10px;color:#adc7d9;min-width:0}
+.section-explorer-heading{display:flex;align-items:center;gap:10px;min-height:24px;font-size:9px}
+.section-explorer-heading select{background:#102638;color:#cee3ed;border:1px solid #375369;border-radius:4px;padding:3px 5px;font-size:10px;max-width:105px}
+.section-explorer-heading>div{display:flex;gap:9px;margin-left:auto}
+.section-explorer-heading button{display:flex;align-items:center;gap:4px;color:#b4ccd9;white-space:nowrap}
+.section-explorer-heading button:disabled{opacity:.35;cursor:default}
+.section-reference-label{color:#8caabb}
+.section-explorer-body{display:flex;align-items:center;gap:15px;min-width:0}
+.section-comparison-figure{flex:0 0 94px;margin:0;align-self:center}
+.section-comparison-figure svg{width:94px;height:88px;display:block;overflow:visible}
+.section-comparison-figure figcaption{text-align:center;font-size:8px;color:#83a8bc;margin-top:-3px;white-space:nowrap}
+.section-size-handle{touch-action:none;cursor:ew-resize;outline:none}
+.section-size-handle[aria-orientation=vertical]{cursor:ns-resize}
+.section-size-handle circle:nth-child(2){fill:#143743;stroke:#a2d5ed;stroke-width:1.1}
+.section-size-handle.is-active circle:nth-child(2),.section-size-handle:focus circle:nth-child(2){fill:#93ebd7;stroke:#d9fff5;stroke-width:1.5}
+.section-size-handle text{fill:#c2e8e6;font:8px ui-monospace,monospace;pointer-events:none}
+.section-explorer-controls{flex:1;min-width:0;display:grid;gap:8px;padding-top:5px}
+.section-dimension-choices{display:flex;gap:5px;flex-wrap:wrap}
+.section-dimension-choices button{padding:3px 7px;font-size:9px;color:#99b5ca;border:1px solid transparent;border-radius:4px;white-space:nowrap}
+.section-dimension-choices button[aria-pressed=true]{border-color:#547d87;background:#274b55;color:#b3f0e2}
+.section-dimension-value{display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0}
+.section-dimension-value>div:first-child{min-width:0}
+.section-dimension-value>div:first-child>div{display:flex;align-items:center;gap:8px}
+.section-dimension-value label{font-size:10px!important;white-space:nowrap;color:#9cbed0!important}
+.section-dimension-value input[type=text]{width:66px!important;height:29px!important;min-height:29px!important;padding:3px 6px!important;background:#0f2535!important;border:1px solid #416074!important;border-radius:5px!important;color:#def3f1!important;font:16px ui-monospace,monospace!important}
+.section-dimension-value .text-xs{font-size:9px}
+.section-size-presets{display:flex;gap:3px}
+.section-size-presets button{font:10px ui-monospace,monospace;border:1px solid #3b566b;border-radius:4px;padding:4px 6px;color:#a6bfd1}
+.section-size-presets button[aria-pressed=true]{background:#3a6269;border-color:#72afa9;color:#c1f7e8}
+.section-size-presets button:disabled{opacity:.3;cursor:default}
+.section-dimension-track{display:flex;align-items:center;gap:10px;min-width:0}
+.section-dimension-track input{flex:1;min-width:35px;width:100%;height:13px;accent-color:#8ee5d1;cursor:ew-resize}
+.section-dimension-track>span{font:9px ui-monospace,monospace;color:#8daebf;white-space:nowrap}
+.section-dimension-track>button{display:flex;gap:4px;align-items:center;font-size:9px;white-space:nowrap;color:#b0c8db}
+.section-impact-summary{display:flex;align-items:baseline;gap:18px;padding-top:8px;margin-top:7px;border-top:1px solid #3b586977;font-size:9px;flex-wrap:wrap}
+.section-impact-summary>span{display:flex;align-items:baseline;gap:7px;white-space:nowrap}
+.section-impact-summary>span:first-child{font-size:8px;color:#98a9c1;align-items:center}
+.section-impact-summary output{font:12px ui-monospace,monospace;color:#d1e7f7}
+.section-impact-summary output.is-reduced{color:#93e6ca}
+.section-impact-summary small{font-size:8px;color:#c6b5d9;margin-left:auto}
+.section-baseline-line{display:inline-block;width:13px;border-top:1px dashed #bdacd8}
+@container(max-width:620px){.section-explorer{padding:7px 11px 10px}.section-explorer-body{gap:6px}.section-reference-label{display:none}.section-size-presets button{padding:4px}.section-impact-summary{gap:12px}.section-dimension-value{gap:5px}}
+@container(max-width:440px){.section-comparison-figure{flex-basis:73px}.section-comparison-figure svg{width:73px;height:80px}.section-comparison-figure figcaption{font-size:7px}.section-dimension-value{align-items:flex-start;flex-wrap:wrap;gap:7px}.section-explorer-controls{gap:6px}.section-dimension-track{flex-wrap:wrap;gap:5px}.section-dimension-track input{flex-basis:100%}.section-impact-summary{gap:9px;font-size:8px}.section-impact-summary output{font-size:10px}.section-impact-summary>span:first-child{display:none}.section-control-tabs>span{display:none}.section-explorer-heading{gap:5px}.section-dimension-choices{gap:1px}.section-dimension-choices button{padding:2px 4px;font-size:8px}}
+@media(max-width:767px){.bending-control-console{margin:0 12px 12px}.bending-control-tabs{padding:4px 7px}.bending-control-tabs>span{display:none}}
+.bending-workbench-context{display:flex;align-items:center;gap:10px;color:#bfd1e3;font-size:12px;min-height:66px}
+.bending-workbench-context svg{color:#8bd7c9}.bending-workbench-context i{width:1px;height:12px;background:#354b60;margin:0 2px}
+.taste-lab.bending-lab .bending-grid{min-height:min(650px,calc(100dvh - 162px))}
+.taste-lab.bending-lab .fundamentals-main{grid-template-rows:minmax(320px,1fr) max-content}
+.taste-lab.bending-lab .poisson-figure{min-height:320px}
+.taste-lab.bending-lab .poisson-canvas-wrap{min-height:180px}
+.bending-scene .axial-deformation-bar>div{max-width:72%}
+.bending-stage{background:radial-gradient(ellipse at 50% 65%,#14304744,transparent 60%),#0b1725!important}
+.bending-scene-readings{position:absolute;right:20px;top:13px;z-index:1;display:flex;flex-direction:column;align-items:flex-end;gap:6px;font:10px ui-monospace,monospace;color:#8caac4;pointer-events:none}
+.bending-scene-readings b{font-weight:400;color:#baddf2;margin:0 5px}
+.bending-tension-key i{background:#efc093!important}.bending-compression-key i{background:#86d9c8!important}
+.taste-lab .experiment-control-dock.bending-loading-strip{gap:12px 23px;padding-top:14px;padding-bottom:13px}
+.bending-position-control{grid-column:1/-1;display:flex;align-items:center;gap:16px;padding-top:10px;border-top:1px solid #38536866;min-width:0}
+.bending-position-control>div{width:158px;min-width:0;flex-shrink:0}
+.taste-lab .bending-position-control>div>div{display:flex;align-items:center;gap:9px}
+.taste-lab .bending-position-control label{font-size:10px;white-space:nowrap}
+.taste-lab .bending-position-control input[type=text]{width:53px!important;min-height:26px!important;height:26px;padding:3px 5px;font-size:12px;background:transparent!important;border:0!important;border-bottom:1px solid #466379!important;border-radius:0}
+.bending-position-control input[type=range]{min-width:40px;width:100%;height:16px;accent-color:#90c7ed;cursor:ew-resize}
+.bending-position-control>button{white-space:nowrap;font-size:10px;color:#acc6dd;padding:5px 7px;border:1px solid #3a526a;border-radius:4px}
+.bending-section-settings{margin-top:18px}
+.bending-section-settings>.mb-4{background:#14263b;border-color:#344b65}
+.bending-section-settings [class*=bg-white],.bending-section-settings .bg-slate-100{background:#1b3047}
+.bending-section-settings [class*=border-slate]{border-color:#344b65}
+.bending-section-settings [class*=text-slate-7]{color:#d6e5f5}.bending-section-settings [class*=text-slate-6],.bending-section-settings [class*=text-slate-5]{color:#a5bed8}
+.bending-section-settings input[type=text]{background:#0f2031!important;border-color:#39536c!important;color:#dbe9f8!important}
+.bending-secondary-readings{display:grid;gap:11px;font-size:10px;color:#9eb6cb;padding-top:17px}
+.bending-secondary-readings>div{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.bending-secondary-readings dd{color:#d3e5f5;font:12px ui-monospace,monospace}.bending-secondary-readings small{color:#99b3c8;font:9px system-ui,sans-serif;margin-left:5px}
+.bending-model-note{color:#8fa8bd;font-size:10px;line-height:1.85;margin-top:15px}
+.bending-result-plot{border-top:1px solid var(--rail-line);padding-top:17px;flex-shrink:0}
+.bending-result-plot .axial-chart-switch{margin-bottom:17px}
+.bending-result-plot header{display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#c4d8e9}
+.bending-result-plot header span{font:10px ui-monospace,monospace;color:#90aec5}
+.bending-result-plot svg{display:block;width:100%;height:auto;margin-top:12px;overflow:visible}
+.bending-result-plot svg text{font:8px ui-monospace,monospace;fill:#97b4cd}
+.bending-result-plot p{font-size:10px;color:#9eb5cc;line-height:1.8;margin:10px 0 0}
+@container(max-width:620px){.taste-lab .experiment-control-dock.bending-loading-strip{gap:10px 13px}.bending-position-control{gap:9px}.bending-position-control>div{width:143px}}
+@container(max-width:440px){.bending-position-control{grid-row:3;gap:9px}.bending-position-control>div{width:132px}.bending-position-control>button{font-size:9px;padding:5px}.bending-position-control input[type=range]{min-width:30px}}
+@media(max-width:1100px){.bending-scene .axial-deformation-bar>div{max-width:70%}}
+@media(max-width:767px){
+ .bending-workbench-context{min-height:43px;font-size:11px}.bending-workbench-context svg{width:14px}
+ .taste-lab.bending-lab .fundamentals-main{grid-template-rows:450px auto}
+ .bending-scene .axial-deformation-bar>div{max-width:66%}
+ .bending-scene-readings{right:13px;top:13px;gap:5px;font-size:9px}
+ .bending-scene-readings b{margin:0 2px}.bending-scene .scene-legend{font-size:8px}
+ .bending-stage .scene-caption{font-size:8px}
+}
