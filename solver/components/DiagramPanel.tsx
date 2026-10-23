@@ -91,8 +91,8 @@ export const DiagramPanel = ({ state, diagramType }: { state: SolverState; diagr
   const getColor = () => {
     switch (diagramType) {
       case 'axial': return { fill: 'rgba(34, 197, 94, 0.2)', stroke: '#22c55e' };
-      case 'shear': return { fill: 'rgba(79, 70, 229, 0.2)', stroke: '#4f46e5' };
-      case 'moment': return { fill: 'rgba(245, 158, 11, 0.2)', stroke: '#f59e0b' };
+      case 'shear': return { fill: 'rgba(134, 181, 237, 0.12)', stroke: '#86b5ed' };
+      case 'moment': return { fill: 'rgba(196, 175, 232, 0.12)', stroke: '#c4afe8' };
       case 'deflection': return { fill: 'rgba(16, 185, 129, 0.2)', stroke: '#10b981' };
     }
   };
@@ -247,15 +247,10 @@ export const DiagramPanel = ({ state, diagramType }: { state: SolverState; diagr
 
   return (
     <div className="h-full flex flex-col">
-      <div className="text-xs font-semibold text-slate-600 mb-1 px-2 flex justify-between items-center">
+      <div className="solver-diagram-title">
         <span>{getTitle()}</span>
-        {hoverX !== null && (
-          <span className="text-[10px] font-normal text-indigo-600 bg-indigo-50 px-1 rounded">
-            x={hoverX.toFixed(0)}mm, val={diagramType === 'moment' ? (hoverValue/1000).toFixed(2) + ' Nm' : hoverValue.toFixed(2) + (diagramType === 'axial' || diagramType === 'shear' ? ' N' : ' mm')}
-          </span>
-        )}
+        <span>{hoverX !== null ? `x = ${hoverX.toFixed(0)} mm · ${diagramType === 'moment' ? (hoverValue/1000).toFixed(2) + ' N·m' : hoverValue.toFixed(diagramType === 'deflection' ? 4 : 2) + (diagramType === 'deflection' ? ' mm' : ' N')}` : `绝对峰值 ${diagramType === 'deflection' ? maxDy.toFixed(4) + ' mm' : diagramType === 'moment' ? (maxM/1000).toFixed(2) + ' N·m' : (diagramType === 'axial' ? maxN : maxV).toFixed(2) + ' N'}`}</span>
       </div>
-      <p className="px-2 text-[9px] text-slate-500">{diagramType === 'deflection' ? '水平梁：由分段弯矩与端部位移积分恢复' : '内力按当前求解结果绘制'} · 横轴沿单元累计长度</p>
       <svg 
         ref={svgRef}
         role="img"
@@ -266,8 +261,9 @@ export const DiagramPanel = ({ state, diagramType }: { state: SolverState; diagr
         preserveAspectRatio="none"
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
-        className="cursor-crosshair"
+        className="solver-diagram-plot cursor-crosshair"
       >
+        {[20,40,80,100].map(y => <line key={y} x1={padding} y1={y} x2={padding+plotWidth} y2={y} stroke="currentColor" opacity=".06"/>)}
         {/* 基线 */}
         <line x1={padding} y1={height / 2} x2={padding + plotWidth} y2={height / 2} stroke="#94a3b8" strokeWidth="1" />
         
@@ -323,32 +319,10 @@ export const DiagramPanel = ({ state, diagramType }: { state: SolverState; diagr
         {/* 标注 */}
         <text x={padding - 5} y={height / 2 + 4} fontSize="10" fill="#64748b" textAnchor="end">0</text>
         
-        {/* 最大值标注 (仅当没有 hover 时显示) */}
-        {hoverX === null && (
-          <>
-            {diagramType === 'axial' && (
-              <text x={padding + 10} y={height / 2 - plotHeight / 2 * 0.8 - 5} fontSize="10" fill={colors.stroke}>
-                ±{maxN.toFixed(0)} N
-              </text>
-            )}
-            {diagramType === 'shear' && (
-              <text x={padding + 10} y={height / 2 - plotHeight / 2 * 0.8 - 5} fontSize="10" fill={colors.stroke}>
-                ±{maxV.toFixed(0)} N
-              </text>
-            )}
-            {diagramType === 'moment' && (
-              <text x={width / 2} y={height / 2 + plotHeight / 2 * 0.8 + 12} fontSize="10" fill={colors.stroke} textAnchor="middle">
-                {(maxM / 1000).toFixed(2)} Nm
-              </text>
-            )}
-            {diagramType === 'deflection' && (
-              <text x={width / 2} y={height / 2 + plotHeight / 2 * 0.8 + 12} fontSize="10" fill={colors.stroke} textAnchor="middle">
-                {maxDy.toFixed(4)} mm
-              </text>
-            )}
-          </>
-        )}
+        <text x={padding} y={height-1} fontSize="9" fill="#8ca9c8">0</text>
+        <text x={padding+plotWidth} y={height-1} fontSize="9" fill="#8ca9c8" textAnchor="end">{totalLength.toFixed(0)} mm</text>
       </svg>
+      <p className="solver-diagram-description">{diagramType === 'deflection' ? '水平梁：由分段弯矩与端部位移积分恢复' : '内力按当前求解结果绘制'} · 横轴沿单元累计长度</p>
     </div>
   );
 };

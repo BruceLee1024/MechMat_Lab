@@ -1,0 +1,160 @@
+/* 求解器的界面样式独立作用于工作台，不改变其他实验模块。 */
+.solver-workbench {
+  --sw-bg: oklch(98% .004 245); --sw-panel: oklch(96% .006 245); --sw-field: oklch(99% .003 245);
+  --sw-line: oklch(85% .018 245); --sw-ink: oklch(28% .026 245); --sw-muted: oklch(51% .026 245);
+  --sw-accent: oklch(48% .095 179); --sw-selected: oklch(92% .032 179); --sw-danger: oklch(57% .15 24);
+  background: var(--sw-bg); color: var(--sw-ink); border: 1px solid var(--sw-line); border-radius: 14px;
+  min-height: 600px; isolation: isolate;
+}
+[data-theme=deepSpace] .solver-workbench {
+  --sw-bg: oklch(17.5% .025 248); --sw-panel: oklch(20.5% .026 248); --sw-field: oklch(15.5% .024 248);
+  --sw-line: oklch(30% .028 245); --sw-ink: oklch(88% .025 240); --sw-muted: oklch(65% .027 240);
+  --sw-accent: oklch(80% .1 176); --sw-selected: oklch(29% .048 190); --sw-danger: oklch(76% .11 24);
+}
+.solver-workbench .solver-toolbar { display:flex; align-items:center; gap:20px; min-height:68px; padding:12px 18px; border-bottom:1px solid var(--sw-line); background:var(--sw-panel); flex-wrap:wrap; }
+.solver-toolbar-title { display:flex; align-items:center; gap:9px; font-size:14px; }
+.solver-toolbar-title>svg { color:var(--sw-accent); }
+.solver-unit-note { color:var(--sw-muted); font-size:10px; font-weight:400; margin-left:6px; }
+.solver-template-picker { display:flex; align-items:center; gap:9px; font-size:11px; color:var(--sw-muted); }
+.solver-workbench select, .solver-workbench input { background:var(--sw-field)!important; color:var(--sw-ink)!important; border:1px solid var(--sw-line)!important; border-radius:6px; min-height:32px; font-size:12px; box-shadow:none!important; }
+.solver-workbench select { padding:6px 26px 6px 9px; max-width:100%; }
+.solver-workbench input { max-width:100%; }
+.solver-workbench button { transition:background-color .16s ease-out,color .16s ease-out; }
+.solver-workbench button:focus-visible, .solver-workbench select:focus-visible, .solver-workbench input:focus-visible { outline:2px solid var(--sw-accent)!important; outline-offset:3px; }
+.solver-solve-state { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--sw-muted); margin-left:auto; }
+.solver-solve-state>span { width:5px; height:5px; border-radius:50%; background:currentColor; }
+.solver-solve-state[data-state=success] { color:var(--sw-accent); }
+.solver-solve-state[data-state=error] { color:var(--sw-danger); }
+.solver-primary-actions,.solver-view-actions { display:flex; align-items:center; gap:4px; }
+.solver-workbench .solver-icon-button { color:var(--sw-muted)!important; background:transparent!important; border:0; border-radius:6px; box-shadow:none; min-width:30px; height:30px; padding:7px; }
+.solver-workbench .solver-icon-button:hover:not(:disabled) { background:var(--sw-selected)!important; color:var(--sw-ink)!important; }
+.solver-workbench .solver-icon-button[aria-pressed=true] { background:var(--sw-selected)!important; color:var(--sw-accent)!important; }
+.solver-icon-button>div { display:none; }
+.solver-workbench .solver-solve-button { display:flex; align-items:center; justify-content:center; gap:7px; min-height:36px; padding:0 16px; margin-left:6px; border-radius:7px; background:var(--sw-accent)!important; color:var(--sw-field)!important; font-size:12px; font-weight:650; }
+.solver-workbench .solver-solve-button:hover { filter:brightness(1.08); }
+.solver-workbench .solver-body { display:grid; grid-template-columns:252px minmax(0,1fr) 280px; min-height:0; flex:1; overflow:hidden!important; }
+.solver-workbench .solver-model-panel,.solver-workbench .solver-results-panel { width:auto!important; min-width:0; background:var(--sw-panel)!important; border-color:var(--sw-line)!important; max-height:none; }
+.solver-panel-heading { min-height:51px; display:flex; align-items:center; padding:0 16px; border-bottom:1px solid var(--sw-line); flex-shrink:0; }
+.solver-panel-heading h3 { display:flex; align-items:center; gap:8px; font-size:12px; font-weight:650; color:var(--sw-ink); }
+.solver-panel-heading svg { color:var(--sw-muted); }
+.solver-panel-scroll { flex:1; overflow:auto; min-height:0; padding:14px; scrollbar-width:thin; scrollbar-color:var(--sw-line) transparent; }
+.solver-workbench .solver-canvas-panel { min-height:0; overflow:hidden; background:var(--sw-bg); }
+.solver-scene-heading { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:9px 14px; min-height:51px; border-bottom:1px solid var(--sw-line); }
+.solver-scene-heading>div:first-child { display:flex; flex-direction:column; gap:3px; }
+.solver-scene-heading strong { font-size:12px; font-weight:600; }
+.solver-scene-heading span { color:var(--sw-muted); font-size:10px; }
+.solver-view-actions>span { width:34px; text-align:center; font-variant-numeric:tabular-nums; }
+.solver-scene { min-height:180px; background:var(--sw-bg)!important; }
+.solver-scene>svg { display:block; }
+.solver-scene-caption { position:absolute; bottom:0; left:0; right:0; display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px 12px; padding:10px 14px; font-size:9px; color:var(--sw-muted); background:var(--sw-bg); pointer-events:none; }
+.solver-empty-scene { position:absolute; inset:0; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:12px; z-index:1; text-align:center; padding:24px; pointer-events:none; }
+.solver-empty-scene>svg { color:var(--sw-muted); opacity:.7; }
+.solver-empty-scene strong { font-size:16px; font-weight:550; }
+.solver-empty-scene p { font-size:12px; color:var(--sw-muted); max-width:28ch; line-height:1.8; }
+.solver-empty-scene button { pointer-events:auto; font-size:12px; color:var(--sw-accent); padding:8px 12px; border:1px solid var(--sw-line); border-radius:6px; }
+.solver-empty-scene button span { margin-left:16px; }
+.solver-workbench .solver-segments { display:flex; gap:3px; padding:3px; border-radius:7px; background:var(--sw-field); }
+.solver-workbench .solver-segments button { display:flex; align-items:center; justify-content:center; gap:5px; min-height:29px; padding:5px 11px; border-radius:5px; border:0!important; font-size:11px; background:transparent!important; color:var(--sw-muted)!important; }
+.solver-workbench .solver-segments button[aria-pressed=true] { color:var(--sw-accent)!important; background:var(--sw-selected)!important; }
+.solver-model-tools { margin-bottom:20px; position:sticky; top:-14px; z-index:2; }
+.solver-model-tools button { flex:1; }
+.solver-model-form[hidden] { display:none!important; }
+.solver-model-form h4 { font-size:12px; margin-bottom:14px; color:var(--sw-ink)!important; }
+.solver-model-form h4>svg { display:none; }
+.solver-model-form .grid-cols-2 { display:flex; flex-direction:column; gap:8px; }
+.solver-model-form .grid-cols-2>div>label { display:block; margin-bottom:5px; }
+.solver-model-form .grid-cols-2>div .flex { justify-content:space-between; }
+.solver-model-form .grid-cols-2>div>div>label { font-size:11px; }
+.solver-modeling label { color:var(--sw-muted)!important; }
+.solver-modeling button:not(.solver-segments button):not(.solver-object-tree button) { border-color:var(--sw-line)!important; }
+.solver-modeling button.bg-indigo-600 { background:var(--sw-selected)!important; color:var(--sw-accent)!important; min-height:32px; font-weight:550; }
+.solver-modeling button.bg-indigo-600:hover { filter:brightness(1.1); }
+.solver-modeling button.bg-white,.solver-modeling button.bg-indigo-100 { background:var(--sw-field)!important; color:var(--sw-muted)!important; }
+.solver-modeling .solver-section-types button { min-width:0; height:29px; padding:2px; }
+.solver-modeling button[aria-pressed=true],.solver-modeling button.bg-indigo-100 { background:var(--sw-selected)!important; color:var(--sw-accent)!important; }
+.solver-selection-editor { border:1px solid var(--sw-line); padding:12px; border-radius:7px; margin:20px 0; background:var(--sw-bg); }
+.solver-selection-editor h4 { color:var(--sw-accent)!important; font-size:12px; }
+.solver-object-tree { margin-top:24px; border-top:1px solid var(--sw-line); padding-top:16px; }
+.solver-object-tree>header { display:flex; justify-content:space-between; align-items:center; font-size:11px; margin-bottom:14px; }
+.solver-object-tree>header>span { color:var(--sw-muted); }
+.solver-object-group { margin-top:12px; }
+.solver-object-group h5 { display:flex; justify-content:space-between; font-size:10px; color:var(--sw-muted); margin:0 6px 5px; }
+.solver-object-tree button { display:flex; width:100%; align-items:center; justify-content:space-between; gap:10px; text-align:left; padding:8px; border-radius:5px; font-size:11px; }
+.solver-object-tree button:hover { background:var(--sw-field); }
+.solver-object-tree button small { font-size:10px; color:var(--sw-muted); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; font-variant-numeric:tabular-nums; }
+.solver-object-tree p { color:var(--sw-muted); line-height:1.8; font-size:11px; }
+.solver-diagram-region { min-height:155px; max-height:55%; border-top:1px solid var(--sw-line); padding:12px 14px 10px; background:var(--sw-bg)!important; display:flex; flex-direction:column; }
+.solver-diagram-resizer { position:absolute; top:-3px; left:0; right:0; height:7px; cursor:row-resize; z-index:2; }
+.solver-diagram-resizer::after { content:''; display:block; height:3px; width:32px; border-radius:2px; margin:2px auto; background:var(--sw-line); }
+.solver-diagram-resizer:hover::after { background:var(--sw-accent); }
+.solver-diagram-toolbar { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:12px; flex-shrink:0; }
+.solver-diagram-hint { color:var(--sw-muted); font-size:9px; }
+.solver-active-diagram { min-height:0; flex:1; overflow:hidden; }
+.solver-active-diagram>div { height:100%; }
+.solver-workbench .solver-diagram-plot { flex:1; min-height:0; height:auto; }
+.solver-diagram-title { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:8px; font-size:11px; color:var(--sw-ink); }
+.solver-diagram-title>span:last-child { color:var(--sw-accent); font-size:10px; font-variant-numeric:tabular-nums; }
+.solver-diagram-description { font-size:9px; color:var(--sw-muted); margin:5px 0 0; }
+.solver-workbench .solver-calculations { overflow:visible; display:flex; flex-direction:column; gap:20px; }
+.solver-workbench .solver-calculations>div>h4 { color:var(--sw-muted)!important; font-size:11px; font-weight:550; margin:0 0 10px; }
+.solver-workbench .solver-calculations>div>div { border:0!important; background:transparent!important; padding:0!important; border-radius:0; line-height:1.8; color:var(--sw-ink)!important; }
+.solver-workbench .solver-calculations>div+div { border-top:1px solid var(--sw-line); padding-top:17px; }
+.solver-workbench .solver-calculations .flex.justify-between { gap:8px; padding:3px 0; align-items:baseline; }
+.solver-workbench .solver-calculations .flex.justify-between>span:last-child { font-variant-numeric:tabular-nums; text-align:right; }
+.solver-workbench .solver-calculations .font-medium { color:var(--sw-accent)!important; font-weight:550; }
+.solver-workbench .solver-calculations [class*='text-[10px]'] { color:var(--sw-muted); line-height:1.7; }
+.solver-principle { border:1px solid var(--sw-line); border-radius:7px; padding:11px; font-size:11px; }
+.solver-principle summary { cursor:pointer; color:var(--sw-ink); }
+.solver-principle .katex { font-size:1em; }
+.solver-principle>div { border:0; padding-top:8px; }
+.solver-empty-results { display:flex; flex-direction:column; align-items:flex-start; gap:12px; margin:20px 2px; line-height:1.8; color:var(--sw-muted); font-size:12px; }
+.solver-empty-results>svg { color:var(--sw-muted); margin-bottom:6px; }
+.solver-empty-results>strong { color:var(--sw-ink); font-weight:550; font-size:13px; }
+.solver-empty-results>span { margin-top:6px; font-size:10px; }
+/* 抑制旧工具类与主题映射的高亮底色，仅在当前求解器内生效。 */
+.solver-workbench .solver-modeling .bg-white { background:var(--sw-field)!important; border-color:var(--sw-line)!important; }
+.solver-workbench .solver-modeling .bg-slate-100 { background:var(--sw-field)!important; }
+.solver-workbench .solver-modeling [class*='text-amber'] { color:var(--sw-muted)!important; }
+@media(min-width:1600px) { .solver-workbench .solver-body { grid-template-columns:270px minmax(0,1fr) 308px; } }
+@media(max-width:1199px) and (min-width:901px) {
+ .solver-workbench .solver-body { grid-template-columns:228px minmax(0,1fr); grid-template-rows:minmax(640px,1fr) auto; overflow:auto!important; }
+ .solver-workbench .solver-results-panel { grid-column:1/-1; border-left:0; border-top:1px solid var(--sw-line); overflow:visible; }
+ .solver-workbench .solver-results-panel .solver-panel-scroll { overflow:visible; }
+ .solver-workbench .solver-calculations { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:24px; }
+ .solver-workbench .solver-calculations>div+div { border:0; padding-top:0; }
+ .solver-workbench .solver-model-panel { min-height:0; max-height:none; }
+ .solver-workbench .solver-canvas-panel { min-height:0; }
+ .solver-workbench .solver-body>div { border:0; }
+}
+@media(max-width:900px) {
+ .solver-workbench { height:auto!important; min-height:100%; overflow:visible; }
+ .solver-workbench .solver-toolbar { gap:12px; padding:14px; }
+ .solver-unit-note { display:none; }
+ .solver-toolbar-title { flex:1; }
+ .solver-template-picker { order:3; flex:1; }
+ .solver-primary-actions { order:4; }
+ .solver-solve-state { margin-left:0; }
+ .solver-workbench .solver-body { display:flex; flex-direction:column; overflow:visible!important; }
+ .solver-workbench .solver-body>div { border:0; border-top:1px solid var(--sw-line); width:100%!important; }
+ .solver-workbench .solver-model-panel { order:2; max-height:none; overflow:visible; }
+ .solver-workbench .solver-canvas-panel { order:1; height:620px; min-height:620px; flex:none; }
+ .solver-workbench .solver-results-panel { order:3; max-height:none; overflow:visible; }
+ .solver-panel-scroll { overflow:visible; }
+ .solver-scene-heading { padding:10px; }
+ .solver-diagram-hint { display:none; }
+ .solver-scene-caption { font-size:8px; }
+ .solver-workbench .solver-model-tools { position:static; }
+ .solver-workbench .solver-model-form { max-width:600px; }
+ .solver-workbench .solver-calculations { gap:18px; }
+ .solver-workbench .solver-results-panel .solver-panel-scroll { padding-bottom:75px; }
+}
+@media(prefers-reduced-motion:reduce) { .solver-workbench * { transition:none!important; } }
+.solver-workbench { --sw-load:oklch(59% .16 18); --sw-structure:oklch(45% .045 240); }
+[data-theme=deepSpace] .solver-workbench { --sw-load:oklch(77% .105 18); --sw-structure:oklch(78% .045 240); }
+.solver-toolbar-title,.solver-template-picker,.solver-solve-state { flex-shrink:0; white-space:nowrap; }
+.solver-section-readout { display:flex; flex-direction:column; gap:5px; margin:12px 0; padding:10px 0; border-top:1px solid var(--sw-line); border-bottom:1px solid var(--sw-line); font-size:10px; color:var(--sw-muted); font-variant-numeric:tabular-nums; }
+.solver-section-readout b { font-weight:500; color:var(--sw-ink); margin-left:8px; }
+@media(max-width:600px) { .solver-template-picker>span { display:none; } .solver-template-picker select { width:135px; } .solver-toolbar-title { flex-basis:60%; } }
+.solver-workbench .solver-calculations .text-red-600 { color:var(--sw-load)!important; }
+.solver-workbench .solver-calculations .text-blue-600 { color:oklch(75% .085 295)!important; }
+.solver-workbench .solver-calculations .text-green-600 { color:var(--sw-accent)!important; }

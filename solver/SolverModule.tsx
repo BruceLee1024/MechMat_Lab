@@ -18,10 +18,12 @@ import {
   TrendingDown,
   Activity,
   Scan,
+  Layers,
 } from "lucide-react";
 import { LatexRenderer } from "../components";
 import { SolverTrussResults } from "../components/SolverTrussResults";
 import { DiagramPanel as ResultDiagramPanel } from './components/DiagramPanel';
+import './solver-workbench.css';
 import { fitSolverView } from './view';
 import {
   SolverState,
@@ -70,7 +72,9 @@ const IconButton = ({
       onClick={onClick}
       disabled={disabled}
       aria-label={label}
-      className={`${baseClass} ${variantClass} ${disabledClass}`}
+      aria-pressed={active}
+      title={tooltip || label}
+      className={`solver-icon-button ${baseClass} ${variantClass} ${disabledClass}`}
     >
       <Icon className="w-4 h-4" />
       {/* 悬浮提示 - 改为显示在下方 */}
@@ -713,9 +717,7 @@ const OldPropertyPanel = ({
 const CalculationPanel = ({ state }: { state: SolverState }) => {
   if (!state.result || !state.result.success) {
     return (
-      <div className="text-xs text-slate-400 text-center py-8">
-        {state.result?.message || "点击「求解」按钮查看计算过程"}
-      </div>
+      <div className="solver-empty-results" role="status"><Calculator size={26}/><strong>{state.result ? '模型需要检查' : '结果将在这里呈现'}</strong><p>{state.result?.message || '完成节点、单元与荷载设置后，点击「求解结构」。'}</p><span>支座反力 · 截面内力 · 应力与位移</span></div>
     );
   }
 
@@ -868,10 +870,10 @@ const CalculationPanel = ({ state }: { state: SolverState }) => {
   }
 
   return (
-    <div className="space-y-3 text-xs overflow-y-auto">
+    <div className="solver-calculations text-xs">
       {/* 结构概览 */}
       <div>
-        <h4 className="font-semibold text-slate-700 mb-2">📐 结构概览</h4>
+        <h4 className="font-semibold text-slate-700 mb-2">结构概览</h4>
         <div className="bg-slate-50 p-2 rounded border text-[11px] space-y-1">
           <div>节点: {state.nodes.length} 个 | 单元: {state.elements.length} 个 | 荷载: {state.loads.length} 个</div>
           <div>单元总长: {totalLength.toFixed(0)} mm</div>
@@ -880,7 +882,7 @@ const CalculationPanel = ({ state }: { state: SolverState }) => {
 
       {/* 支座反力 */}
       <div>
-        <h4 className="font-semibold text-slate-700 mb-2">⚖️ 支座反力</h4>
+        <h4 className="font-semibold text-slate-700 mb-2">支座反力</h4>
         <p className="text-[10px] text-slate-500 mb-2">全局 x 向右、y 向下；Fy 负值为向上。下列 R 公式以向上为正。</p>
         <div className="bg-indigo-50 p-2 rounded border border-indigo-100 space-y-1">
           {result.nodes.filter(n => n.reaction).map(n => (
@@ -893,13 +895,12 @@ const CalculationPanel = ({ state }: { state: SolverState }) => {
               </span>
             </div>
           ))}
-          {formulaContent}
         </div>
       </div>
 
       {/* 最大内力 - 区分梁和桁架 */}
       <div>
-        <h4 className="font-semibold text-slate-700 mb-2">📊 最大内力</h4>
+        <h4 className="font-semibold text-slate-700 mb-2">最大内力</h4>
         <div className="bg-amber-50 p-2 rounded border border-amber-100 space-y-1 text-[11px]">
           {/* 显示轴力（桁架） */}
           {result.elements.some(e => {
@@ -941,7 +942,7 @@ const CalculationPanel = ({ state }: { state: SolverState }) => {
 
       {/* 位移 */}
       <div>
-        <h4 className="font-semibold text-slate-700 mb-2">📉 节点位移</h4>
+        <h4 className="font-semibold text-slate-700 mb-2">节点位移</h4>
         <div className="bg-cyan-50 p-2 rounded border border-cyan-100 space-y-1">
           {result.nodes.map(n => (
             <div key={n.nodeId} className="text-[11px] flex justify-between">
@@ -957,7 +958,7 @@ const CalculationPanel = ({ state }: { state: SolverState }) => {
 
       {/* 应力分析 */}
       <div>
-        <h4 className="font-semibold text-slate-700 mb-2">⚡ 应力分析</h4>
+        <h4 className="font-semibold text-slate-700 mb-2">应力分析</h4>
         <div className="bg-rose-50 p-2 rounded border border-rose-100 text-[11px] space-y-1">
           {result.elements.map(elem => {
             const element = state.elements.find(e => e.id === elem.elementId);
@@ -999,9 +1000,11 @@ const CalculationPanel = ({ state }: { state: SolverState }) => {
         </div>
       </div>
 
+      <details className="solver-principle"><summary>计算原理与公式</summary>{formulaContent}</details>
+
       {/* 应变能 */}
       <div>
-        <h4 className="font-semibold text-slate-700 mb-2">🔋 应变能</h4>
+        <h4 className="font-semibold text-slate-700 mb-2">应变能</h4>
         <div className="bg-emerald-50 p-2 rounded border border-emerald-100 text-[11px]">
           <div className="flex justify-between">
             <span>总应变能:</span>
@@ -1444,14 +1447,28 @@ export const SolverModule = ({ model, onModelChange }: { model: SolverModel; onM
   const [firstNodeId, setFirstNodeId] = useState<string | null>(null);
 
   // 内力图高度调整
-  const [diagramHeight, setDiagramHeight] = useState(200);
+  const [diagramHeight, setDiagramHeight] = useState(248);
+  const [diagramType, setDiagramType] = useState<'axial' | 'shear' | 'moment' | 'deflection'>('moment');
   const [isResizing, setIsResizing] = useState(false);
 
   const fitView = () => {
     const rect=svgRef.current?.getBoundingClientRect();
     if(rect)setUI(prev=>({...prev,...fitSolverView(latestState.current.nodes,rect.width,rect.height)}));
   };
-  useEffect(fitView, []);
+  useEffect(() => {
+    fitView();
+    const canvas = svgRef.current;
+    if (!canvas) return;
+    let previousWidth = canvas.getBoundingClientRect().width;
+    // 分栏、导航和小屏切换后重新适配；拖动图表高度不打断用户视角。
+    const observer = new ResizeObserver(([entry]) => {
+      if (Math.abs(entry.contentRect.width - previousWidth) < 1) return;
+      previousWidth = entry.contentRect.width;
+      fitView();
+    });
+    observer.observe(canvas);
+    return () => observer.disconnect();
+  }, []);
 
   // 处理高度调整
   useEffect(() => {
@@ -1777,44 +1794,25 @@ export const SolverModule = ({ model, onModelChange }: { model: SolverModel; onM
     onChange({ viewScale: newScale });
   };
 
-  // 渲染支座
+  // 工程教材式支承符号：三角形、滚轮与地基分层表达。
   const renderSupport = (node: SolverNode) => {
-    const size = 20;
-    switch (node.support) {
-      case 'fixed':
-        return (
-          <g>
-            <rect x={-size/2} y={-size} width={size} height={size} fill="url(#hatchPattern)" stroke="#64748b" strokeWidth="2" />
-            <line x1={-size/2} y1={0} x2={size/2} y2={0} stroke="#64748b" strokeWidth="3" />
-          </g>
-        );
-      case 'pinned':
-        return (
-          <g>
-            <polygon points={`0,0 ${-size/2},${size} ${size/2},${size}`} fill="url(#hatchPattern)" stroke="#64748b" strokeWidth="2" />
-            <circle cx={0} cy={0} r={4} fill="white" stroke="#64748b" strokeWidth="2" />
-          </g>
-        );
-      case 'roller':
-        return (
-          <g>
-            <polygon points={`0,0 ${-size/2},${size*0.7} ${size/2},${size*0.7}`} fill="url(#hatchPattern)" stroke="#64748b" strokeWidth="2" />
-            <circle cx={0} cy={0} r={4} fill="white" stroke="#64748b" strokeWidth="2" />
-            <circle cx={-size/3} cy={size*0.85} r={4} fill="#cbd5e1" stroke="#64748b" />
-            <circle cx={size/3} cy={size*0.85} r={4} fill="#cbd5e1" stroke="#64748b" />
-            <line x1={-size/2} y1={size} x2={size/2} y2={size} stroke="#64748b" strokeWidth="2" />
-          </g>
-        );
-      default:
-        return null;
+    const ground = (y: number) => <g stroke="var(--sw-muted)" strokeWidth="1.2"><line x1={-15} x2={15} y1={y} y2={y}/>{[-12,-6,0,6,12].map(x => <line key={x} x1={x} x2={x-4} y1={y} y2={y+5}/>)}</g>;
+    if (node.support === 'fixed') {
+      const element = state.elements.find(item => item.nodeStart === node.id || item.nodeEnd === node.id);
+      const other = state.nodes.find(item => item.id === (element?.nodeStart === node.id ? element.nodeEnd : element?.nodeStart));
+      const angle = other ? Math.atan2(other.y-node.y, other.x-node.x)*180/Math.PI : 0;
+      return <g transform={`rotate(${angle})`}><rect x={-13} y={-24} width={11} height={48} fill="url(#hatchPattern)"/><line x1={-2} x2={-2} y1={-24} y2={24} stroke="var(--sw-structure)" strokeWidth="2"/></g>;
     }
+    if (node.support === 'pinned') return <g><polygon points="0,2 -12,23 12,23" fill="var(--sw-bg)" stroke="var(--sw-structure)" strokeWidth="1.5"/>{ground(27)}</g>;
+    if (node.support === 'roller') return <g><polygon points="0,2 -12,20 12,20" fill="var(--sw-bg)" stroke="var(--sw-structure)" strokeWidth="1.5"/>{[-7,7].map(x => <circle key={x} cx={x} cy={25} r={4} fill="none" stroke="var(--sw-structure)" strokeWidth="1.3"/>)}{ground(32)}</g>;
+    return null;
   };
 
   // 渲染荷载
   const renderLoad = (load: SolverLoad) => {
     const isSelected = state.selectedId === load.id;
-    const color = isSelected ? "#4f46e5" : "#e11d48";
-    const momentColor = isSelected ? "#4f46e5" : "#f59e0b";
+    const color = isSelected ? "var(--sw-accent)" : "var(--sw-load)";
+    const momentColor = isSelected ? "var(--sw-accent)" : "var(--sw-load)";
     const markerId = isSelected ? "url(#arrowForceSelected)" : "url(#arrowForce)";
     
     // 均布荷载或三角形荷载
@@ -1871,7 +1869,7 @@ export const SolverModule = ({ model, onModelChange }: { model: SolverModel; onM
           <text
             x={(n1.x + n2.x) / 2}
             y={Math.min(n1.y, n2.y) - baseArrowLength - 8}
-            fontSize="10"
+            fontSize="11"
             fill={color}
             fontWeight="bold"
             textAnchor="middle"
@@ -1934,7 +1932,7 @@ export const SolverModule = ({ model, onModelChange }: { model: SolverModel; onM
           {/* 中心点 */}
           <circle cx={0} cy={0} r={3} fill={momentColor} />
           {/* 标注 */}
-          <text x={0} y={-r - 8} fontSize="10" fill={momentColor} fontWeight="bold" textAnchor="middle">
+          <text x={0} y={-r - 8} fontSize="11" fill={momentColor} fontWeight="bold" textAnchor="middle">
             M = {Math.abs(load.value)} Nm
           </text>
         </g>
@@ -1954,15 +1952,15 @@ export const SolverModule = ({ model, onModelChange }: { model: SolverModel; onM
           y1={y - dy}
           x2={x}
           y2={y}
-          stroke={isSelected ? "#4f46e5" : "#e11d48"}
+          stroke={isSelected ? "var(--sw-accent)" : "var(--sw-load)"}
           strokeWidth={isSelected ? 3 : 2}
           markerEnd={markerId}
         />
         <text
           x={x - dx + 10}
           y={y - dy - 5}
-          fontSize="10"
-          fill={isSelected ? "#4f46e5" : "#e11d48"}
+          fontSize="11"
+          fill={isSelected ? "var(--sw-accent)" : "var(--sw-load)"}
           fontWeight="bold"
         >
           {load.value} N
@@ -1972,101 +1970,57 @@ export const SolverModule = ({ model, onModelChange }: { model: SolverModel; onM
   };
 
   return (
-    <div className="flex flex-col h-full bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-      {/* 工具栏 */}
-      <div className="bg-slate-50 border-b border-slate-200 px-4 py-3 flex items-center gap-3 flex-wrap">
-        {/* 操作按钮 */}
-        <div className="flex items-center gap-1 bg-white rounded-lg p-1 shadow-sm border border-slate-200">
-          <button
-            onClick={handleSolve}
-            className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 transition-colors flex items-center gap-2"
-            title="计算结构响应"
-          >
-            <Play className="w-4 h-4" />
-            求解
-          </button>
-          <IconButton icon={RotateCcw} label="重置" tooltip="清空所有内容，重新开始" onClick={handleReset} />
-          <IconButton
-            icon={Trash2}
-            label="删除"
-            tooltip="删除选中的项目"
-            onClick={handleDelete}
-            disabled={!state.selectedId}
-            variant="danger"
-          />
-        </div>
-
-        {/* 视图控制 */}
-        <div className="flex items-center gap-1 bg-white rounded-lg p-1 shadow-sm border border-slate-200">
-          <IconButton
-            icon={Grid3X3}
-            label="网格"
-            tooltip="显示/隐藏网格"
-            active={state.showGrid}
-            onClick={() => onChange({ showGrid: !state.showGrid })}
-          />
-          <IconButton
-            icon={ZoomOut}
-            label="缩小"
-            tooltip="缩小视图"
-            onClick={() => onChange({ viewScale: Math.max(0.2, state.viewScale / 1.2) })}
-          />
-          <span className="text-xs text-slate-500 font-mono w-10 text-center">{(state.viewScale * 100).toFixed(0)}%</span>
-          <IconButton
-            icon={ZoomIn}
-            label="放大"
-            tooltip="放大视图"
-            onClick={() => onChange({ viewScale: Math.min(3, state.viewScale * 1.2) })}
-          />
-          <IconButton icon={Scan} label="适应画布" tooltip="完整显示结构、支座与荷载" onClick={fitView} disabled={!state.nodes.length}/>
-        </div>
-
-        {/* 模板选择 */}
-        <select
-          className="bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm cursor-pointer hover:bg-slate-50 shadow-sm"
-          onChange={(e) => {
-            const template = SOLVER_TEMPLATES.find((t) => t.name === e.target.value);
+    <div className="solver-workbench flex flex-col h-full overflow-hidden">
+      <header className="solver-toolbar">
+        <div className="solver-toolbar-title"><Layers size={17}/><strong>结构工作台</strong><span className="solver-unit-note">N · mm · MPa</span></div>
+        <label className="solver-template-picker"><span>示例模型</span>
+          <select aria-label="加载结构模板" value="" onChange={event => {
+            const template = SOLVER_TEMPLATES.find(item => item.name === event.target.value);
             if (template) loadTemplate(template);
-          }}
-          defaultValue=""
-        >
-          <option value="" disabled>📋 加载模板</option>
-          {SOLVER_TEMPLATES.map((t) => (
-            <option key={t.name} value={t.name}>{t.name}</option>
-          ))}
-        </select>
-
-        <div className="flex-1" />
-        
-        {/* 状态信息 */}
-        <div className="flex items-center gap-3 text-xs text-slate-500">
-          <span className="flex items-center gap-1">
-            <Circle className="w-3 h-3" /> {state.nodes.length} 节点
-          </span>
-          <span className="flex items-center gap-1">
-            <Minus className="w-3 h-3" /> {state.elements.length} 单元
-          </span>
+          }}>
+            <option value="" disabled>选择工况</option>
+            {SOLVER_TEMPLATES.map(template => <option key={template.name} value={template.name}>{template.name}</option>)}
+          </select>
+        </label>
+        <div className="solver-solve-state" role="status" data-state={state.result?.success ? 'success' : state.result ? 'error' : 'pending'}>
+          <span/>{state.result?.success ? '计算已更新' : state.result ? '检查模型' : '等待求解'}
         </div>
-      </div>
+        <div className="solver-primary-actions">
+          <IconButton icon={RotateCcw} label="重置" tooltip="清空模型，可通过实验历史撤销" onClick={handleReset}/>
+          <IconButton icon={Trash2} label="删除" tooltip="删除选中对象及关联对象" onClick={handleDelete} disabled={!state.selectedId} variant="danger"/>
+          <button className="solver-solve-button" onClick={handleSolve}><Play size={14}/>求解结构</button>
+        </div>
+      </header>
 
       {/* 主内容区 - 三栏布局 */}
       <div className="solver-body flex-1 flex overflow-hidden">
         {/* 左栏：结构建模 */}
         <div className="solver-model-panel w-72 bg-white border-r border-slate-200 flex flex-col overflow-hidden">
-          <div className="p-3 border-b border-slate-100 bg-slate-50">
-            <h3 className="font-semibold text-indigo-900 text-sm flex items-center gap-2">
-              <Settings className="w-4 h-4 text-indigo-500" /> 结构建模
+          <div className="solver-panel-heading">
+            <h3>
+              <Settings size={15}/> 结构建模
             </h3>
           </div>
-          <div className="flex-1 overflow-y-auto p-3">
+          <div className="solver-panel-scroll">
             <PropertyPanel state={state} onChange={onChange} />
           </div>
         </div>
 
         {/* 中栏：结构图 + 内力图 */}
         <div className="solver-canvas-panel flex-1 flex flex-col min-w-0">
+          <div className="solver-scene-heading">
+            <div><strong>结构与荷载</strong><span>{state.nodes.length} 节点 · {state.elements.length} 单元 · {state.loads.length} 荷载</span></div>
+            <div className="solver-view-actions">
+              <IconButton icon={Grid3X3} label="网格" active={state.showGrid} onClick={() => onChange({showGrid: !state.showGrid})}/>
+              <IconButton icon={ZoomOut} label="缩小" onClick={() => onChange({viewScale: Math.max(0.2, state.viewScale / 1.2)})}/>
+              <span>{(state.viewScale * 100).toFixed(0)}%</span>
+              <IconButton icon={ZoomIn} label="放大" onClick={() => onChange({viewScale: Math.min(3, state.viewScale * 1.2)})}/>
+              <IconButton icon={Scan} label="适应画布" onClick={fitView} disabled={!state.nodes.length}/>
+            </div>
+          </div>
           {/* 结构图 */}
-          <div className="flex-1 bg-slate-100 relative overflow-hidden">
+          <div className="solver-scene flex-1 relative overflow-hidden" data-grid={state.showGrid}>
+            {!state.nodes.length && <div className="solver-empty-scene"><Layers size={30}/><strong>从一个结构开始</strong><p>载入示例模型，或在左侧添加节点与单元。</p><button onClick={() => loadTemplate(SOLVER_TEMPLATES[0])}>载入简支梁 <span>→</span></button></div>}
             <svg
               ref={svgRef}
               width="100%"
@@ -2080,47 +2034,25 @@ export const SolverModule = ({ model, onModelChange }: { model: SolverModel; onM
               style={{ touchAction: 'none' }}
             >
               <defs>
+                <pattern id="solverGrid" patternUnits="userSpaceOnUse" width={state.gridSize} height={state.gridSize}>
+                  <path d={`M ${state.gridSize} 0 L 0 0 L 0 ${state.gridSize}`} fill="none" stroke="var(--sw-muted)" strokeWidth=".5"/>
+                </pattern>
                 <pattern id="hatchPattern" patternUnits="userSpaceOnUse" width="8" height="8" patternTransform="rotate(45)">
-                  <line x1="0" y1="0" x2="0" y2="8" stroke="#94a3b8" strokeWidth="2" />
+                  <line x1="0" y1="0" x2="0" y2="8" stroke="var(--sw-muted)" strokeWidth="2" />
                 </pattern>
                 {/* 普通状态的箭头 */}
                 <marker id="arrowForce" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
-                  <path d="M0,0 L0,6 L9,3 z" fill="#e11d48" />
+                  <path d="M0,0 L0,6 L9,3 z" fill="var(--sw-load)" />
                 </marker>
                 {/* 选中状态的箭头 */}
                 <marker id="arrowForceSelected" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
-                  <path d="M0,0 L0,6 L9,3 z" fill="#4f46e5" />
+                  <path d="M0,0 L0,6 L9,3 z" fill="var(--sw-accent)" />
                 </marker>
               </defs>
 
               <g transform={`translate(${state.viewOffset.x}, ${state.viewOffset.y}) scale(${state.viewScale})`}>
                 {/* 网格 */}
-                {state.showGrid && (
-                  <g opacity={0.3}>
-                    {Array.from({ length: 30 }, (_, i) => (
-                      <line
-                        key={`v${i}`}
-                        x1={i * state.gridSize}
-                        y1={0}
-                        x2={i * state.gridSize}
-                        y2={1000}
-                        stroke="#cbd5e1"
-                        strokeWidth={1}
-                      />
-                    ))}
-                    {Array.from({ length: 20 }, (_, i) => (
-                      <line
-                        key={`h${i}`}
-                        x1={0}
-                        y1={i * state.gridSize}
-                        x2={1500}
-                        y2={i * state.gridSize}
-                        stroke="#cbd5e1"
-                        strokeWidth={1}
-                      />
-                    ))}
-                  </g>
-                )}
+                {state.showGrid && <rect x={-state.viewOffset.x / state.viewScale} y={-state.viewOffset.y / state.viewScale} width={10000 / state.viewScale} height={10000 / state.viewScale} fill="url(#solverGrid)" opacity=".2" pointerEvents="none"/>}
 
                 {/* 单元 */}
                 {state.elements.map((elem) => {
@@ -2137,7 +2069,7 @@ export const SolverModule = ({ model, onModelChange }: { model: SolverModel; onM
                         y1={n1.y}
                         x2={n2.x}
                         y2={n2.y}
-                        stroke={isSelected ? "#4f46e5" : "#475569"}
+                        stroke={isSelected ? "var(--sw-accent)" : "var(--sw-structure)"}
                         strokeWidth={isSelected ? 8 : 6}
                         strokeLinecap="round"
                         onClick={(e) => selectItem(elem.id, e)}
@@ -2149,7 +2081,7 @@ export const SolverModule = ({ model, onModelChange }: { model: SolverModel; onM
                           y1={n1.y}
                           x2={n2.x}
                           y2={n2.y}
-                          stroke="#94a3b8"
+                          stroke="var(--sw-muted)"
                           strokeWidth={2}
                           strokeDasharray="4 4"
                           pointerEvents="none"
@@ -2159,6 +2091,24 @@ export const SolverModule = ({ model, onModelChange }: { model: SolverModel; onM
                   );
                 })}
 
+                {/* 尺寸直接来自节点坐标，不把显示缩放写入结构模型。 */}
+                {state.elements.map(element => {
+                  const a = state.nodes.find(node => node.id === element.nodeStart);
+                  const b = state.nodes.find(node => node.id === element.nodeEnd);
+                  if (!a || !b) return null;
+                  const length = Math.hypot(b.x - a.x, b.y - a.y);
+                  if (length * state.viewScale < 100) return null;
+                  const direction = Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI;
+                  const angle = direction > 90 ? direction - 180 : direction < -90 ? direction + 180 : direction;
+                  const offset = 46 / state.viewScale;
+                  const tick = 4 / state.viewScale;
+                  return <g key={`dimension-${element.id}`} transform={`translate(${(a.x+b.x)/2},${(a.y+b.y)/2}) rotate(${angle})`} pointerEvents="none" opacity=".75">
+                    <line x1={-length/2} x2={length/2} y1={offset} y2={offset} stroke="var(--sw-muted)" strokeWidth={.7/state.viewScale}/>
+                    {[-length/2,length/2].map(x => <line key={x} x1={x} x2={x} y1={offset-tick} y2={offset+tick} stroke="var(--sw-muted)" strokeWidth={.7/state.viewScale}/>)}
+                    <text x={0} y={offset+15/state.viewScale} textAnchor="middle" fontSize={10/state.viewScale} fill="var(--sw-muted)">{element.id} · L = {Number(length.toFixed(2))} mm</text>
+                  </g>;
+                })}
+
                 {/* 临时连线 */}
                 {tempLine && (
                   <line
@@ -2166,7 +2116,7 @@ export const SolverModule = ({ model, onModelChange }: { model: SolverModel; onM
                     y1={tempLine.y1}
                     x2={tempLine.x2}
                     y2={tempLine.y2}
-                    stroke="#4f46e5"
+                    stroke="var(--sw-accent)"
                     strokeWidth={2}
                     strokeDasharray="8 4"
                     pointerEvents="none"
@@ -2194,8 +2144,8 @@ export const SolverModule = ({ model, onModelChange }: { model: SolverModel; onM
                         cx={0}
                         cy={0}
                         r={isSelected || isFirstNode ? 10 : 8}
-                        fill={isFirstNode ? "#f59e0b" : isSelected ? "#4f46e5" : "#1e293b"}
-                        stroke="white"
+                        fill={isFirstNode ? "var(--sw-load)" : isSelected ? "var(--sw-accent)" : "var(--sw-field)"}
+                        stroke="var(--sw-structure)"
                         strokeWidth={2}
                       />
                       
@@ -2203,8 +2153,8 @@ export const SolverModule = ({ model, onModelChange }: { model: SolverModel; onM
                       <text
                         x={12}
                         y={-12}
-                        fontSize="10"
-                        fill="#64748b"
+                        fontSize="11"
+                        fill="var(--sw-muted)"
                         fontWeight="bold"
                       >
                         {node.id}
@@ -2219,50 +2169,44 @@ export const SolverModule = ({ model, onModelChange }: { model: SolverModel; onM
             </svg>
 
             {/* 操作提示 */}
-            <div className="absolute bottom-2 left-2 bg-white/90 backdrop-blur px-2 py-1 rounded text-xs text-slate-500">
-              点击选择 | 拖拽移动 | Alt+拖拽平移 | 滚轮缩放
-            </div>
+            <div className="solver-scene-caption"><span>点击编辑 · 拖动节点</span><span>Alt + 拖动平移 · 滚轮缩放</span></div>
           </div>
 
           {/* 内力图区域 */}
           <div 
-            className="border-t border-slate-200 bg-white flex-shrink-0 relative"
+            className="solver-diagram-region flex-shrink-0 relative"
             style={{ height: diagramHeight }}
           >
             {/* 拖拽手柄 */}
             <div
-              className="absolute top-0 left-0 right-0 h-1 cursor-row-resize hover:bg-indigo-500 z-10 transition-colors"
+              className="solver-diagram-resizer"
+              title="上下拖动调整图表高度"
               onMouseDown={(e) => {
                 e.preventDefault();
                 setIsResizing(true);
               }}
             />
             
-            {state.elements.length > 0 && state.elements.every(e => e.type === 'truss') ? <SolverTrussResults result={state.result}/> : <div className="h-full flex">
-              {/* 剪力图 */}
-              <div className="flex-1 border-r border-slate-100 p-1 overflow-hidden">
-                <ResultDiagramPanel state={state} diagramType="shear" />
+            {state.elements.length > 0 && state.elements.every(e => e.type === 'truss') ? <SolverTrussResults result={state.result}/> : <>
+              <div className="solver-diagram-toolbar">
+                <div className="solver-segments" role="group" aria-label="结果图类型">
+                  {([['axial','轴力 N'],['shear','剪力 V'],['moment','弯矩 M'],['deflection','挠度 w']] as const).map(([type,label]) => <button key={type} aria-pressed={diagramType === type} onClick={() => setDiagramType(type)}>{label}</button>)}
+                </div><span className="solver-diagram-hint">移动指针读取截面值</span>
               </div>
-              {/* 弯矩图 */}
-              <div className="flex-1 border-r border-slate-100 p-1 overflow-hidden">
-                <ResultDiagramPanel state={state} diagramType="moment" />
-              </div>
-              {/* 挠度图 */}
-              <div className="flex-1 p-1 overflow-hidden">
-                <ResultDiagramPanel state={state} diagramType="deflection" />
-              </div>
-            </div>}
+              <div className="solver-active-diagram"><ResultDiagramPanel key={diagramType} state={state} diagramType={diagramType}/></div>
+            </>}
+
           </div>
         </div>
 
         {/* 右栏：计算结果 */}
         <div className="solver-results-panel w-72 bg-white border-l border-slate-200 flex flex-col overflow-hidden">
-          <div className="p-3 border-b border-slate-100 bg-slate-50">
-            <h3 className="font-semibold text-indigo-900 text-sm flex items-center gap-2">
-              <Calculator className="w-4 h-4 text-indigo-500" /> 计算结果
+          <div className="solver-panel-heading">
+            <h3>
+              <Calculator size={15}/> 结果分析
             </h3>
           </div>
-          <div className="flex-1 overflow-y-auto p-3">
+          <div className="solver-panel-scroll">
             <CalculationPanel state={state} />
           </div>
         </div>
