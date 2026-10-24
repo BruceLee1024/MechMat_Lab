@@ -17,9 +17,11 @@ const SECTION_TYPES: { type: SectionType; label: string; icon: string }[] = [
 export const ModelingPanel = ({
   state,
   onChange,
+  mode = 'full',
 }: {
   state: SolverState;
   onChange: (s: Partial<SolverState>) => void;
+  mode?: 'full' | 'selection' | 'tree';
 }) => {
   const [activeTool, setActiveTool] = useState<'node' | 'element' | 'load'>('node');
   const [nodeX, setNodeX] = useState(0);
@@ -139,11 +141,9 @@ export const ModelingPanel = ({
   // 选中单元变化时，同步截面编辑状态
   useEffect(() => {
     if (selectedElement) {
-      setEditSection({
-        type: 'custom',
-        customArea: selectedElement.section.A,
-        customIz: selectedElement.section.I > 0 ? selectedElement.section.I : undefined,
-      });
+      const {width,height,A,I}=selectedElement.section;
+      const rectangle=width>0&&height>0&&Math.abs(A-width*height)<Math.max(A,1)*1e-9&&Math.abs(I-width*height**3/12)<Math.max(I,1)*1e-9;
+      setEditSection(rectangle?{type:'rectangle',width,height}:{type:'custom',customArea:A,customIz:I>0?I:undefined});
     }
   }, [state.selectedId]);
 
@@ -160,12 +160,12 @@ export const ModelingPanel = ({
   };
 
   return (
-    <div className="solver-modeling text-xs">
-      <div className="solver-segments solver-model-tools" role="group" aria-label="建模对象类型">
+    <div className="solver-modeling text-xs" data-mode={mode}>
+      <div hidden={mode!=='full'} className="solver-segments solver-model-tools" role="group" aria-label="建模对象类型">
         {([['node', Circle, '节点'], ['element', Minus, '单元'], ['load', ArrowDown, '荷载']] as const).map(([tool, Icon, label]) => <button key={tool} aria-pressed={activeTool === tool} onClick={() => setActiveTool(tool)}><Icon size={13}/>{label}</button>)}
       </div>
       {/* 选中项编辑 */}
-      {(selectedNode || selectedElement || selectedLoad) && (
+      {mode!=='tree' && (selectedNode || selectedElement || selectedLoad) && (
         <div className="solver-selection-editor">
           <h4 className="font-semibold text-amber-800 mb-2">编辑选中项</h4>
           {selectedNode && (
@@ -237,21 +237,23 @@ export const ModelingPanel = ({
               </div>
             </div>
           )}
-          {selectedLoad && (
-            <div className="space-y-2">
-              <div className="text-[10px] text-amber-700">荷载 {selectedLoad.id}</div>
-              <NumericInput label="选中荷载大小" domain="signed"
-
-                value={selectedLoad.value}
-                onChange={(value) => onChange({
-                  loads: state.loads.map(l => l.id === selectedLoad.id ? { ...l, value: value } : l)
-                })}
-              />
-            </div>
-          )}
+          {selectedLoad && (()=>{
+            const member=state.elements.find(element=>element.id===selectedLoad.targetId);
+            const a=state.nodes.find(node=>node.id===member?.nodeStart),b=state.nodes.find(node=>node.id===member?.nodeEnd);
+            const length=a&&b?Math.hypot(b.x-a.x,b.y-a.y):0;
+            const update=(changes:Partial<SolverLoad>)=>onChange({loads:state.loads.map(load=>load.id===selectedLoad.id?{...load,...changes}:load)});
+            const units=selectedLoad.type==='moment'?'kN·m':selectedLoad.type==='distributed'||selectedLoad.type==='triangular'?'kN/m':'kN';
+            return <div className="space-y-3"><div className="solver-property-caption">荷载 {selectedLoad.id} · 作用于 {selectedLoad.targetId}</div>
+              <NumericInput label="选中荷载大小" unit={units} domain="signed" value={selectedLoad.value/1000} onChange={value=>update({value:value*1000})}/>
+              {selectedLoad.type!=='moment'&&<NumericInput label="荷载角度" value={selectedLoad.angle} onChange={angle=>update({angle})} unit="°" domain="signed"/>}
+              {selectedLoad.type==='triangular'&&<NumericInput label="终点强度" value={(selectedLoad.valueEnd??0)/1000} onChange={value=>update({valueEnd:value*1000})} unit="kN/m" domain="signed"/>}
+              {member&&length>0&&(selectedLoad.type==='point'||selectedLoad.type==='moment')&&<NumericInput label="距杆起点" value={(selectedLoad.position??.5)*length} onChange={value=>update({position:value/length})} unit="mm" domain="nonnegative" maximum={length} displayDecimals={2}/>}
+              <p className="solver-property-help">{selectedLoad.type==='moment'?'正值顺时针，负值逆时针。':'角度 0° 向右，90° 向下；负荷载沿相反方向。'}</p>
+            </div>;
+          })()}
           <button
             onClick={deleteSelected}
-            className="w-full mt-2 px-3 py-1 bg-rose-500 text-white rounded text-xs hover:bg-rose-600"
+            className="solver-delete-selected w-full mt-2 px-3 py-1 rounded text-xs"
           >
             删除选中
           </button>
@@ -259,7 +261,7 @@ export const ModelingPanel = ({
       )}
 
       {/* 隐藏而不卸载表单，切换时保留输入草稿。 */}
-      <div className="solver-model-form" hidden={activeTool !== 'node'}>
+      <div className="solver-model-form" hidden={mode!=='full' || activeTool !== 'node'}>
         <h4 className="font-semibold text-slate-700 mb-2 flex items-center gap-1">
           <Circle className="w-3 h-3" /> 添加节点
         </h4>
@@ -294,7 +296,7 @@ export const ModelingPanel = ({
       </div>
 
       {/* 添加单元 */}
-      <div className="solver-model-form" hidden={activeTool !== 'element'}>
+      <div className="solver-model-form" hidden={mode!=='full' || activeTool !== 'element'}>
         <h4 className="font-semibold text-slate-700 mb-2 flex items-center gap-1">
           <Minus className="w-3 h-3" /> 添加单元
         </h4>
@@ -359,7 +361,7 @@ export const ModelingPanel = ({
       </div>
 
       {/* 添加荷载 */}
-      <div className="solver-model-form" hidden={activeTool !== 'load'}>
+      <div className="solver-model-form" hidden={mode!=='full' || activeTool !== 'load'}>
         <h4 className="font-semibold text-slate-700 mb-2 flex items-center gap-1">
           <ArrowDown className="w-3 h-3" /> 添加荷载
         </h4>
@@ -423,7 +425,8 @@ export const ModelingPanel = ({
         </button>
       </div>
 
-      <section className="solver-object-tree" aria-label="模型对象">
+      {mode==='selection'&&!selectedNode&&!selectedElement&&!selectedLoad&&<div className="solver-empty-results"><Circle size={24}/><strong>点选一个对象</strong><p>点击画布上的节点、杆件或荷载，即可精确修改参数。</p></div>}
+      <section hidden={mode==='selection'} className="solver-object-tree" aria-label="模型对象">
         <header><strong>模型对象</strong><span>{state.nodes.length + state.elements.length + state.loads.length}</span></header>
         {([
           {label:'节点', items:state.nodes.map(n => ({id:n.id,detail:`(${n.x}, ${n.y}) mm`}))},

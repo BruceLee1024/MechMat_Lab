@@ -426,7 +426,7 @@ const App = () => {
       case 'buckling': return <BucklingModule state={simState} onChange={handleStateChange} />;
       case 'stress': return <StressModule state={simState} onChange={handleStateChange} />;
       case 'combined': return <CombinedModule state={simState} onChange={handleStateChange} />;
-      case 'solver': return <SolverModule model={store.workspace.documents.solver.model as SolverModel} onModelChange={model => store.editModel('solver', model)} />;
+      case 'solver': return <SolverModule model={store.workspace.documents.solver.model as SolverModel} onModelChange={model => store.editModel('solver', model)} onBeginGesture={()=>store.begin('solver')} onEndGesture={()=>store.end('solver')} />;
       case 'section': return <SectionModule model={store.workspace.documents.section.model as SectionModel} onModelChange={model => store.editModel('section', model)} />;
       case 'formulas': return <FormulasModule />;
       case 'resources': return <ResourcesModule onNavigate={handleModuleChange} />;

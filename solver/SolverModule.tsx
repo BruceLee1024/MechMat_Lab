@@ -19,12 +19,22 @@ import {
   Activity,
   Scan,
   Layers,
+  Hand,
+  PencilLine,
+  SlidersHorizontal,
+  Magnet,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { LatexRenderer } from "../components";
 import { SolverTrussResults } from "../components/SolverTrussResults";
 import { DiagramPanel as ResultDiagramPanel } from './components/DiagramPanel';
 import './solver-workbench.css';
+import { SolverLoadGlyph } from './components/SolverLoadGlyph';
 import { fitSolverView } from './view';
+import { DEFAULT_MEMBER, drawMember, drawingPoint, ensureDrawingNode, nearestNode, nearestMember, placeDrawingLoad, supportDOF } from './drawing';
+import type { DrawingPoint, DrawingLoad } from './drawing';
+import { NumericInput } from '../components/NumericInput';
 import {
   SolverState,
   SolverNode,
@@ -1423,7 +1433,7 @@ const DiagramPanel = ({ state, diagramType }: { state: SolverState; diagramType:
 // ==========================================
 // 主求解器模块
 // ==========================================
-export const SolverModule = ({ model, onModelChange }: { model: SolverModel; onModelChange: (model: SolverModel) => void }) => {
+export const SolverModule = ({ model, onModelChange, onBeginGesture, onEndGesture }: { model: SolverModel; onModelChange: (model: SolverModel) => void; onBeginGesture?: () => void; onEndGesture?: () => void }) => {
   const [ui, setUI] = useState<Omit<SolverState, 'nodes' | 'elements' | 'loads'>>(DEFAULT_SOLVER_STATE);
   const resultModel = useRef<SolverModel | null>(null);
   const state: SolverState = { ...ui, nodes: model.nodes, elements: model.elements, loads: model.loads, result: resultModel.current === model ? ui.result : null };
@@ -1439,12 +1449,23 @@ export const SolverModule = ({ model, onModelChange }: { model: SolverModel; onM
   };
   const svgRef = useRef<SVGSVGElement>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const gestureActive=useRef(false);
+  const endGesture=useRef(onEndGesture);endGesture.current=onEndGesture;
+  useEffect(()=>()=>{if(gestureActive.current)endGesture.current?.();},[]);
   const [dragTarget, setDragTarget] = useState<{ type: string; id: string } | null>(null);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [tempLine, setTempLine] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
-  const [firstNodeId, setFirstNodeId] = useState<string | null>(null);
+  const [drawStart, setDrawStart] = useState<DrawingPoint | null>(null);
+  const [cursorPoint, setCursorPoint] = useState<DrawingPoint | null>(null);
+  const [snapEnabled, setSnapEnabled] = useState(true);
+  const [memberDefaults, setMemberDefaults] = useState(DEFAULT_MEMBER);
+  const [supportKind, setSupportKind] = useState<SupportType>('pinned');
+  const [loadDefaults, setLoadDefaults] = useState<DrawingLoad>({type:'point',value:10000,angle:90});
+  const [feedback, setFeedback] = useState('选择工具后直接在画布操作，或载入示例。');
+  const [precisionOpen, setPrecisionOpen] = useState(false);
+  const [inspectorTab, setInspectorTab] = useState<'selection' | 'tree' | 'results'>('tree');
+  const [chartOpen, setChartOpen] = useState(false);
 
   // 内力图高度调整
   const [diagramHeight, setDiagramHeight] = useState(248);
@@ -1453,7 +1474,7 @@ export const SolverModule = ({ model, onModelChange }: { model: SolverModel; onM
 
   const fitView = () => {
     const rect=svgRef.current?.getBoundingClientRect();
-    if(rect)setUI(prev=>({...prev,...fitSolverView(latestState.current.nodes,rect.width,rect.height)}));
+    if(rect)setUI(prev=>{const view=fitSolverView(latestState.current.nodes,rect.width,rect.height);if(rect.height<280)view.viewOffset.y-=24;return {...prev,...view};});
   };
   useEffect(() => {
     fitView();
@@ -1469,6 +1490,8 @@ export const SolverModule = ({ model, onModelChange }: { model: SolverModel; onM
     observer.observe(canvas);
     return () => observer.disconnect();
   }, []);
+
+  useEffect(()=>{fitView();},[chartOpen]);
 
   // 处理高度调整
   useEffect(() => {
@@ -1503,6 +1526,8 @@ export const SolverModule = ({ model, onModelChange }: { model: SolverModel; onM
     setState((prev) => {
       // 如果修改了节点、单元或荷载，清除之前的结果
       const modelChanged = updates.nodes || updates.elements || updates.loads;
+      if (modelChanged && !isDragging) setChartOpen(false);
+      if (updates.selectedId) setInspectorTab('selection');
       return { 
         ...prev, 
         ...updates,
@@ -1514,6 +1539,7 @@ export const SolverModule = ({ model, onModelChange }: { model: SolverModel; onM
 
   // 加载模板
   const loadTemplate = (template: SolverTemplate) => {
+    setChartOpen(false);setDrawStart(null);setTempLine(null);setInspectorTab('tree');setFeedback(`已载入${template.name}，可直接点选修改或继续绘制。`);
     const rect=svgRef.current?.getBoundingClientRect();
     setState({
       ...DEFAULT_SOLVER_STATE,
@@ -1527,12 +1553,15 @@ export const SolverModule = ({ model, onModelChange }: { model: SolverModel; onM
   // 求解
   const handleSolve = () => {
     const result = solveUnified(state.nodes, state.elements, state.loads);
-    setState(prev => ({ ...prev, result, showResults: true }));
+    setState(prev => ({ ...prev, result, showResults: true, editMode:'select' }));
+    setDrawStart(null);setTempLine(null);setFeedback(result.success?'计算已更新，点选对象可继续修改模型。':result.message);
+    setInspectorTab('results'); setChartOpen(result.success);
   };
 
   // 重置
   const handleReset = () => {
     setState(DEFAULT_SOLVER_STATE);
+    setDrawStart(null); setTempLine(null); setChartOpen(false); setInspectorTab('tree');
   };
 
   // 删除选中项
@@ -1574,225 +1603,97 @@ export const SolverModule = ({ model, onModelChange }: { model: SolverModel; onM
     }
   };
 
-  // 获取SVG坐标
-  const getSvgPoint = (e: React.MouseEvent): { x: number; y: number } => {
-    if (!svgRef.current) return { x: 0, y: 0 };
-    const rect = svgRef.current.getBoundingClientRect();
-    const x = (e.clientX - rect.left - state.viewOffset.x) / state.viewScale;
-    const y = (e.clientY - rect.top - state.viewOffset.y) / state.viewScale;
-    
-    // 对齐网格
-    if (state.showGrid) {
-      return {
-        x: Math.round(x / state.gridSize) * state.gridSize,
-        y: Math.round(y / state.gridSize) * state.gridSize,
-      };
-    }
-    return { x, y };
+  const rawSvgPoint = (event: {clientX:number;clientY:number}): DrawingPoint => {
+    const rect=svgRef.current?.getBoundingClientRect();
+    return rect ? {x:(event.clientX-rect.left-state.viewOffset.x)/state.viewScale,y:(event.clientY-rect.top-state.viewOffset.y)/state.viewScale} : {x:0,y:0};
   };
-
-  // 鼠标按下
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.button === 1 || (e.button === 0 && e.altKey)) {
-      // 中键或Alt+左键：平移视图
-      setIsPanning(true);
-      setPanStart({ x: e.clientX - state.viewOffset.x, y: e.clientY - state.viewOffset.y });
+  const getSvgPoint = (event: {clientX:number;clientY:number;shiftKey?:boolean}) => {
+    const raw=rawSvgPoint(event);
+    if((state.editMode==='element'||state.editMode==='node')&&!event.shiftKey&&!nearestNode(state.nodes,raw,9/state.viewScale)){
+      const hit=nearestMember(model,raw,9/state.viewScale);if(hit)return hit.point;
+    }
+    return drawingPoint(state.nodes,raw,snapEnabled?state.gridSize:null,9/state.viewScale,drawStart??undefined,!!event.shiftKey);
+  };
+  const setTool = (tool: SolverState['editMode']) => {
+    onChange({editMode:tool}); setDrawStart(null); setTempLine(null);if(tool!=='select'&&tool!=='pan')setChartOpen(false);
+    const hints = {select:'点击对象编辑；拖动节点或荷载；Delete 删除选中对象。',element:'点选两端画杆，自动连接已有节点；交叉无节点时不连接。Esc 结束，Shift 正交。',node:'点击空白位置添加节点，靠近已有节点时自动吸附。',support:'点击节点放置所选支座，可连续施加。',load:'点击节点或杆件放置荷载，空白处不会生成荷载。',pan:'拖动画布平移，滚轮缩放；V 返回选择。'};
+    setFeedback(hints[tool]);
+  };
+  const handlePointerDown = (event: React.PointerEvent<SVGSVGElement>) => {
+    if (event.button===1 || event.altKey || state.editMode==='pan') {
+      event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId);
+      setIsPanning(true); setPanStart({x:event.clientX-state.viewOffset.x,y:event.clientY-state.viewOffset.y}); return;
+    }
+    if(event.button!==0) return;
+    const raw=rawSvgPoint(event), point=getSvgPoint(event);
+    if(state.editMode==='select') { onChange({selectedId:null}); return; }
+    event.preventDefault();
+    if(state.editMode==='element') {
+      if(!drawStart) {setDrawStart(point);setTempLine({x1:point.x,y1:point.y,x2:point.x,y2:point.y});setFeedback('起点已选，点击终点；Shift 正交，Esc 取消。');return;}
+      const next=drawMember(model,drawStart,point,memberDefaults,9/state.viewScale);
+      setFeedback(next.message);
+      if(next.model!==model) { onChange({nodes:next.model.nodes,elements:next.model.elements,loads:next.model.loads,selectedId:next.selectedId}); setDrawStart(next.end!); setTempLine({x1:next.end!.x,y1:next.end!.y,x2:next.end!.x,y2:next.end!.y}); }
       return;
     }
-
-    const point = getSvgPoint(e);
-
-    if (state.editMode === 'node') {
-      // 添加节点
-      const newNode: SolverNode = {
-        id: `n${Date.now()}`,
-        x: point.x,
-        y: point.y,
-        support: 'none',
-        fixedDOF: { dx: false, dy: false, rz: false },
-      };
-      onChange({ nodes: [...state.nodes, newNode], selectedId: newNode.id });
-    } else if (state.editMode === 'element') {
-      // 添加单元：需要选择两个节点
-      const clickedNode = state.nodes.find(
-        (n) => Math.abs(n.x - point.x) < 20 && Math.abs(n.y - point.y) < 20
-      );
-      
-      if (clickedNode) {
-        if (!firstNodeId) {
-          setFirstNodeId(clickedNode.id);
-          setTempLine({ x1: clickedNode.x, y1: clickedNode.y, x2: clickedNode.x, y2: clickedNode.y });
-        } else if (clickedNode.id !== firstNodeId) {
-          // 创建单元
-          const newElement: SolverElement = {
-            id: `e${Date.now()}`,
-            type: 'beam',
-            nodeStart: firstNodeId,
-            nodeEnd: clickedNode.id,
-            section: { A: 10000, I: 833333, width: 100, height: 100 },
-            material: { E: 200000, G: 77000, yield: 250 },
-          };
-          onChange({ elements: [...state.elements, newElement], selectedId: newElement.id });
-          setFirstNodeId(null);
-          setTempLine(null);
-        }
-      }
-    } else if (state.editMode === 'load') {
-      // 添加荷载
-      const clickedNode = state.nodes.find(
-        (n) => Math.abs(n.x - point.x) < 20 && Math.abs(n.y - point.y) < 20
-      );
-      
-      if (clickedNode) {
-        const newLoad: SolverLoad = {
-          id: `l${Date.now()}`,
-          type: 'point',
-          targetType: 'node',
-          targetId: clickedNode.id,
-          value: 10000,
-          angle: 90,
-        };
-        onChange({ loads: [...state.loads, newLoad], selectedId: newLoad.id });
-      } else {
-        // 检查是否点击在单元上
-        for (const elem of state.elements) {
-          const n1 = state.nodes.find((n) => n.id === elem.nodeStart);
-          const n2 = state.nodes.find((n) => n.id === elem.nodeEnd);
-          if (!n1 || !n2) continue;
-
-          // 计算点到线段的距离
-          const dx = n2.x - n1.x;
-          const dy = n2.y - n1.y;
-          const L = Math.sqrt(dx * dx + dy * dy);
-          const t = Math.max(0, Math.min(1, ((point.x - n1.x) * dx + (point.y - n1.y) * dy) / (L * L)));
-          const projX = n1.x + t * dx;
-          const projY = n1.y + t * dy;
-          const dist = Math.sqrt(Math.pow(point.x - projX, 2) + Math.pow(point.y - projY, 2));
-
-          if (dist < 15) {
-            const newLoad: SolverLoad = {
-              id: `l${Date.now()}`,
-              type: 'point',
-              targetType: 'element',
-              targetId: elem.id,
-              position: t,
-              value: 10000,
-              angle: 90,
-            };
-            onChange({ loads: [...state.loads, newLoad], selectedId: newLoad.id });
-            break;
-          }
-        }
-      }
-    } else if (state.editMode === 'support') {
-      // 添加/修改支座
-      const clickedNode = state.nodes.find(
-        (n) => Math.abs(n.x - point.x) < 20 && Math.abs(n.y - point.y) < 20
-      );
-      
-      if (clickedNode) {
-        // 循环切换支座类型
-        const types: SupportType[] = ['none', 'pinned', 'roller', 'fixed'];
-        const currentIdx = types.indexOf(clickedNode.support);
-        const nextType = types[(currentIdx + 1) % types.length];
-        const fixedDOF = {
-          fixed: { dx: true, dy: true, rz: true },
-          pinned: { dx: true, dy: true, rz: false },
-          roller: { dx: false, dy: true, rz: false },
-          none: { dx: false, dy: false, rz: false },
-        }[nextType];
-        
-        onChange({
-          nodes: state.nodes.map((n) =>
-            n.id === clickedNode.id ? { ...n, support: nextType, fixedDOF } : n
-          ),
-          selectedId: clickedNode.id,
-        });
-      }
+    if(state.editMode==='node') {
+      const old=nearestNode(state.nodes,point,9/state.viewScale);
+      if(old) {onChange({selectedId:old.id});setFeedback(`已吸附节点 ${old.id}。`);return;}
+      const next=ensureDrawingNode(model,point,9/state.viewScale);onChange({nodes:next.model.nodes,elements:next.model.elements,loads:next.model.loads,selectedId:next.node.id});setFeedback(`已添加 ${next.node.id}，杆件中部的节点会自动连接。`);return;
     }
+    if(state.editMode==='support') {
+      const node=nearestNode(state.nodes,raw,14/state.viewScale);
+      if(!node) {setFeedback('支座只能放在节点上，请点击已有节点。');return;}
+      onChange({nodes:state.nodes.map(n=>n.id===node.id?{...n,support:supportKind,fixedDOF:supportDOF(supportKind)}:n),selectedId:node.id});setFeedback(`已更新 ${node.id} 的支座。`);return;
+    }
+    const next=placeDrawingLoad(model,raw,loadDefaults,12/state.viewScale);
+    setFeedback(next.message);
+    if(next.model!==model) onChange({nodes:next.model.nodes,elements:next.model.elements,loads:next.model.loads,selectedId:next.selectedId});
   };
-
-  // 鼠标移动
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (isPanning) {
-      onChange({
-        viewOffset: {
-          x: e.clientX - panStart.x,
-          y: e.clientY - panStart.y,
-        },
-      });
-      return;
-    }
-
-    if (isDragging && dragTarget) {
-      const point = getSvgPoint(e);
-      
-      if (dragTarget.type === 'node') {
-        onChange({
-          nodes: state.nodes.map((n) =>
-            n.id === dragTarget.id ? { ...n, x: point.x, y: point.y } : n
-          ),
-        });
-      } else if (dragTarget.type === 'load') {
-        const load = state.loads.find((l) => l.id === dragTarget.id);
-        if (load && load.targetType === 'element') {
-          const elem = state.elements.find((el) => el.id === load.targetId);
-          if (elem) {
-            const n1 = state.nodes.find((n) => n.id === elem.nodeStart);
-            const n2 = state.nodes.find((n) => n.id === elem.nodeEnd);
-            if (n1 && n2) {
-              const dx = n2.x - n1.x;
-              const dy = n2.y - n1.y;
-              const L = Math.sqrt(dx * dx + dy * dy);
-              const t = Math.max(0, Math.min(1, ((point.x - n1.x) * dx + (point.y - n1.y) * dy) / (L * L)));
-              onChange({
-                loads: state.loads.map((l) =>
-                  l.id === dragTarget.id ? { ...l, position: t } : l
-                ),
-              });
-            }
-          }
+  const handlePointerMove = (event: React.PointerEvent<SVGSVGElement>) => {
+    if(isPanning) {onChange({viewOffset:{x:event.clientX-panStart.x,y:event.clientY-panStart.y}});return;}
+    const point=getSvgPoint(event);
+    setCursorPoint(previous=>previous?.x===point.x&&previous?.y===point.y?previous:point);
+    if(isDragging&&dragTarget) {
+      if(dragTarget.type==='node') onChange({nodes:state.nodes.map(n=>n.id===dragTarget.id?{...n,...point}:n)});
+      else {
+        const load=state.loads.find(l=>l.id===dragTarget.id);
+        const element=load?.targetType==='element' ? state.elements.find(e=>e.id===load.targetId) : undefined;
+        if(element) {
+          const hit=nearestMember({...model,elements:[element]},rawSvgPoint(event),Number.MAX_VALUE);
+          if(hit) onChange({loads:state.loads.map(l=>l.id===load!.id?{...l,position:hit.position}:l)});
         }
       }
     }
-
-    // 更新临时线
-    if (tempLine && firstNodeId) {
-      const point = getSvgPoint(e);
-      setTempLine({ ...tempLine, x2: point.x, y2: point.y });
-    }
+    if(drawStart) setTempLine({x1:drawStart.x,y1:drawStart.y,x2:point.x,y2:point.y});
   };
-
-  // 鼠标释放
-  const handleMouseUp = () => {
-    setIsDragging(false);
-    setDragTarget(null);
-    setIsPanning(false);
+  const handlePointerUp = () => {setIsDragging(false);setDragTarget(null);setIsPanning(false);if(gestureActive.current){gestureActive.current=false;endGesture.current?.();}};
+  const startDrag = (type: string,id: string,event: React.PointerEvent) => {
+    if(state.editMode!=='select'||event.altKey||event.button!==0) return;
+    event.stopPropagation(); gestureActive.current=true;onBeginGesture?.();
+    svgRef.current?.setPointerCapture(event.pointerId);
+    setIsDragging(true);setDragTarget({type,id});onChange({selectedId:id});
   };
-
-  // 开始拖拽
-  const startDrag = (type: string, id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (state.editMode === 'select') {
-      setIsDragging(true);
-      setDragTarget({ type, id });
-      onChange({ selectedId: id });
-    }
+  const selectItem = (id: string,event: React.MouseEvent) => {
+    if(state.editMode!=='select') return;
+    event.stopPropagation();onChange({selectedId:id});
   };
-
-  // 选择项目
-  const selectItem = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    onChange({ selectedId: id });
+  const handleWheel = (event: React.WheelEvent) => {
+    const rect=svgRef.current?.getBoundingClientRect(); if(!rect)return;
+    const previous=state.viewScale, scale=Math.max(.02,Math.min(5,previous*(event.deltaY>0?.9:1.1)));
+    const x=event.clientX-rect.left,y=event.clientY-rect.top;
+    onChange({viewScale:scale,viewOffset:{x:x-(x-state.viewOffset.x)*scale/previous,y:y-(y-state.viewOffset.y)*scale/previous}});
   };
-
-  // 缩放
-  const handleWheel = (e: React.WheelEvent) => {
-    e.preventDefault();
-    const delta = e.deltaY > 0 ? 0.9 : 1.1;
-    const newScale = Math.max(0.2, Math.min(3, state.viewScale * delta));
-    onChange({ viewScale: newScale });
-  };
+  useEffect(()=>{
+    const keyboard=(event:KeyboardEvent)=>{
+      if(event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey || (event.target instanceof HTMLElement && (event.target.closest('input,textarea,select') || event.target.isContentEditable)))return;
+      const keys:Record<string,SolverState['editMode']>={v:'select',d:'element',n:'node',s:'support',l:'load',h:'pan'};
+      if(event.key==='Escape') {event.preventDefault();setTool('select');}
+      else if(event.key==='Delete'||event.key==='Backspace') {if(state.selectedId){event.preventDefault();handleDelete();}}
+      else if(keys[event.key.toLowerCase()]) {event.preventDefault();setTool(keys[event.key.toLowerCase()]);}
+    };
+    window.addEventListener('keydown',keyboard);window.addEventListener('pointerup',handlePointerUp);window.addEventListener('pointercancel',handlePointerUp);
+    return ()=>{window.removeEventListener('keydown',keyboard);window.removeEventListener('pointerup',handlePointerUp);window.removeEventListener('pointercancel',handlePointerUp);};
+  });
 
   // 工程教材式支承符号：三角形、滚轮与地基分层表达。
   const renderSupport = (node: SolverNode) => {
@@ -1808,169 +1709,10 @@ export const SolverModule = ({ model, onModelChange }: { model: SolverModel; onM
     return null;
   };
 
-  // 渲染荷载
-  const renderLoad = (load: SolverLoad) => {
-    const isSelected = state.selectedId === load.id;
-    const color = isSelected ? "var(--sw-accent)" : "var(--sw-load)";
-    const momentColor = isSelected ? "var(--sw-accent)" : "var(--sw-load)";
-    const markerId = isSelected ? "url(#arrowForceSelected)" : "url(#arrowForce)";
-    
-    // 均布荷载或三角形荷载
-    if (load.type === 'distributed' || load.type === 'triangular') {
-      const elem = state.elements.find((e) => e.id === load.targetId);
-      if (!elem) return null;
-      const n1 = state.nodes.find((n) => n.id === elem.nodeStart);
-      const n2 = state.nodes.find((n) => n.id === elem.nodeEnd);
-      if (!n1 || !n2) return null;
-      
-      const arrowCount = 8;
-      const baseArrowLength = 30;
-      const q1 = load.value;
-      const q2 = load.valueEnd ?? (load.type === 'distributed' ? load.value : 0);
-      const maxQ = Math.max(q1, q2, 1);
-      
-      return (
-        <g
-          key={load.id}
-          onClick={(e) => selectItem(load.id, e)}
-          className="cursor-pointer"
-        >
-          {/* 顶部连线 - 对于三角形荷载是斜线 */}
-          <line
-            x1={n1.x}
-            y1={n1.y - (q1 / maxQ) * baseArrowLength}
-            x2={n2.x}
-            y2={n2.y - (q2 / maxQ) * baseArrowLength}
-            stroke={color}
-            strokeWidth={2}
-          />
-          {/* 箭头阵列 */}
-          {Array.from({ length: arrowCount }, (_, i) => {
-            const t = i / (arrowCount - 1);
-            const ax = n1.x + t * (n2.x - n1.x);
-            const ay = n1.y + t * (n2.y - n1.y);
-            const qAtT = q1 + (q2 - q1) * t;
-            const arrowLen = (qAtT / maxQ) * baseArrowLength;
-            if (arrowLen < 5) return null;
-            return (
-              <line
-                key={i}
-                x1={ax}
-                y1={ay - arrowLen}
-                x2={ax}
-                y2={ay - 5}
-                stroke={color}
-                strokeWidth={1.5}
-                markerEnd={markerId}
-              />
-            );
-          })}
-          {/* 标注 */}
-          <text
-            x={(n1.x + n2.x) / 2}
-            y={Math.min(n1.y, n2.y) - baseArrowLength - 8}
-            fontSize="11"
-            fill={color}
-            fontWeight="bold"
-            textAnchor="middle"
-          >
-            {load.type === 'triangular' 
-              ? `q: ${q1}→${q2} N/m`
-              : `q = ${load.value} N/m`}
-          </text>
-        </g>
-      );
-    }
-    
-    let x = 0, y = 0;
-    
-    if (load.targetType === 'node') {
-      const node = state.nodes.find((n) => n.id === load.targetId);
-      if (!node) return null;
-      x = node.x;
-      y = node.y;
-    } else {
-      const elem = state.elements.find((e) => e.id === load.targetId);
-      if (!elem) return null;
-      const n1 = state.nodes.find((n) => n.id === elem.nodeStart);
-      const n2 = state.nodes.find((n) => n.id === elem.nodeEnd);
-      if (!n1 || !n2) return null;
-      const t = load.position ?? 0.5;
-      x = n1.x + t * (n2.x - n1.x);
-      y = n1.y + t * (n2.y - n1.y);
-    }
-
-    const arrowLength = 50;
-    const rad = (load.angle * Math.PI) / 180;
-    const dx = arrowLength * Math.cos(rad);
-    const dy = arrowLength * Math.sin(rad);
-
-    // 力矩 - 使用弧形箭头
-    if (load.type === 'moment') {
-      const r = 18;
-      const direction = load.value >= 0 ? 1 : -1; // 正为逆时针
-      return (
-        <g
-          key={load.id}
-          transform={`translate(${x}, ${y})`}
-          onMouseDown={(e) => startDrag('load', load.id, e)}
-          onClick={(e) => selectItem(load.id, e)}
-          className="cursor-pointer"
-        >
-          {/* 弧形 */}
-          <path
-            d={`M ${r},0 A ${r},${r} 0 1,${direction > 0 ? 1 : 0} ${-r},0`}
-            fill="none"
-            stroke={momentColor}
-            strokeWidth={isSelected ? 3 : 2}
-          />
-          {/* 箭头 */}
-          <polygon
-            points={direction > 0 ? `${-r-6},-4 ${-r},0 ${-r-6},4` : `${-r+6},-4 ${-r},0 ${-r+6},4`}
-            fill={momentColor}
-          />
-          {/* 中心点 */}
-          <circle cx={0} cy={0} r={3} fill={momentColor} />
-          {/* 标注 */}
-          <text x={0} y={-r - 8} fontSize="11" fill={momentColor} fontWeight="bold" textAnchor="middle">
-            M = {Math.abs(load.value)} Nm
-          </text>
-        </g>
-      );
-    }
-
-    // 集中力
-    return (
-      <g
-        key={load.id}
-        onMouseDown={(e) => startDrag('load', load.id, e)}
-        onClick={(e) => selectItem(load.id, e)}
-        className="cursor-pointer"
-      >
-        <line
-          x1={x - dx}
-          y1={y - dy}
-          x2={x}
-          y2={y}
-          stroke={isSelected ? "var(--sw-accent)" : "var(--sw-load)"}
-          strokeWidth={isSelected ? 3 : 2}
-          markerEnd={markerId}
-        />
-        <text
-          x={x - dx + 10}
-          y={y - dy - 5}
-          fontSize="11"
-          fill={isSelected ? "var(--sw-accent)" : "var(--sw-load)"}
-          fontWeight="bold"
-        >
-          {load.value} N
-        </text>
-      </g>
-    );
-  };
+  const renderLoad = (load:SolverLoad) => <SolverLoadGlyph key={load.id} load={load} nodes={state.nodes} elements={state.elements} viewScale={state.viewScale} selected={state.selectedId===load.id} onPointerDown={event=>startDrag('load',load.id,event)} onClick={event=>selectItem(load.id,event)}/>;
 
   return (
-    <div className="solver-workbench flex flex-col h-full overflow-hidden">
+    <div className="solver-workbench solver-draw-workbench flex flex-col h-full overflow-hidden" data-precision={precisionOpen}>
       <header className="solver-toolbar">
         <div className="solver-toolbar-title"><Layers size={17}/><strong>结构工作台</strong><span className="solver-unit-note">N · mm · MPa</span></div>
         <label className="solver-template-picker"><span>示例模型</span>
@@ -1982,6 +1724,7 @@ export const SolverModule = ({ model, onModelChange }: { model: SolverModel; onM
             {SOLVER_TEMPLATES.map(template => <option key={template.name} value={template.name}>{template.name}</option>)}
           </select>
         </label>
+        <button className="solver-precision-toggle" aria-pressed={precisionOpen} onClick={()=>setPrecisionOpen(value=>!value)}><SlidersHorizontal size={14}/>精确输入</button>
         <div className="solver-solve-state" role="status" data-state={state.result?.success ? 'success' : state.result ? 'error' : 'pending'}>
           <span/>{state.result?.success ? '计算已更新' : state.result ? '检查模型' : '等待求解'}
         </div>
@@ -2018,19 +1761,30 @@ export const SolverModule = ({ model, onModelChange }: { model: SolverModel; onM
               <IconButton icon={Scan} label="适应画布" onClick={fitView} disabled={!state.nodes.length}/>
             </div>
           </div>
+          <div className="solver-drawing-tools" role="group" aria-label="画布建模工具">
+            {([['select',MousePointer,'选择','V'],['element',PencilLine,'画杆件','D'],['node',Circle,'节点','N'],['support',Anchor,'支座','S'],['load',ArrowDown,'荷载','L'],['pan',Hand,'平移','H']] as const).map(([tool,Icon,label,key])=><button key={tool} aria-label={`${label}工具`} aria-pressed={state.editMode===tool} onClick={()=>setTool(tool)} title={`${label} (${key})`}><Icon size={16}/><span>{label}</span><kbd>{key}</kbd></button>)}
+          </div>
+          <div className="solver-tool-options">
+            {state.editMode==='element' ? <><select aria-label="绘制杆件类型" value={memberDefaults.type} onChange={e=>setMemberDefaults({...memberDefaults,type:e.target.value as 'beam'|'truss'})}><option value="beam">梁 / 刚架</option><option value="truss">桁架杆</option></select><NumericInput label="宽 b" value={memberDefaults.width} onChange={width=>setMemberDefaults({...memberDefaults,width})} unit="mm" domain="positive" compact/><NumericInput label="高 h" value={memberDefaults.height} onChange={height=>setMemberDefaults({...memberDefaults,height})} unit="mm" domain="positive" compact/><NumericInput label="E" value={memberDefaults.E/1000} onChange={E=>setMemberDefaults({...memberDefaults,E:E*1000})} unit="GPa" domain="positive" compact/><button disabled={!drawStart} className="solver-finish-drawing" onClick={()=>{setDrawStart(null);setTempLine(null);setFeedback('本段绘制已结束，点击新的起点可继续。');}}>结束连画</button></> :
+              state.editMode==='support' ? <><span>支座类型</span><select aria-label="画布支座类型" value={supportKind} onChange={e=>setSupportKind(e.target.value as SupportType)}><option value="pinned">铰支座</option><option value="roller">滚动支座</option><option value="fixed">固定端</option><option value="none">移除支座</option></select><small>点击节点施加约束；滚动支座约束竖向位移</small></> :
+              state.editMode==='load' ? <><select aria-label="画布荷载类型" value={loadDefaults.type} onChange={e=>setLoadDefaults({...loadDefaults,type:e.target.value as DrawingLoad['type']})}><option value="point">集中力</option><option value="distributed">均布荷载</option><option value="moment">集中力矩</option></select><NumericInput label="大小" value={loadDefaults.value/1000} onChange={v=>setLoadDefaults({...loadDefaults,value:v*1000})} unit={loadDefaults.type==='distributed'?'kN/m':loadDefaults.type==='moment'?'kN·m':'kN'} domain="signed" compact/>{loadDefaults.type==='moment'&&<small>正值顺时针，负值逆时针</small>}{loadDefaults.type!=='moment'&&<select aria-label="画布荷载方向" value={loadDefaults.angle} onChange={e=>setLoadDefaults({...loadDefaults,angle:Number(e.target.value)})}><option value={90}>↓ 向下</option><option value={270}>↑ 向上</option><option value={0}>→ 向右</option><option value={180}>← 向左</option></select>}</> : <span>{state.editMode==='pan'?'拖动画布移动视角':'点选对象查看属性，可用精确输入添加复杂截面与荷载'}</span>}
+            <div className="solver-snap-options"><button aria-label="网格吸附" aria-pressed={snapEnabled} onClick={()=>setSnapEnabled(v=>!v)}><Magnet size={14}/><span>吸附</span></button><select aria-label="网格间距" value={state.gridSize} onChange={e=>onChange({gridSize:Number(e.target.value)})}>{[10,50,100,500].map(size=><option key={size} value={size}>{size} mm</option>)}</select></div>
+          </div>
           {/* 结构图 */}
           <div className="solver-scene flex-1 relative overflow-hidden" data-grid={state.showGrid}>
-            {!state.nodes.length && <div className="solver-empty-scene"><Layers size={30}/><strong>从一个结构开始</strong><p>载入示例模型，或在左侧添加节点与单元。</p><button onClick={() => loadTemplate(SOLVER_TEMPLATES[0])}>载入简支梁 <span>→</span></button></div>}
+            {!state.nodes.length && state.editMode==='select' && <div className="solver-empty-scene"><PencilLine size={30}/><strong>直接画出你的结构</strong><p>画杆件、放支座、加荷载，再查看计算结果。</p><button onClick={()=>setTool('element')}>开始画杆件 <kbd>D</kbd></button><button onClick={() => loadTemplate(SOLVER_TEMPLATES[0])}>或载入简支梁示例 →</button></div>}
             <svg
               ref={svgRef}
               width="100%"
               height="100%"
-              onMouseDown={handleMouseDown}
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
-              onMouseLeave={handleMouseUp}
+              onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+              onPointerCancel={handlePointerUp}
+              onDoubleClick={() => {if(state.editMode==='element'){setDrawStart(null);setTempLine(null);setFeedback('本段绘制已结束，点选新的起点可继续。');}}}
               onWheel={handleWheel}
-              className="cursor-crosshair"
+              className={`solver-drawing-canvas mode-${state.editMode}`}
+              aria-label="结构建模画布"
               style={{ touchAction: 'none' }}
             >
               <defs>
@@ -2070,7 +1824,7 @@ export const SolverModule = ({ model, onModelChange }: { model: SolverModel; onM
                         x2={n2.x}
                         y2={n2.y}
                         stroke={isSelected ? "var(--sw-accent)" : "var(--sw-structure)"}
-                        strokeWidth={isSelected ? 8 : 6}
+                        strokeWidth={(isSelected ? 5 : 3)/state.viewScale}
                         strokeLinecap="round"
                         onClick={(e) => selectItem(elem.id, e)}
                         className="cursor-pointer"
@@ -2082,8 +1836,8 @@ export const SolverModule = ({ model, onModelChange }: { model: SolverModel; onM
                           x2={n2.x}
                           y2={n2.y}
                           stroke="var(--sw-muted)"
-                          strokeWidth={2}
-                          strokeDasharray="4 4"
+                          strokeWidth={.8/state.viewScale}
+                          strokeDasharray={`${4/state.viewScale} ${4/state.viewScale}`}
                           pointerEvents="none"
                         />
                       )}
@@ -2119,41 +1873,44 @@ export const SolverModule = ({ model, onModelChange }: { model: SolverModel; onM
                     stroke="var(--sw-accent)"
                     strokeWidth={2}
                     strokeDasharray="8 4"
+                    vectorEffect="non-scaling-stroke"
                     pointerEvents="none"
                   />
                 )}
 
+                {drawStart && <g pointerEvents="none"><circle cx={drawStart.x} cy={drawStart.y} r={5/state.viewScale} fill="var(--sw-accent)"/>{tempLine&&Math.hypot(tempLine.x2-tempLine.x1,tempLine.y2-tempLine.y1)>0&&<text x={(tempLine.x1+tempLine.x2)/2} y={(tempLine.y1+tempLine.y2)/2-12/state.viewScale} fontSize={11/state.viewScale} fill="var(--sw-accent)" textAnchor="middle">L = {Math.hypot(tempLine.x2-tempLine.x1,tempLine.y2-tempLine.y1).toFixed(0)} mm</text>}</g>}
+
                 {/* 节点 */}
                 {state.nodes.map((node) => {
                   const isSelected = state.selectedId === node.id;
-                  const isFirstNode = firstNodeId === node.id;
+                  const isFirstNode = drawStart?.x===node.x && drawStart?.y===node.y;
                   
                   return (
                     <g
                       key={node.id}
                       transform={`translate(${node.x}, ${node.y})`}
-                      onMouseDown={(e) => startDrag('node', node.id, e)}
+                      onPointerDown={(e) => startDrag('node', node.id, e)}
                       onClick={(e) => selectItem(node.id, e)}
                       className="cursor-move"
                     >
                       {/* 支座 */}
-                      {renderSupport(node)}
+                      <g transform={`scale(${1/state.viewScale})`}>{renderSupport(node)}</g>
                       
                       {/* 节点圆 */}
                       <circle
                         cx={0}
                         cy={0}
-                        r={isSelected || isFirstNode ? 10 : 8}
+                        r={(isSelected ? 6 : 4)/state.viewScale}
                         fill={isFirstNode ? "var(--sw-load)" : isSelected ? "var(--sw-accent)" : "var(--sw-field)"}
                         stroke="var(--sw-structure)"
-                        strokeWidth={2}
+                        strokeWidth={1.5/state.viewScale}
                       />
                       
                       {/* 节点标签 */}
                       <text
-                        x={12}
-                        y={-12}
-                        fontSize="11"
+                        x={10/state.viewScale}
+                        y={-10/state.viewScale}
+                        fontSize={11/state.viewScale}
                         fill="var(--sw-muted)"
                         fontWeight="bold"
                       >
@@ -2169,14 +1926,15 @@ export const SolverModule = ({ model, onModelChange }: { model: SolverModel; onM
             </svg>
 
             {/* 操作提示 */}
-            <div className="solver-scene-caption"><span>点击编辑 · 拖动节点</span><span>Alt + 拖动平移 · 滚轮缩放</span></div>
+            <div className="solver-canvas-feedback" role="status">{feedback}</div><div className="solver-scene-caption"><span>x → · y ↓ · mm{cursorPoint ? `　(${cursorPoint.x.toFixed(0)}, ${cursorPoint.y.toFixed(0)})` : ''}</span><span>Esc 结束 · Shift 正交 · Alt 平移</span></div>
           </div>
 
           {/* 内力图区域 */}
           <div 
             className="solver-diagram-region flex-shrink-0 relative"
-            style={{ height: diagramHeight }}
+            style={{ height: chartOpen ? diagramHeight : 48 }} data-open={chartOpen}
           >
+            <button className="solver-chart-toggle" aria-expanded={chartOpen} onClick={()=>setChartOpen(value=>!value)}>{chartOpen?<ChevronDown size={14}/>:<ChevronUp size={14}/>}<span>{chartOpen?'收起图表':'内力与位移图'}</span></button>
             {/* 拖拽手柄 */}
             <div
               className="solver-diagram-resizer"
@@ -2187,14 +1945,14 @@ export const SolverModule = ({ model, onModelChange }: { model: SolverModel; onM
               }}
             />
             
-            {state.elements.length > 0 && state.elements.every(e => e.type === 'truss') ? <SolverTrussResults result={state.result}/> : <>
+            {chartOpen && (state.elements.length > 0 && state.elements.every(e => e.type === 'truss') ? <SolverTrussResults result={state.result}/> : <>
               <div className="solver-diagram-toolbar">
                 <div className="solver-segments" role="group" aria-label="结果图类型">
                   {([['axial','轴力 N'],['shear','剪力 V'],['moment','弯矩 M'],['deflection','挠度 w']] as const).map(([type,label]) => <button key={type} aria-pressed={diagramType === type} onClick={() => setDiagramType(type)}>{label}</button>)}
                 </div><span className="solver-diagram-hint">移动指针读取截面值</span>
               </div>
               <div className="solver-active-diagram"><ResultDiagramPanel key={diagramType} state={state} diagramType={diagramType}/></div>
-            </>}
+            </>)}
 
           </div>
         </div>
@@ -2203,11 +1961,12 @@ export const SolverModule = ({ model, onModelChange }: { model: SolverModel; onM
         <div className="solver-results-panel w-72 bg-white border-l border-slate-200 flex flex-col overflow-hidden">
           <div className="solver-panel-heading">
             <h3>
-              <Calculator size={15}/> 结果分析
+              <SlidersHorizontal size={15}/> 模型与分析
             </h3>
           </div>
+          <div className="solver-inspector-tabs solver-segments" role="group" aria-label="模型与分析面板">{([['tree','模型'],['selection','属性'],['results','结果']] as const).map(([tab,label])=><button key={tab} aria-pressed={inspectorTab===tab} onClick={()=>setInspectorTab(tab)}>{label}</button>)}</div>
           <div className="solver-panel-scroll">
-            <CalculationPanel state={state} />
+            {inspectorTab==='results'?<CalculationPanel state={state}/>:<DetailedModelingPanel state={state} onChange={onChange} mode={inspectorTab}/>}
           </div>
         </div>
       </div>

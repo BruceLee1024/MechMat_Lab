@@ -158,3 +158,87 @@
 .solver-workbench .solver-calculations .text-red-600 { color:var(--sw-load)!important; }
 .solver-workbench .solver-calculations .text-blue-600 { color:oklch(75% .085 295)!important; }
 .solver-workbench .solver-calculations .text-green-600 { color:var(--sw-accent)!important; }
+/* 画布优先：工具与参数靠近画布，精确表单按需展开。 */
+.solver-workbench.solver-draw-workbench .solver-body { grid-template-columns:minmax(0,1fr) 292px; }
+.solver-draw-workbench .solver-model-panel { display:none; }
+.solver-workbench.solver-draw-workbench[data-precision=true] .solver-body { grid-template-columns:236px minmax(0,1fr) 292px; }
+.solver-draw-workbench[data-precision=true] .solver-model-panel { display:flex; }
+.solver-precision-toggle { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--sw-muted); padding:7px 9px; border-radius:6px; }
+.solver-precision-toggle[aria-pressed=true] { background:var(--sw-selected); color:var(--sw-accent); }
+.solver-drawing-tools { display:flex; align-items:center; gap:4px; padding:11px 14px; border-bottom:1px solid var(--sw-line); flex-shrink:0; }
+.solver-drawing-tools button { display:flex; align-items:center; justify-content:center; gap:6px; min-height:36px; padding:8px 10px; border-radius:6px; font-size:12px; color:var(--sw-muted); white-space:nowrap; }
+.solver-drawing-tools button:hover { background:var(--sw-panel); color:var(--sw-ink); }
+.solver-drawing-tools button[aria-pressed=true] { background:var(--sw-selected); color:var(--sw-accent); }
+.solver-drawing-tools kbd,.solver-empty-scene kbd { padding-left:5px; font-family:inherit; font-size:9px; color:var(--sw-muted); opacity:.7; }
+.solver-tool-options { min-height:54px; display:flex; align-items:center; flex-wrap:wrap; gap:8px 14px; padding:10px 16px; border-bottom:1px solid var(--sw-line); color:var(--sw-muted); font-size:11px; flex-shrink:0; }
+.solver-tool-options small { font-size:10px; color:var(--sw-muted); }
+.solver-tool-options label { font-size:11px; white-space:nowrap; }
+.solver-tool-options input { width:64px; font-size:11px; min-height:29px; }
+.solver-tool-options select { min-height:29px; font-size:11px; }
+.solver-tool-options>div>.flex { gap:5px; }
+.solver-snap-options { display:flex; align-items:center; gap:6px; margin-left:auto; }
+.solver-snap-options button { display:flex; align-items:center; gap:4px; padding:7px; border-radius:5px; }
+.solver-snap-options button[aria-pressed=true] { color:var(--sw-accent); background:var(--sw-selected); }
+.solver-drawing-canvas { user-select:none; }
+.solver-drawing-canvas.mode-select { cursor:default; }
+.solver-drawing-canvas.mode-element,.solver-drawing-canvas.mode-node,.solver-drawing-canvas.mode-load { cursor:crosshair; }
+.solver-drawing-canvas.mode-support { cursor:copy; }
+.solver-drawing-canvas.mode-pan { cursor:grab; }
+.solver-drawing-canvas.mode-pan:active { cursor:grabbing; }
+.solver-canvas-feedback { position:absolute; bottom:30px; left:14px; right:14px; pointer-events:none; color:var(--sw-accent); font-size:11px; line-height:1.6; }
+.solver-draw-workbench .solver-empty-scene { padding-bottom:65px; }
+.solver-draw-workbench .solver-empty-scene>button:first-of-type { display:flex; align-items:center; gap:18px; background:var(--sw-selected); border:0; padding:10px 18px; }
+.solver-draw-workbench .solver-empty-scene>button:last-of-type { font-size:10px; border:0; padding:0; color:var(--sw-muted); }
+.solver-inspector-tabs { margin:12px 14px 0; flex-shrink:0; }
+.solver-inspector-tabs>button { flex:1; }
+.solver-modeling[data-mode=tree] .solver-object-tree { margin-top:0; border:0; padding-top:4px; }
+.solver-modeling[data-mode=selection] .solver-selection-editor { margin:0; padding:0; border:0; background:transparent; }
+.solver-modeling[data-mode=selection] .solver-selection-editor>h4 { display:none; }
+.solver-modeling [hidden] { display:none!important; }
+.solver-draw-workbench .solver-chart-toggle { display:flex; align-items:center; justify-content:center; gap:5px; position:absolute; right:12px; top:15px; z-index:3; color:var(--sw-muted); font-size:10px; padding:3px; }
+.solver-draw-workbench .solver-diagram-region { padding-top:16px; }
+.solver-draw-workbench .solver-diagram-region[data-open=false] { min-height:48px; padding:0; }
+.solver-draw-workbench .solver-diagram-region[data-open=false] .solver-chart-toggle { left:12px; right:auto; top:12px; }
+.solver-draw-workbench .solver-diagram-region[data-open=false] .solver-diagram-resizer { display:none; }
+.solver-draw-workbench .solver-diagram-toolbar { padding-right:72px; }
+.solver-draw-workbench .solver-diagram-hint { display:none; }
+.solver-draw-workbench .solver-scene { min-height:220px; }
+@media(min-width:1600px) { .solver-workbench.solver-draw-workbench .solver-body { grid-template-columns:minmax(0,1fr) 308px; } .solver-workbench.solver-draw-workbench[data-precision=true] .solver-body { grid-template-columns:250px minmax(0,1fr) 308px; } }
+@media(min-width:901px) and (max-width:1199px) {
+ .solver-workbench.solver-draw-workbench .solver-body { grid-template-columns:minmax(0,1fr) 270px; grid-template-rows:minmax(650px,1fr); }
+ .solver-draw-workbench .solver-results-panel { grid-column:auto; border-top:0; border-left:1px solid var(--sw-line); overflow:hidden; }
+ .solver-draw-workbench .solver-results-panel .solver-panel-scroll { overflow:auto; }
+ .solver-workbench.solver-draw-workbench .solver-calculations { display:flex; }
+ .solver-workbench.solver-draw-workbench .solver-calculations>div+div { padding-top:17px; border-top:1px solid var(--sw-line); }
+ .solver-workbench.solver-draw-workbench[data-precision=true] .solver-body { grid-template-columns:228px minmax(0,1fr); grid-template-rows:minmax(650px,1fr) auto; }
+ .solver-draw-workbench[data-precision=true] .solver-results-panel { grid-column:1/-1; }
+ .solver-draw-workbench .solver-drawing-tools { flex-wrap:wrap; }
+ .solver-draw-workbench .solver-drawing-tools kbd { display:none; }
+}
+@media(max-width:900px) {
+ .solver-workbench.solver-draw-workbench .solver-body { display:flex; }
+ .solver-workbench.solver-draw-workbench .solver-canvas-panel { height:790px; min-height:790px; }
+ .solver-workbench.solver-draw-workbench .solver-model-panel { display:none; }
+ .solver-workbench.solver-draw-workbench[data-precision=true] .solver-model-panel { display:flex; }
+ .solver-drawing-tools { padding:8px; gap:2px; flex-wrap:wrap; }
+ .solver-drawing-tools button { flex:1; min-width:44px; flex-direction:column; gap:4px; padding:6px; font-size:10px; }
+ .solver-drawing-tools kbd { display:none; }
+ .solver-tool-options { padding:9px 10px; gap:8px; }
+ .solver-tool-options input { width:55px; }
+ .solver-snap-options { margin-left:0; }
+ .solver-tool-options>span { font-size:10px; }
+ .solver-canvas-feedback { font-size:10px; bottom:38px; }
+ .solver-draw-workbench .solver-toolbar { gap:8px; }
+ .solver-draw-workbench .solver-toolbar-title { flex:1; flex-basis:auto; }
+ .solver-draw-workbench .solver-primary-actions { margin-left:auto; }
+}
+.solver-draw-workbench .solver-scene { min-height:150px; }
+.solver-draw-workbench .solver-diagram-region[data-open=true] { max-height:38%; flex-shrink:1; }
+.solver-finish-drawing { color:var(--sw-accent); background:var(--sw-selected); padding:7px 10px; border-radius:5px; white-space:nowrap; }
+.solver-property-caption { font-size:12px; color:var(--sw-ink); margin-bottom:14px; }
+.solver-property-help { font-size:10px; line-height:1.8; color:var(--sw-muted); }
+.solver-delete-selected { border:1px solid var(--sw-line); min-height:32px; color:var(--sw-danger); background:transparent!important; }
+.solver-delete-selected:hover { background:color-mix(in oklch,var(--sw-danger) 10%,transparent)!important; }
+@media(min-width:901px) { .solver-draw-workbench .solver-diagram-region[data-open=true] { max-height:32%; } }
+.solver-tool-options input { width:54px; }
+.solver-finish-drawing:disabled { opacity:.35; cursor:not-allowed; }

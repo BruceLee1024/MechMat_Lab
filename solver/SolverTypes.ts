@@ -140,7 +140,7 @@ export interface SolverState {
   loads: SolverLoad[];
   // 编辑状态
   selectedId: string | null;
-  editMode: 'select' | 'node' | 'element' | 'load' | 'support';
+  editMode: 'select' | 'node' | 'element' | 'load' | 'support' | 'pan' | 'pan';
   // 视图状态
   viewScale: number;
   viewOffset: { x: number; y: number };

@@ -183,6 +183,9 @@ function solveSimplySupported_DistributedLoad(
     const M = R1 * x - q * x * x / 2;
     forces.push({ position: xi, N: 0, V, M });
   }
+  // 跨中是剪力零点和弯矩极值，不能因均匀采样未命中而低报峰值。
+  forces.push({position:.5,N:0,V:0,M:q*L*L/8});
+  forces.sort((a,b)=>a.position-b.position);
   
   const maxDeflection = (5 * q * L * L * L * L) / (384 * E * I);
   
